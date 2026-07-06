@@ -1,0 +1,41 @@
+# League scoring definition.
+#
+# These are DraftKings-style PLACEHOLDER defaults. Replace the weights and bonuses with
+# your league's actual values — nothing else needs to change; projections stay the same
+# and only the points conversion updates.
+#
+# Stat keys use these canonical names (see fantasy_nba.scoring.STAT_KEYS):
+#   pts   points
+#   reb   total rebounds        (or use oreb/dreb separately if your league splits them)
+#   ast   assists
+#   stl   steals
+#   blk   blocks
+#   tov   turnovers
+#   fg3m  three-pointers made
+#   fgm   field goals made
+#   fga   field goals attempted
+#   ftm   free throws made
+#   fta   free throws attempted
+
+name: default_points
+description: DraftKings-style points-league defaults (placeholder — edit for your league)
+
+weights:
+  pts: 1.0
+  fg3m: 0.5
+  reb: 1.25
+  ast: 1.5
+  stl: 2.0
+  blk: 2.0
+  tov: -0.5
+
+# Bonuses awarded per game based on the stat line. double_double / triple_double are
+# resolved as "highest applicable bonus only" (a triple-double does not also grant the
+# double-double bonus), matching common points-league rules.
+bonuses:
+  double_double: 1.5
+  triple_double: 3.0
+
+# Categories counted toward double/triple-double (each must reach the threshold).
+double_double_categories: [pts, reb, ast, stl, blk]
+double_double_threshold: 10
