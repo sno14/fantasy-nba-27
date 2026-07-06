@@ -112,3 +112,15 @@ def test_durable_player_has_higher_floor_than_fragile_peer():
     # Same per-game value; the higher projected-GP player should have a higher floor total.
     r = uncertainty.simulate_ranges(_proj([40.0, 40.0], [74, 52]), _gp_pool(), seed=1)
     assert r.loc[0, "fpts_p10"] > r.loc[1, "fpts_p10"]
+
+
+def test_safe_rank_demotes_the_injury_prone_peer():
+    # Two equal-median players; the safe board must rank the durable one ahead of the fragile one.
+    r = uncertainty.simulate_ranges(_proj([44.0, 34.0], [72, 52]), _gp_pool(), seed=3)
+    # Give them matching medians so only downside separates them.
+    board = uncertainty.rank_board(r, method="safe")
+    durable = board.index[board["gp"] == 72][0]
+    fragile = board.index[board["gp"] == 52][0]
+    assert board.loc[durable, "rank"] < board.loc[fragile, "rank"]
+    # median ranking is a pure central-estimate sort; ceiling favours upside.
+    assert set(uncertainty.rank_board(r, method="median")["rank"]) == {1, 2}

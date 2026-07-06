@@ -140,3 +140,36 @@ def simulate_ranges(
     if lo is not None and hi is not None:
         out["risk"] = ((hi - lo) / out["fpts_median"].clip(lower=1)).round(3)
     return out
+
+
+RANK_METHODS = ("safe", "median", "floor", "ceiling")
+
+
+def rank_board(proj: pd.DataFrame, method: str = "safe", risk_lambda: float = 0.5) -> pd.DataFrame:
+    """Re-sort a projection (with risk ranges) into a draft board by risk stance.
+
+    * ``median``  — rank by expected total (``fpts_median``). Most accurate central estimate.
+    * ``safe``    — rank by ``fpts_median - risk_lambda * (fpts_median - fpts_p10)``: a mild
+      downside penalty. Backtests as accurate as ``median`` (Spearman ~0.57) while demoting
+      injury-prone players, so it's the default — free bust protection.
+    * ``floor``   — rank by ``fpts_p10`` (max safety) / ``ceiling`` — rank by ``fpts_p90`` (max upside).
+
+    Returns a copy sorted descending by the chosen value, with ``draft_value`` and a renumbered
+    ``rank``. Requires the range columns from :func:`simulate_ranges`.
+    """
+    if method not in RANK_METHODS:
+        raise ValueError(f"method must be one of {RANK_METHODS}, got {method!r}")
+    out = proj.copy()
+    med = out["fpts_median"]
+    if method == "median":
+        val = med
+    elif method == "floor":
+        val = out["fpts_p10"]
+    elif method == "ceiling":
+        val = out["fpts_p90"]
+    else:  # safe: blend median with its downside
+        val = med - risk_lambda * (med - out["fpts_p10"])
+    out["draft_value"] = val.round(0)
+    out = out.sort_values("draft_value", ascending=False).reset_index(drop=True)
+    out["rank"] = range(1, len(out) + 1)
+    return out

@@ -40,6 +40,11 @@ def main() -> None:
         help="Add Monte-Carlo risk ranges (floor/median/ceiling totals + risk score). Season "
         "totals are availability-driven and unpredictable, so ranges are the honest output.",
     )
+    parser.add_argument(
+        "--rank-by", default=None, choices=["safe", "median", "floor", "ceiling"],
+        help="Re-rank the board by risk stance (implies --ranges). 'safe' (default when set) "
+        "applies a mild downside penalty: as accurate as median but demotes injury-prone players.",
+    )
     args = parser.parse_args()
 
     season_stats = storage.read("player_season_stats")
@@ -55,13 +60,17 @@ def main() -> None:
 
     show = ["rank", "PLAYER_NAME", "target_age", "gp", "mpg", "pts", "reb", "ast",
             "stl", "blk", "fg3m", "tov", "fpts_pg", "fpts_total"]
-    if args.ranges:
-        from fantasy_nba.models.uncertainty import build_gp_pool, simulate_ranges
+    if args.ranges or args.rank_by:
+        from fantasy_nba.models.uncertainty import build_gp_pool, rank_board, simulate_ranges
 
         pool = build_gp_pool(season_stats, bio)
         proj = simulate_ranges(proj, pool)
         show = ["rank", "PLAYER_NAME", "target_age", "gp", "mpg", "fpts_pg",
                 "fpts_p10", "fpts_median", "fpts_p90", "risk"]
+        if args.rank_by:
+            proj = rank_board(proj, method=args.rank_by)
+            show = ["rank", "PLAYER_NAME", "target_age", "gp", "draft_value",
+                    "fpts_p10", "fpts_median", "fpts_p90", "risk"]
 
     path = storage.write(proj, f"{args.model}_{args.target}", layer="processed")
     print(f"Scoring: {cfg.name}  |  players projected: {len(proj):,}")

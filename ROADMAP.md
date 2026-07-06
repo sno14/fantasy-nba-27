@@ -124,7 +124,12 @@ special-case handling.
     season-wide common health shocks the marginal GP pool misses), not literal per-game RMSE.
   - Sanity: Giannis flags highest-risk among top-20 (51-game history → low floor); durable
     Jokić/SGA lowest. `fpts_p10` is the draft-safety floor number.
-- [ ] Risk-adjusted ranking mode (rank by floor / expected value) in the delivery layer.
+- [x] **Risk-adjusted ranking** (`uncertainty.rank_board`, `scripts/project.py --rank-by`) —
+      safe / median / floor / ceiling stances. Default **safe** = `median - 0.5·(median-floor)`:
+      backtests as accurate as median (Spearman ~0.57, all indicators within noise) but demotes
+      injury-prone players (e.g. Giannis falls out of the top-20). Reliability context: projected
+      top-100 has ~79% overlap with actual top-100, but only ~60% at top-24 (fine-grained order is
+      injury-limited — the availability ceiling).
 - [ ] (Optional, higher effort) source external availability data — injury history/reports — the
       only way to beat the R²≈0.03 box-score ceiling on games-played.
 
