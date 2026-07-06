@@ -3,7 +3,7 @@
 import numpy as np
 import pandas as pd
 
-from fantasy_nba.models import aging, durability
+from fantasy_nba.models import aging, durability, minutes, uncertainty
 
 
 def _flat_curves():
@@ -56,3 +56,59 @@ def test_project_games_blends_and_clamps():
         curve=curve,
     )
     assert len(out) == 3 and out.between(1, 82).all()
+
+
+def _mpg_curve():
+    """Peaks at AGE_REF, ramps up before, declines after — like the real fitted curve."""
+    ages = list(range(minutes.AGE_MIN, minutes.AGE_MAX + 1))
+    vals = [1.0 - 0.03 * abs(a - minutes.AGE_REF) for a in ages]
+    return pd.Series(vals, index=pd.Index(ages, name="age"), name="mpg_factor")
+
+
+def test_project_minutes_ages_veteran_down_and_youngster_up():
+    c = _mpg_curve()
+    # Same 30 MPG level: a 33-yr-old is trended below it, a 21-yr-old above it.
+    assert minutes.project_minutes(30.0, from_age=30, to_age=33, curve=c) < 30.0
+    assert minutes.project_minutes(24.0, from_age=21, to_age=24, curve=c) > 24.0
+
+
+def test_project_minutes_strength_zero_is_identity():
+    c = _mpg_curve()
+    assert minutes.project_minutes(28.0, from_age=22, to_age=34, curve=c, strength=0.0) == 28.0
+
+
+def test_project_minutes_caps_and_vectorizes():
+    c = _mpg_curve()
+    out = minutes.project_minutes(
+        pd.Series([36.0, 8.0, 25.0]),
+        from_age=pd.Series([26, 33, 22]),
+        to_age=pd.Series([27, 35, 24]),
+        curve=c,
+    )
+    assert len(out) == 3 and (out <= minutes.MPG_CAP).all() and (out >= 0).all()
+
+
+def _gp_pool():
+    # A plausible left-skewed star GP distribution (median ~68, injury tail).
+    gp = [82, 80, 78, 76, 74, 72, 70, 68, 66, 62, 58, 52, 44, 30, 20]
+    return pd.DataFrame({"GP": gp, "AGE": [27] * len(gp)})
+
+
+def _proj(fpts_pg, gp, age=27):
+    return pd.DataFrame({"PLAYER_NAME": [f"p{i}" for i in range(len(gp))],
+                         "fpts_pg": fpts_pg, "gp": gp, "target_age": age})
+
+
+def test_ranges_are_ordered_and_deterministic():
+    proj = _proj([40.0, 30.0], [70, 60])
+    r1 = uncertainty.simulate_ranges(proj, _gp_pool(), seed=7)
+    r2 = uncertainty.simulate_ranges(proj, _gp_pool(), seed=7)
+    assert (r1["fpts_p10"] <= r1["fpts_median"]).all()
+    assert (r1["fpts_median"] <= r1["fpts_p90"]).all()
+    assert (r1["fpts_p10"] == r2["fpts_p10"]).all()  # seeded -> reproducible
+
+
+def test_durable_player_has_higher_floor_than_fragile_peer():
+    # Same per-game value; the higher projected-GP player should have a higher floor total.
+    r = uncertainty.simulate_ranges(_proj([40.0, 40.0], [74, 52]), _gp_pool(), seed=1)
+    assert r.loc[0, "fpts_p10"] > r.loc[1, "fpts_p10"]

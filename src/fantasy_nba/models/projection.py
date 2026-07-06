@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 from ..scoring import ScoringConfig, load_scoring, score_frame
-from . import durability
+from . import durability, minutes
 from ._core import COUNTING, DEFAULT_REG_MINUTES, DEFAULT_WEIGHTS, weighted_aggregates
 from .aging import AGE_MAX, AGE_MIN, load_curves
 
@@ -24,11 +24,18 @@ def project_v2(
     cfg: ScoringConfig | None = None,
     curves: pd.DataFrame | None = None,
     gp_curve: pd.Series | None = None,
+    mpg_curve: pd.Series | None = None,
+    age_minutes: bool = False,
     n_seasons: int = 3,
     weights: tuple[float, ...] = DEFAULT_WEIGHTS,
     reg_minutes: float = DEFAULT_REG_MINUTES,
 ) -> pd.DataFrame:
-    """Project a per-game stat line + fantasy points for ``target_season`` (v2 model)."""
+    """Project a per-game stat line + fantasy points for ``target_season`` (v2 model).
+
+    When ``age_minutes`` is True, the recency-weighted MPG is trended through the empirical
+    minutes aging curve (``mpg_curve``, loaded if not supplied) instead of held flat — the
+    Stage 3 minutes lever. Off by default so callers opt in explicitly.
+    """
     cfg = cfg or load_scoring()
     curves = curves if curves is not None else load_curves()
     gp_curve = gp_curve if gp_curve is not None else durability.load_gp_age_curve()
@@ -39,6 +46,12 @@ def project_v2(
 
     proj_gp = durability.project_games(agg["recent_gp"], agg["weighted_gp"], agg["target_age"], gp_curve)
 
+    if age_minutes:
+        mpg_curve = mpg_curve if mpg_curve is not None else minutes.load_minutes_age_curve()
+        proj_mpg = minutes.project_minutes(agg["proj_mpg"], agg["from_age"], agg["target_age"], mpg_curve)
+    else:
+        proj_mpg = agg["proj_mpg"]
+
     out = pd.DataFrame(
         {
             "PLAYER_ID": agg["PLAYER_ID"],
@@ -46,14 +59,14 @@ def project_v2(
             "target_season": target_season,
             "target_age": agg["target_age"].round(1),
             "gp": proj_gp,
-            "mpg": agg["proj_mpg"].round(1),
+            "mpg": proj_mpg.round(1),
         }
     )
 
     curve_ages = curves.index.values
     from_age = np.clip(agg["from_age"].to_numpy(), AGE_MIN, AGE_MAX)
     to_age = np.clip(agg["target_age"].to_numpy(), AGE_MIN, AGE_MAX)
-    mpg = agg["proj_mpg"].to_numpy()
+    mpg = proj_mpg.to_numpy()
 
     for canon in COUNTING:
         col = curves[canon].to_numpy()

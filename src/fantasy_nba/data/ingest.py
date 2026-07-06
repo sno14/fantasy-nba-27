@@ -120,6 +120,9 @@ def fetch_team_rosters(season: str) -> pd.DataFrame:
         frames.append(df)
 
     out = pd.concat(frames, ignore_index=True)
+    # CommonTeamRoster already returns its own SEASON column (year form, e.g. "2025"); drop it
+    # and stamp our canonical "2025-26" form so it joins with the rest of the pipeline.
+    out = out.drop(columns=[c for c in out.columns if c.upper() == "SEASON"])
     out.insert(0, "SEASON", season)
     return out
 

@@ -26,13 +26,19 @@ def main() -> None:
     parser.add_argument("--top", type=int, default=30, help="How many rows to print.")
     parser.add_argument(
         "--model",
-        default="baseline",
-        choices=["baseline", "v2"],
-        help="baseline (Marcel) or v2 (+ empirical aging curves & durability). "
-        "NOTE: backtests show these are ~equal; the dominant error is minutes (Stage 3).",
+        default="v2m",
+        choices=["baseline", "v2", "v2m"],
+        help="baseline (Marcel); v2 (+ empirical aging curves & durability); "
+        "v2m (+ Stage 3 minutes aging curve). Backtests: baseline~v2; v2m improves minutes "
+        "MAE and per-game fpts MAE in every tested season.",
     )
     parser.add_argument(
         "--scoring", default=None, help="Path to a scoring YAML (defaults to config/scoring.yaml)."
+    )
+    parser.add_argument(
+        "--ranges", action="store_true",
+        help="Add Monte-Carlo risk ranges (floor/median/ceiling totals + risk score). Season "
+        "totals are availability-driven and unpredictable, so ranges are the honest output.",
     )
     args = parser.parse_args()
 
@@ -40,17 +46,27 @@ def main() -> None:
     bio = storage.read("player_bio")
     cfg = load_scoring(args.scoring)
 
-    if args.model == "v2":
+    if args.model == "v2m":
+        proj = project_v2(season_stats, bio, target_season=args.target, cfg=cfg, age_minutes=True)
+    elif args.model == "v2":
         proj = project_v2(season_stats, bio, target_season=args.target, cfg=cfg)
     else:
         proj = project_baseline(season_stats, bio, target_season=args.target, cfg=cfg)
+
+    show = ["rank", "PLAYER_NAME", "target_age", "gp", "mpg", "pts", "reb", "ast",
+            "stl", "blk", "fg3m", "tov", "fpts_pg", "fpts_total"]
+    if args.ranges:
+        from fantasy_nba.models.uncertainty import build_gp_pool, simulate_ranges
+
+        pool = build_gp_pool(season_stats, bio)
+        proj = simulate_ranges(proj, pool)
+        show = ["rank", "PLAYER_NAME", "target_age", "gp", "mpg", "fpts_pg",
+                "fpts_p10", "fpts_median", "fpts_p90", "risk"]
 
     path = storage.write(proj, f"{args.model}_{args.target}", layer="processed")
     print(f"Scoring: {cfg.name}  |  players projected: {len(proj):,}")
     print(f"Saved -> {path}\n")
 
-    show = ["rank", "PLAYER_NAME", "target_age", "gp", "mpg", "pts", "reb", "ast",
-            "stl", "blk", "fg3m", "tov", "fpts_pg", "fpts_total"]
     with_pd_opts(lambda: print(proj[show].head(args.top).to_string(index=False)))
 
 
