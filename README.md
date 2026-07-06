@@ -29,6 +29,9 @@ src/fantasy_nba/
   models/          projection models (baseline first)
 scripts/
   pull_data.py     CLI to fetch and cache raw data
+  project.py       generate the projection / draft board (+ risk ranges, --rank-by)
+  backtest.py      no-leakage backtest on a top-N draft pool
+  explore.py       local interactive Streamlit explorer
 data/              raw/ and processed/ caches (gitignored)
 tests/
 ```
@@ -41,7 +44,23 @@ python scripts/pull_data.py --seasons 2023-24 2024-25 2025-26
 
 # Score a stat line with your league config
 python -c "from fantasy_nba.scoring import load_scoring; print(load_scoring())"
+
+# Generate the 2026-27 draft board with risk ranges (safe / median / floor / ceiling)
+python scripts/project.py --target 2026-27 --rank-by safe --top 50
+
+# Explore data + projections interactively in the browser
+python -m streamlit run scripts/explore.py
 ```
+
+## Interactive explorer
+
+`python -m streamlit run scripts/explore.py` opens a local web app with three tabs:
+
+- **Draft Board** — the projection with floor/median/ceiling ranges; choose a ranking stance,
+  search, and filter by team.
+- **Player** — drill into one player: projected line, career per-game history, and per-game
+  minutes trend/volatility from the game logs.
+- **Data** — browse the raw datasets (season stats, game logs, bio, rosters).
 
 ## Configuring scoring
 

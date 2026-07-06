@@ -15,3 +15,6 @@ lightgbm>=4.3
 
 # HTTP (nba_api dependency, pinned loosely for retries/timeouts)
 requests>=2.31
+
+# Local interactive explorer (scripts/explore.py); bundles altair for charts
+streamlit>=1.40
