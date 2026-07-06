@@ -24,8 +24,10 @@ special-case handling.
 
 ## Key decisions
 
-- **Scoring:** points league first, but scoring is a swappable **config** (`config/scoring.yaml`)
-  so category/9-cat works later. Default weights are DraftKings-style placeholders — user to adjust.
+- **Scoring:** set to **ESPN Fantasy default points** (`config/scoring.yaml`, `espn_points`:
+  PTS 1, 3PM 1, FGM 2, FGA −1, FTM 1, FTA −1, REB 1, AST 2, STL 4, BLK 4, TOV −2; no DD/TD).
+  Swappable config layer (category/9-cat later); box-score projections are league-independent, so
+  changing scoring is a pure re-weight (only re-check `SD_PG` if the fpts *scale* shifts a lot).
 - **Granularity:** season-long per-game first; game-by-game (opponent/rest-aware) later.
 - **Data:** `nba_api` primary, Basketball Reference supplement, college/draft data for rookies. ~10-15 seasons.
 - **Stack:** Python (pandas, scikit-learn, LightGBM/XGBoost, Parquet storage).
@@ -101,19 +103,38 @@ special-case handling.
   - Aside: stars are NOT load-managed down (36+ MPG has the highest GP); modern rotation GP ~66-68.
   - ⇒ Point-estimate GP/rate/minutes modeling is **capped for ranking**. Next real levers are
     external availability data OR uncertainty ranges — see below. (`key-finding-availability-ceiling`.)
-- [ ] Depth-chart / roster-turnover MPG redistribution — data now available (rosters + game logs);
-      deferred because the top-100 lever is availability, not MPG-role (a smaller measured effect).
+- [x] **🔑 ROLE-CHANGE INVESTIGATION** (2026-07-07) — "why doesn't it catch busts/sleepers?"
+  - Diagnosis: busts/sleepers are **~85% minutes/role changes** (corr per-game-miss vs minutes-miss
+    0.84–0.89). The momentum model can't see them: it projects minutes from a player's *own* history,
+    not their *team's* context (Braun rising because KCP left, etc.).
+  - **Automated depth-chart / roster-turnover redistribution FAILED** — 4 formulations (team-wide,
+    within-position, youth/room-weighted, targeted "next man up"), all lost the backtest (hurt the
+    majority; surgical version made confident wrong bets). Causes: height→position only 67% accurate
+    (no historical positions), and "who slots up" is a coaching/breakout call not in box scores.
+    **Do not re-attempt from box-score data.** (`key-finding-role-change-lever`.)
+- [ ] **Recent-form minutes blend** — CANDIDATE, validated, NOT yet implemented. Blend `w≈0.4–0.5`
+      of a player's last-~25-game MPG (from game logs) into the momentum MPG. Improves minutes MAE
+      for all players *and* movers every season, no new data; ~neutral on draft *outcome* (totals
+      still availability-bound). Low-risk free win — fold into `models/minutes.py`.
 - [ ] Pace adjustment — deferred (low measured leverage).
 
 ### Stage 4 — Special cases
-- [ ] Rookie model (draft position + college/international stats)
-- [ ] Role-change / traded-player adjustment
+- [ ] Rookie model (draft position + college/international stats) — also a natural fit for the
+      Stage 7 news layer (rookies like Dybantsa/Boozer show up in preseason role news).
+- [ ] Role-change / traded-player adjustment — the box-score route failed (Stage 3); the real
+      path is the Stage 7 editorial/news signal.
 
-### Stage 5 — Scoring & delivery
+### Stage 5 — Scoring & delivery  ← PARTLY DONE
+- [x] **ESPN default points scoring** wired in (`config/scoring.yaml`); `fpts_pg` (avg FP/G) shown
+      on the board; `--rank-by` CLI board.
+- [x] **Interactive explorer** (`scripts/explore.py`, Streamlit) — Draft Board (season selector incl.
+      no-leakage past seasons vs actuals + hit-rate; model selector; rank stance; search/filter),
+      Player drill-down (career + minutes trend/volatility), raw Data browser.
+      Run: `python -m streamlit run scripts/explore.py`.
 - [ ] Category-league scoring mode (z-scores / rankings)
-- [ ] Final ranked projections + export
+- [ ] Final ranked projections + export (CSV/board hand-off)
 
-### Stage 6 — Uncertainty / risk ranges  ← IN PROGRESS (the honest answer to the availability ceiling)
+### Stage 6 — Uncertainty / risk ranges  ← DONE (the honest answer to the availability ceiling)
 - [x] **Monte-Carlo risk ranges** (`models/uncertainty.py`) — simulate each player's season:
       games drawn from the empirical (no-leakage, modern-era, elite-tier ≥2000-min) GP
       distribution, additively re-centred on the player's projected GP (keeps the real
@@ -131,7 +152,31 @@ special-case handling.
       top-100 has ~79% overlap with actual top-100, but only ~60% at top-24 (fine-grained order is
       injury-limited — the availability ceiling).
 - [ ] (Optional, higher effort) source external availability data — injury history/reports — the
-      only way to beat the R²≈0.03 box-score ceiling on games-played.
+      only way to beat the R²≈0.03 box-score ceiling on games-played (folds into Stage 7).
+
+### Stage 7 — External / news / editorial signal  ← THE FRONTIER (agreed direction; deferred by user)
+The box-score model provably can't predict busts/sleepers (Stage 3) or availability (Stage 6
+ceiling) because the deciding info is **forward-looking and editorial** — expected minutes,
+depth-chart/starter changes, injury timelines, transactions. Basketball Monster/RotoWire solve this
+with hand-maintained depth charts + expert projections (humans reading news). It's an *information*
+input to acquire, not an algorithm to derive. **Demonstrated feasible** via live web search (2026-07-07):
+LLM extraction surfaced exactly the needed signal (e.g. "Amen Thompson → full-time starter, 32 mpg";
+"Reed Sheppard usage spike after HOU trades"; injuries Luka/Curry; rookies Dybantsa/Boozer).
+- [ ] **LLM news-signal layer** → structured extraction (`expected_mpg`, `injury_games_risk`,
+      `role_note`, **with source citations**) → feed as a **minutes override + availability
+      adjustment** → recompute stat line + risk ranges. Its edge over editorial services: full
+      coverage/consistency, freshness, and fusion with our *calibrated* risk ranges.
+- [ ] **Manual expected-minutes override** in the explorer (type a player's minutes → live re-project).
+- [ ] **Opportunity-change flags** — surface each team's vacated/added minutes from roster turnover.
+- **Build options:** (A) *in-session* — research top ~150 players' news → sourced override table
+      that plugs in today (no infra; best for the actual draft); (B) *automated* — Claude-API script
+      over news feeds on a schedule (needs API key + cost + source handling). Start with (A).
+- **Caveats (must respect):** data-acquisition/ToS (24/7 scraping is fraught; some sources paid);
+      verification (LLM can hallucinate → require citations + spot-checks, never silently move a
+      projection); **cannot be cleanly backtested** (no point-in-time news archive → trust on sourced
+      face-validity, not MAE); "sentiment" per se is weak — use *facts* (injuries, depth charts,
+      transactions, coach quotes); it's operational — refresh near the draft.
+      See memory `project-direction-news-signal`, `key-finding-role-change-lever`.
 
 ## How we track progress
 - **This file** — durable checklist, the source of truth.
