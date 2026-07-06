@@ -52,14 +52,29 @@ special-case handling.
 - DD/TD bonus applied to average line (undercounts). → Stage 2 expected-DD-rate.
 - Only projects players active in the most recent season (no return-from-injury, no rookies). → Stage 4.
 
-### Stage 2 — Layered stat models + aging curves
-- [ ] Empirical aging curves per stat (delta method / mixed models)
-- [ ] Per-minute rate models (usage, reb%, ast%, stl/blk rates)
-- [ ] Efficiency + regression models (TS%, FG%, FT%, 3P% — regress low-volume)
-- [ ] Games-played / durability model
+### Stage 2 — Layered stat models + aging curves  ← DONE (with a key finding)
+- [x] Empirical per-stat aging curves — era-detrended delta method (`models/aging.py`),
+      fit on 16 seasons. Curves are basketball-sane: assists/rebounds age well, pts/FT/steals
+      decline after 30, 3PM rises (role shift + survivor bias).
+- [x] Games-played / durability model — age→expected-GP curve, blend recent availability
+      toward it (`models/durability.py`).
+- [x] Shared projection core (`models/_core.py`); v2 model (`models/projection.py`).
+- [x] **Backtest harness** (`models/backtest.py`, `scripts/backtest.py`) — no-leakage,
+      refits curves on training years, compares models vs actuals.
+- [ ] Per-minute rate models beyond regression (usage-driven) — deferred; see finding below.
+- [ ] Efficiency models (TS%/FG%/FT%/3P% direct) — deferred.
 
-### Stage 3 — Team-context layer
-- [ ] Minutes projection model (depth chart aware)
+**🔑 KEY FINDING (backtested on 2023-24 & 2024-25):**
+- The Marcel **baseline is already strong** and **v2's aging curves are ~neutral** on
+  aggregate per-game accuracy (MAE ~4.4 either way). Aging helps old players, hurts young
+  (survivor bias), nets to nothing. Both models are kept; backtest is the arbiter.
+- **Minutes projection is THE error source.** Feeding *actual* minutes cuts per-game MAE
+  from ~4.4 → ~2.0 (**~55% of the error**). Per-minute rates are already well-predicted.
+- ⇒ **Stage 3 (minutes/role) is the highest-value work by far.** Prioritize it over further
+  rate/efficiency modeling.
+
+### Stage 3 — Minutes & team-context layer  ← NEXT (highest leverage)
+- [ ] Minutes projection model (depth chart / rotation aware) — the big accuracy lever
 - [ ] Usage/possession redistribution on roster changes (departures/arrivals)
 - [ ] Pace adjustment
 

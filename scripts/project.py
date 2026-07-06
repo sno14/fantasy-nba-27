@@ -16,13 +16,21 @@ if hasattr(sys.stdout, "reconfigure"):
 
 from fantasy_nba.data import storage
 from fantasy_nba.models.baseline import project_baseline
+from fantasy_nba.models.projection import project_v2
 from fantasy_nba.scoring import load_scoring
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Baseline fantasy projections for a season.")
+    parser = argparse.ArgumentParser(description="Fantasy projections for a season.")
     parser.add_argument("--target", default="2026-27", help="Season to project (e.g. 2026-27).")
     parser.add_argument("--top", type=int, default=30, help="How many rows to print.")
+    parser.add_argument(
+        "--model",
+        default="baseline",
+        choices=["baseline", "v2"],
+        help="baseline (Marcel) or v2 (+ empirical aging curves & durability). "
+        "NOTE: backtests show these are ~equal; the dominant error is minutes (Stage 3).",
+    )
     parser.add_argument(
         "--scoring", default=None, help="Path to a scoring YAML (defaults to config/scoring.yaml)."
     )
@@ -32,9 +40,12 @@ def main() -> None:
     bio = storage.read("player_bio")
     cfg = load_scoring(args.scoring)
 
-    proj = project_baseline(season_stats, bio, target_season=args.target, cfg=cfg)
+    if args.model == "v2":
+        proj = project_v2(season_stats, bio, target_season=args.target, cfg=cfg)
+    else:
+        proj = project_baseline(season_stats, bio, target_season=args.target, cfg=cfg)
 
-    path = storage.write(proj, f"baseline_{args.target}", layer="processed")
+    path = storage.write(proj, f"{args.model}_{args.target}", layer="processed")
     print(f"Scoring: {cfg.name}  |  players projected: {len(proj):,}")
     print(f"Saved -> {path}\n")
 

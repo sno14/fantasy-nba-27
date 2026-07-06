@@ -1,0 +1,116 @@
+"""Shared projection machinery used by both the baseline and v2 models.
+
+The common work — recency-weighting seasons, aggregating per-player totals, regressing
+per-minute rates toward league average, and deriving age / minutes / games metadata — lives
+here. Models differ only in how they apply *aging* and project *games played*.
+"""
+
+from __future__ import annotations
+
+import pandas as pd
+
+# Canonical (lowercase, matches scoring keys) -> source column in player_season_stats.
+COUNTING = {
+    "fgm": "FGM",
+    "fga": "FGA",
+    "fg3m": "FG3M",
+    "ftm": "FTM",
+    "fta": "FTA",
+    "oreb": "OREB",
+    "dreb": "DREB",
+    "reb": "REB",
+    "ast": "AST",
+    "stl": "STL",
+    "blk": "BLK",
+    "tov": "TOV",
+    "pts": "PTS",
+}
+
+DEFAULT_WEIGHTS = (5.0, 4.0, 3.0)  # most-recent season first
+DEFAULT_REG_MINUTES = 750.0  # regression strength, in minutes of league-average play
+
+
+def _season_start(season: str) -> int:
+    """'2025-26' -> 2025."""
+    return int(season[:4])
+
+
+def weighted_aggregates(
+    season_stats: pd.DataFrame,
+    bio: pd.DataFrame,
+    target_season: str,
+    n_seasons: int = 3,
+    weights: tuple[float, ...] = DEFAULT_WEIGHTS,
+    reg_minutes: float = DEFAULT_REG_MINUTES,
+) -> pd.DataFrame:
+    """Per-player recency-weighted aggregates + regressed per-minute rates.
+
+    Returns one row per player active in the most recent season, with:
+      * ``from_age``    minutes-weighted mean age across the seasons used (the age the rate
+                        was effectively measured at — the 'from' point for aging)
+      * ``recent_age``  age in the most recent season
+      * ``target_age``  projected age in ``target_season``
+      * ``proj_mpg``    recency-weighted minutes per game
+      * ``weighted_gp`` recency-weighted games played
+      * ``recent_gp``   games played in the most recent season
+      * ``rate_<stat>`` regressed per-minute rate for each counting stat
+    """
+    seasons = sorted(season_stats["SEASON"].unique(), key=_season_start, reverse=True)[:n_seasons]
+    most_recent = seasons[0]
+    w_map = {s: (weights[i] if i < len(weights) else weights[-1]) for i, s in enumerate(seasons)}
+
+    src_cols = ["MIN", "GP"] + list(COUNTING.values())
+    df = season_stats[season_stats["SEASON"].isin(seasons)].copy()
+    df = df.groupby(["PLAYER_ID", "PLAYER_NAME", "SEASON"], as_index=False)[src_cols].sum()
+
+    ages = bio[["PLAYER_ID", "SEASON", "AGE"]].drop_duplicates(["PLAYER_ID", "SEASON"])
+    df = df.merge(ages, on=["PLAYER_ID", "SEASON"], how="left")
+
+    df["w"] = df["SEASON"].map(w_map).astype(float)
+    df["wMIN"] = df["w"] * df["MIN"]
+    df["wGP"] = df["w"] * df["GP"]
+    df["wMINAGE"] = df["wMIN"] * df["AGE"]
+    for src in COUNTING.values():
+        df[f"w_{src}"] = df["w"] * df[src]
+
+    spec = {
+        "wMIN": ("wMIN", "sum"),
+        "wGP": ("wGP", "sum"),
+        "w": ("w", "sum"),
+        "wMINAGE": ("wMINAGE", "sum"),
+    }
+    spec.update({f"w_{s}": (f"w_{s}", "sum") for s in COUNTING.values()})
+    agg = df.groupby(["PLAYER_ID", "PLAYER_NAME"], as_index=False).agg(**spec)
+
+    # League minutes-weighted per-minute rate (full population, before filtering to active).
+    total_min = agg["wMIN"].sum()
+    league_rate = {c: agg[f"w_{src}"].sum() / total_min for c, src in COUNTING.items()}
+
+    # Keep only players active in the most recent season.
+    recent = season_stats[season_stats["SEASON"] == most_recent]
+    agg = agg[agg["PLAYER_ID"].isin(set(recent["PLAYER_ID"]))].reset_index(drop=True)
+
+    recent_age = (
+        bio.loc[bio["SEASON"] == most_recent, ["PLAYER_ID", "AGE"]]
+        .drop_duplicates("PLAYER_ID")
+        .rename(columns={"AGE": "recent_age"})
+    )
+    recent_gp = (
+        recent.groupby("PLAYER_ID", as_index=False)["GP"].sum().rename(columns={"GP": "recent_gp"})
+    )
+    agg = agg.merge(recent_age, on="PLAYER_ID", how="left").merge(recent_gp, on="PLAYER_ID", how="left")
+
+    gap = _season_start(target_season) - _season_start(most_recent)
+    agg["from_age"] = (agg["wMINAGE"] / agg["wMIN"]).fillna(agg["recent_age"])
+    agg["from_age"] = agg["from_age"].fillna(agg["from_age"].median())
+    agg["target_age"] = (agg["recent_age"] + gap).fillna((agg["from_age"] + gap))
+    agg["target_age"] = agg["target_age"].fillna(agg["target_age"].median())
+    agg["proj_mpg"] = agg["wMIN"] / agg["wGP"]
+    agg["weighted_gp"] = agg["wGP"] / agg["w"]
+
+    for canon, src in COUNTING.items():
+        agg[f"rate_{canon}"] = (agg[f"w_{src}"] + reg_minutes * league_rate[canon]) / (
+            agg["wMIN"] + reg_minutes
+        )
+
+    return agg
