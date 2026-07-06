@@ -56,8 +56,10 @@ python -m streamlit run scripts/explore.py
 
 `python -m streamlit run scripts/explore.py` opens a local web app with three tabs:
 
-- **Draft Board** — the projection with floor/median/ceiling ranges; choose a ranking stance,
-  search, and filter by team.
+- **Draft Board** — the projection with floor/median/ceiling ranges; choose the target season
+  (past seasons are re-projected with no leakage and shown next to actual results, with a
+  top-N hit rate), the projection model (baseline / v2 / v2m), and a ranking stance; search
+  and filter by team.
 - **Player** — drill into one player: projected line, career per-game history, and per-game
   minutes trend/volatility from the game logs.
 - **Data** — browse the raw datasets (season stats, game logs, bio, rosters).

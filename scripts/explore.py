@@ -5,7 +5,9 @@ Run it with:
     python -m streamlit run scripts/explore.py
 
 Three tabs:
-  * Draft Board  — the 2026-27 projection with risk ranges; pick a ranking stance, search, filter.
+  * Draft Board  — projection with risk ranges; pick the target season (past seasons are
+                   re-projected no-leakage and shown next to actual results), projection model
+                   (baseline / v2 / v2m), and ranking stance; search and filter.
   * Player       — drill into one player: projected line, career history, minutes trend + volatility.
   * Data         — raw dataset browser (season stats, game logs, bio, rosters).
 
@@ -20,11 +22,26 @@ import pandas as pd
 import streamlit as st
 
 from fantasy_nba.data import storage
+from fantasy_nba.models._core import _season_start
+from fantasy_nba.models.aging import build_aging_curves
+from fantasy_nba.models.backtest import _actual
+from fantasy_nba.models.baseline import project_baseline
+from fantasy_nba.models.durability import build_gp_age_curve
+from fantasy_nba.models.minutes import build_minutes_age_curve
 from fantasy_nba.models.projection import project_v2
 from fantasy_nba.models.uncertainty import build_gp_pool, rank_board, simulate_ranges
 from fantasy_nba.scoring import load_scoring
 
-TARGET_SEASON = "2026-27"
+DEFAULT_TARGET = "2026-27"
+# Seasons you can project. Past ones are re-projected with **no leakage** (only prior-season
+# data; aging/GP/minutes curves refit on the training years) so the board is a fair "what would
+# the model have said", and actual results are shown alongside.
+TARGET_SEASONS = ["2026-27", "2025-26", "2024-25", "2023-24", "2022-23"]
+MODELS = {
+    "v2m": "v2m — v2 + minutes aging (default)",
+    "v2": "v2 — empirical aging curves + durability",
+    "baseline": "baseline — Marcel (recency-weighted rates)",
+}
 RANK_HELP = {
     "safe": "median − ½·downside — as accurate as median but demotes injury-prone players (default)",
     "median": "expected (median) season total",
@@ -48,16 +65,39 @@ def load_raw() -> dict[str, pd.DataFrame]:
 
 
 @st.cache_data(show_spinner="Computing projections…")
-def compute_board(scoring_path: str | None) -> pd.DataFrame:
+def compute_board(target: str, model: str, scoring_path: str | None) -> pd.DataFrame:
+    """No-leakage projection for ``target`` with ``model``, plus risk ranges and (for past
+    seasons) the actual outcome joined on."""
     raw = load_raw()
     ss, bio = raw["player_season_stats"], raw["player_bio"]
     cfg = load_scoring(scoring_path)
-    proj = project_v2(ss, bio, target_season=TARGET_SEASON, cfg=cfg, age_minutes=True)
-    pool = build_gp_pool(ss, bio)
+    ty = _season_start(target)
+    max_year = int(ss["SEASON"].map(_season_start).max())
+
+    tr_ss = ss[ss["SEASON"].map(_season_start) < ty]
+    tr_bio = bio[bio["SEASON"].map(_season_start) < ty]
+
+    if model == "baseline":
+        proj = project_baseline(tr_ss, tr_bio, target_season=target, cfg=cfg)
+    else:
+        curves = build_aging_curves(tr_ss, tr_bio, save=False)
+        gpc = build_gp_age_curve(tr_ss, tr_bio, save=False)
+        mc = build_minutes_age_curve(tr_ss, tr_bio, save=False) if model == "v2m" else None
+        proj = project_v2(tr_ss, tr_bio, target_season=target, cfg=cfg, curves=curves,
+                          gp_curve=gpc, mpg_curve=mc, age_minutes=(model == "v2m"))
+
+    pool = build_gp_pool(tr_ss, tr_bio, max_start_year=ty)
     proj = simulate_ranges(proj, pool)
-    # Attach a current-ish team label from the most-recent season the player appears in.
-    recent = ss.sort_values("SEASON").drop_duplicates("PLAYER_ID", keep="last")
+    recent = tr_ss.sort_values("SEASON").drop_duplicates("PLAYER_ID", keep="last")
     proj = proj.merge(recent[["PLAYER_ID", "TEAM_ABBREVIATION"]], on="PLAYER_ID", how="left")
+
+    if ty <= max_year:  # season already happened — attach actuals + true finish rank
+        act = _actual(ss, target, cfg, 0.0).copy()
+        act["actual_rank"] = act["act_fpts_total"].rank(ascending=False, method="min").astype(int)
+        proj = proj.merge(
+            act[["PLAYER_ID", "act_fpts_pg", "act_fpts_total", "act_gp", "actual_rank"]],
+            on="PLAYER_ID", how="left",
+        )
     return proj
 
 
@@ -67,14 +107,13 @@ if raw["player_season_stats"].empty:
     st.stop()
 
 cfg = load_scoring()
-board_full = compute_board(None)
+board_2027 = compute_board(DEFAULT_TARGET, "v2m", None)  # canonical board for the Player tab
 
 st.title("🏀 Fantasy NBA Explorer")
 st.caption(
-    f"Projection: **v2m** for **{TARGET_SEASON}**  ·  scoring: **{cfg.name}** "
-    f"(⚠ default weights are placeholders — set yours in `config/scoring.yaml`)  ·  "
-    f"{len(board_full):,} players  ·  seasons {raw['player_season_stats']['SEASON'].min()}–"
-    f"{raw['player_season_stats']['SEASON'].max()}"
+    f"Scoring: **{cfg.name}** (edit `config/scoring.yaml` for your league)  ·  "
+    f"{len(board_2027):,} players projected  ·  data seasons "
+    f"{raw['player_season_stats']['SEASON'].min()}–{raw['player_season_stats']['SEASON'].max()}"
 )
 
 tab_board, tab_player, tab_data = st.tabs(["📋 Draft Board", "🔍 Player", "📚 Data"])
@@ -82,43 +121,62 @@ tab_board, tab_player, tab_data = st.tabs(["📋 Draft Board", "🔍 Player", "�
 
 # ---------------------------------------------------------------------------------- draft board
 with tab_board:
-    c1, c2, c3, c4 = st.columns([1.4, 1.2, 1, 1])
-    stance = c1.selectbox("Rank by", list(RANK_HELP), format_func=lambda s: s.capitalize(),
+    c1, c2, c3, c4 = st.columns([1, 1.6, 1.4, 1])
+    target = c1.selectbox("Season", TARGET_SEASONS,
+                          help="Past seasons are re-projected with no leakage, then compared to what actually happened.")
+    model = c2.selectbox("Projection", list(MODELS), format_func=lambda m: MODELS[m])
+    stance = c3.selectbox("Rank by", list(RANK_HELP), format_func=lambda s: s.capitalize(),
                           help="\n".join(f"{k}: {v}" for k, v in RANK_HELP.items()))
-    search = c2.text_input("Search player", placeholder="e.g. Jokic")
-    teams = ["All"] + sorted(board_full["TEAM_ABBREVIATION"].dropna().unique().tolist())
-    team = c3.selectbox("Team", teams)
     top_n = c4.slider("Show top", 10, 300, 60, step=10)
 
-    board = rank_board(board_full, method=stance)
+    c5, c6 = st.columns([2, 1])
+    search = c5.text_input("Search player", placeholder="e.g. Jokic")
+    board_src = compute_board(target, model, None)
+    teams = ["All"] + sorted(board_src["TEAM_ABBREVIATION"].dropna().unique().tolist())
+    team = c6.selectbox("Team", teams)
+
+    has_actuals = "actual_rank" in board_src.columns
+    board = rank_board(board_src, method=stance)
     if search:
         board = board[board["PLAYER_NAME"].str.contains(search, case=False, na=False)]
     if team != "All":
         board = board[board["TEAM_ABBREVIATION"] == team]
     board = board.head(top_n)
 
-    st.caption(f"**{RANK_HELP[stance]}**")
+    note = f"**{MODELS[model].split(' — ')[0]}** · {RANK_HELP[stance]}"
+    if has_actuals:
+        # How well did this board's top-N line up with who actually finished top-N?
+        n = min(top_n, len(board_src))
+        proj_top = set(rank_board(board_src, stance).head(n)["PLAYER_ID"])
+        act_top = set(board_src.dropna(subset=["actual_rank"]).nsmallest(n, "actual_rank")["PLAYER_ID"])
+        hit = len(proj_top & act_top) / n if n else 0
+        note += f"  ·  ⬅ historical: **{hit*100:.0f}%** of this top-{n} finished in the actual top-{n}"
+    st.caption(note)
+
     cols = ["rank", "PLAYER_NAME", "TEAM_ABBREVIATION", "target_age", "gp", "mpg", "fpts_pg",
             "draft_value", "fpts_p10", "fpts_median", "fpts_p90", "risk"]
-    st.dataframe(
-        board[cols],
-        hide_index=True,
-        width="stretch",
-        height=560,
-        column_config={
-            "PLAYER_NAME": "Player",
-            "TEAM_ABBREVIATION": "Team",
-            "target_age": st.column_config.NumberColumn("Age", format="%.1f"),
-            "gp": st.column_config.NumberColumn("GP", format="%d"),
-            "mpg": st.column_config.NumberColumn("MPG", format="%.1f"),
-            "fpts_pg": st.column_config.NumberColumn("Avg FP/G", format="%.1f"),
-            "draft_value": st.column_config.NumberColumn("Draft value", format="%d"),
-            "fpts_p10": st.column_config.NumberColumn("Floor", format="%d"),
-            "fpts_median": st.column_config.NumberColumn("Median", format="%d"),
-            "fpts_p90": st.column_config.NumberColumn("Ceiling", format="%d"),
-            "risk": st.column_config.ProgressColumn("Risk", min_value=0.0, max_value=1.2, format="%.2f"),
-        },
-    )
+    col_cfg = {
+        "PLAYER_NAME": "Player",
+        "TEAM_ABBREVIATION": "Team",
+        "target_age": st.column_config.NumberColumn("Age", format="%.1f"),
+        "gp": st.column_config.NumberColumn("GP", format="%d"),
+        "mpg": st.column_config.NumberColumn("MPG", format="%.1f"),
+        "fpts_pg": st.column_config.NumberColumn("Avg FP/G", format="%.1f"),
+        "draft_value": st.column_config.NumberColumn("Draft value", format="%d"),
+        "fpts_p10": st.column_config.NumberColumn("Floor", format="%d"),
+        "fpts_median": st.column_config.NumberColumn("Median", format="%d"),
+        "fpts_p90": st.column_config.NumberColumn("Ceiling", format="%d"),
+        "risk": st.column_config.ProgressColumn("Risk", min_value=0.0, max_value=1.2, format="%.2f"),
+    }
+    if has_actuals:  # show what actually happened next to the projection
+        cols += ["actual_rank", "act_fpts_pg", "act_fpts_total"]
+        col_cfg.update({
+            "actual_rank": st.column_config.NumberColumn("Actual rank", format="%d",
+                                                         help="True finish rank by real season total"),
+            "act_fpts_pg": st.column_config.NumberColumn("Actual FP/G", format="%.1f"),
+            "act_fpts_total": st.column_config.NumberColumn("Actual total", format="%d"),
+        })
+    st.dataframe(board[cols], hide_index=True, width="stretch", height=560, column_config=col_cfg)
 
     st.subheader("Floor → median → ceiling")
     n_chart = min(len(board), 30)
@@ -138,14 +196,15 @@ with tab_board:
 
 # -------------------------------------------------------------------------------------- player
 with tab_player:
-    names = board_full.sort_values("rank")["PLAYER_NAME"].tolist()
+    st.caption(f"Projected line for **{DEFAULT_TARGET}** (v2m).")
+    names = board_2027.sort_values("rank")["PLAYER_NAME"].tolist()
     default = names.index("Nikola Jokić") if "Nikola Jokić" in names else 0
     who = st.selectbox("Player", names, index=default)
-    row = board_full[board_full["PLAYER_NAME"] == who].iloc[0]
+    row = board_2027[board_2027["PLAYER_NAME"] == who].iloc[0]
     pid = row["PLAYER_ID"]
 
     m = st.columns(6)
-    m[0].metric("Proj rank", int(rank_board(board_full, "safe").set_index("PLAYER_ID").loc[pid, "rank"]))
+    m[0].metric("Proj rank", int(rank_board(board_2027, "safe").set_index("PLAYER_ID").loc[pid, "rank"]))
     m[1].metric("Age", f"{row['target_age']:.0f}")
     m[2].metric("Proj GP", f"{row['gp']:.0f}")
     m[3].metric("Proj MPG", f"{row['mpg']:.1f}")
@@ -223,7 +282,7 @@ with tab_data:
         f1, f2 = st.columns(2)
         if "SEASON" in df.columns:
             seasons = ["All"] + sorted(df["SEASON"].unique(), reverse=True)
-            sel = f1.selectbox("Season", seasons)
+            sel = f1.selectbox("Season", seasons, key="data_season")
             if sel != "All":
                 df = df[df["SEASON"] == sel]
         namecol = "PLAYER_NAME" if "PLAYER_NAME" in df.columns else ("PLAYER" if "PLAYER" in df.columns else None)
