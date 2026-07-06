@@ -69,7 +69,7 @@ def main() -> None:
                 "fpts_p10", "fpts_median", "fpts_p90", "risk"]
         if args.rank_by:
             proj = rank_board(proj, method=args.rank_by)
-            show = ["rank", "PLAYER_NAME", "target_age", "gp", "draft_value",
+            show = ["rank", "PLAYER_NAME", "target_age", "gp", "mpg", "fpts_pg", "draft_value",
                     "fpts_p10", "fpts_median", "fpts_p90", "risk"]
 
     path = storage.write(proj, f"{args.model}_{args.target}", layer="processed")

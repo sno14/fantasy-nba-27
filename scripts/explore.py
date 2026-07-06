@@ -111,7 +111,7 @@ with tab_board:
             "target_age": st.column_config.NumberColumn("Age", format="%.1f"),
             "gp": st.column_config.NumberColumn("GP", format="%d"),
             "mpg": st.column_config.NumberColumn("MPG", format="%.1f"),
-            "fpts_pg": st.column_config.NumberColumn("FP/G", format="%.1f"),
+            "fpts_pg": st.column_config.NumberColumn("Avg FP/G", format="%.1f"),
             "draft_value": st.column_config.NumberColumn("Draft value", format="%d"),
             "fpts_p10": st.column_config.NumberColumn("Floor", format="%d"),
             "fpts_median": st.column_config.NumberColumn("Median", format="%d"),

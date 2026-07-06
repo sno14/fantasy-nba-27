@@ -1,41 +1,33 @@
 # League scoring definition.
 #
-# These are DraftKings-style PLACEHOLDER defaults. Replace the weights and bonuses with
-# your league's actual values — nothing else needs to change; projections stay the same
-# and only the points conversion updates.
+# ESPN Fantasy Basketball DEFAULT points-league scoring.
+# Source: https://www.espn.com/fantasy/basketball/story/_/id/30296896
+# Swap these weights for your league's actual values if it deviates from the ESPN default —
+# nothing else changes; projections stay the same and only the points conversion updates.
 #
 # Stat keys use these canonical names (see fantasy_nba.scoring.STAT_KEYS):
-#   pts   points
-#   reb   total rebounds        (or use oreb/dreb separately if your league splits them)
-#   ast   assists
-#   stl   steals
+#   pts   points                fgm  field goals made      fg3m  three-pointers made
+#   reb   total rebounds        fga  field goals attempted
+#   ast   assists               ftm  free throws made
+#   stl   steals                fta  free throws attempted
 #   blk   blocks
 #   tov   turnovers
-#   fg3m  three-pointers made
-#   fgm   field goals made
-#   fga   field goals attempted
-#   ftm   free throws made
-#   fta   free throws attempted
 
-name: default_points
-description: DraftKings-style points-league defaults (placeholder — edit for your league)
+name: espn_points
+description: ESPN Fantasy default points-league scoring
 
 weights:
   pts: 1.0
-  fg3m: 0.5
-  reb: 1.25
-  ast: 1.5
-  stl: 2.0
-  blk: 2.0
-  tov: -0.5
+  fg3m: 1.0
+  fgm: 2.0
+  fga: -1.0
+  ftm: 1.0
+  fta: -1.0
+  reb: 1.0
+  ast: 2.0
+  stl: 4.0
+  blk: 4.0
+  tov: -2.0
 
-# Bonuses awarded per game based on the stat line. double_double / triple_double are
-# resolved as "highest applicable bonus only" (a triple-double does not also grant the
-# double-double bonus), matching common points-league rules.
-bonuses:
-  double_double: 1.5
-  triple_double: 3.0
-
-# Categories counted toward double/triple-double (each must reach the threshold).
-double_double_categories: [pts, reb, ast, stl, blk]
-double_double_threshold: 10
+# ESPN's default points league awards no double-double / triple-double bonus.
+bonuses: {}
