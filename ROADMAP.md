@@ -141,6 +141,15 @@ and fallers** — and capitalising on those is the entire edge of a projection s
 is the response. It is deliberately researched and sequenced *before* committing to any build;
 see `EXPERIMENTS.md` for the trail of what's already been tested so we don't repeat it.
 
+**Season-long, daily-updating use (user, 2026-07 clarification).** This is not a one-shot draft
+tool. It runs **all season**: the preseason draft board **and** a **rest-of-season (ROS)
+projection refreshed daily** as box scores + news arrive — the waiver-wire and trade-value engine.
+Highest-value in-season job: catch a riser **early**, from a small sample, before the market does.
+Design consequence: the projection is a **pure as-of-date function** — `project(data ≤ T) → ROS
+line`, runnable at any T (T₀ = draft, every day after = the updated ROS number). This reshapes the
+eval (in-season as-of-date walk-forward, not just season boundaries) and adds a **daily news/status
+feed** as a data requirement. Full weighing in `docs/model-foundation.md`.
+
 **Why every model so far misses them (structural, not a bug).** Baseline → v2 → v2m all project
 each player **almost entirely from their own recent history**, recency-weighted and regressed to
 the mean. That is an excellent *central-tendency* engine and a structurally *blind*
@@ -182,9 +191,14 @@ level accuracy that doesn't fall apart on players whose level changed.
 - [ ] **Directional capture:** projected Δ vs actual Δ (correlation + sign accuracy) — do we even
       move a player the right way relative to his own last season?
 - [ ] Score **per-game level** (the skill signal we *can* improve) separately from **totals**
-      (GP-capped — the availability ceiling). The 35→40 case is a per-game-level case.
+      (GP-capped preseason — the availability ceiling; in-season this opens up via news).
+      The 35→40 case is a per-game-level case.
+- [ ] **In-season as-of-date eval:** at cutpoints through the season, score the ROS projection vs the
+      actual remainder — *especially early-season*, where the waiver edge lives ("given 10 games, did
+      we call the riser?"). Not just preseason→season.
 - [ ] First run doubles as measuring the *current* model's mover bias — baseline the disease (EXP-006).
-- [ ] Wire into `models/backtest.py` (no-leakage, walk-forward; refit curves/models per fold).
+- [ ] Wire into `models/backtest.py` (no-leakage, walk-forward **within season and across seasons**;
+      refit curves/models per fold).
 
 #### 7.★ — Foundational refactor: a learned, decompositional panel model
 **Full weighing of alternatives (GBM panel vs DARKO-style state-space vs hierarchical Bayes vs
@@ -196,19 +210,30 @@ driver, EXP-001) but replace the hand-set Marcel layers (fixed 5/4/3 weights, fi
 constants, population curves) with **learned, feature-based models over the historical
 player-season panel**. This is the base that lets 7.A–7.E become *features in one place* rather than
 bolt-on adjustments — the scalable foundation the user asked for.
-- **Targets (predict season t+1 from t and earlier, walk-forward):** (1) per-minute rate per stat;
-  (2) MPG; (3) GP — kept separate (different drivers, different stability). Compose
-  `stat_pg = MPG × rate`; fantasy points via the swappable scoring config (scoring stays
-  independent). Uncertainty via the existing Monte-Carlo layer (Stage 6).
+- **Interface: an as-of-date function** `project(data ≤ T) → ROS line`, run daily (T₀ = draft,
+  every day after = updated ROS). Trained on as-of-date snapshots across seasons **and in-season
+  cutpoints** so it learns small-sample shrinkage ("6 hot games" → how far to move).
+- **Targets (kept separate — different drivers, different stability):** (1) per-minute rate per stat;
+  (2) MPG / role — the dominant lever and most **news-sensitive** layer; (3) remaining games —
+  in-season **news-driven** ("out 2 weeks"), preseason via durability + injury history (7.C).
+  Compose `stat_pg = MPG × rate`; fantasy points via the swappable scoring config; uncertainty via
+  the Monte-Carlo layer (Stage 6).
 - **Model class:** gradient-boosted trees (LightGBM — already a dep). Chosen because it **subsumes
   Marcel**: given only "own recency-weighted rate + age" it can rediscover recency-weighting,
   mean-reversion and aging, so it's a strict generalization — can't do worse on the same inputs, and
   it can *use* the context features Marcel structurally cannot. Handles age × usage × trajectory ×
   role interactions natively; fast to iterate; feature importances give interpretability.
 - **Feature families (where risers/fallers actually get captured):** own multi-year levels **and
-  trends/slopes** (the "already gradually improving" breakout signal) · age/experience · role &
-  usage · **team-context / vacated minutes (7.A)** · efficiency/TS% · later injury history (7.C) and
-  market/ADP (7.E). **7.A–7.E stop being separate models and become feature groups feeding this one.**
+  trends/slopes** · **recent-window (last-N-games) vs season splits** (in-season riser detection) ·
+  age/experience · role & usage · **team-context / vacated minutes (7.A)** · efficiency/TS% ·
+  **injury/lineup news status** (in-season) · optional **public daily skill feed (DARKO/DPM) and
+  market/ADP (7.E)** · per-stat recency summaries. **7.A–7.E stop being separate models and become
+  feature groups feeding this one.**
+- **Don't rebuild DARKO — consider consuming it.** DARKO is already an excellent daily-updating
+  *box-score skill* engine but is blind to context/news. Rather than rebuild a Kalman, we can
+  **consume a public daily skill feed as a feature** and spend our effort on the minutes / role /
+  news / availability layer where our fantasy-specific edge is. A home-grown online skill estimator
+  stays an eval-gated future upgrade, not the base.
 - **Honest framing of the test:** EXP-000/003 already showed a learned model on *Marcel-equivalent
   inputs* will roughly **tie** (rates are already well-predicted). The architecture swap is the
   *enabler*; the win must come from the *new context features*. We validate in that order and do

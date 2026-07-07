@@ -114,12 +114,17 @@ works) or against a **committed data snapshot** on the branch. Decision pending.
 
 **Planned (not yet run) — validation sequence for the 7.★ learned foundation:**
 
-### EXP-006 — 7.0 eval harness + current-model mover bias  ·  Status: planned
+### EXP-006 — as-of-date eval harness + current-model mover bias  ·  Status: planned
 - **Hypothesis:** the current v2m model is accurate on stable players but **biased on movers**
   (under-projects risers, over-projects fallers) — the structural cost of mean-reversion.
-- **Method:** build the mover-segmented, draftable-pool eval (per-game level MAE/RMSE + signed bias
-  per YoY-change bucket; directional Δ capture); run current model through it, walk-forward.
-- **Success = the harness exists and quantifies the per-bucket bias** (baselines "the disease").
+- **Method:** build the mover-segmented, draftable-pool **as-of-date** eval (per-game level MAE/RMSE
+  + signed bias per YoY-change bucket; directional Δ capture). Score both **preseason→season** and
+  **in-season cutpoints** (given games ≤ T, ROS projection vs actual remainder — especially early
+  season, the waiver case). Walk-forward, no-leakage.
+- **Success = the harness exists and quantifies the per-bucket bias** preseason *and* in-season
+  (baselines "the disease" for both the draft and waiver use cases).
+- **Note:** in-season eval needs game-log-date granularity (have) and eventually the daily news/status
+  feed (new — `nbainjuries` / official injury report / prosportstransactions).
 
 ### EXP-007 — learned decompositional model, Marcel-equivalent features  ·  Status: planned
 - **Hypothesis:** a LightGBM decompositional model given only Marcel-equivalent inputs ≈ ties v2m
