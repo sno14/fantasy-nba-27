@@ -131,9 +131,122 @@ special-case handling.
       top-100 has ~79% overlap with actual top-100, but only ~60% at top-24 (fine-grained order is
       injury-limited — the availability ceiling).
 - [ ] (Optional, higher effort) source external availability data — injury history/reports — the
-      only way to beat the R²≈0.03 box-score ceiling on games-played.
+      only way to beat the R²≈0.03 box-score ceiling on games-played. **→ now tracked as Stage 7.C**
+      (same data serves both a GP point-estimate and a per-player Monte-Carlo injury tail).
+
+### Stage 7 — Catching risers & fallers (the discontinuity frontier)  ← NEXT (the real value)
+
+**The problem statement (user, 2026-07):** we project the stable core well but **miss the risers
+and fallers** — and capitalising on those is the entire edge of a projection system. This stage
+is the response. It is deliberately researched and sequenced *before* committing to any build;
+see `EXPERIMENTS.md` for the trail of what's already been tested so we don't repeat it.
+
+**Why every model so far misses them (structural, not a bug).** Baseline → v2 → v2m all project
+each player **almost entirely from their own recent history**, recency-weighted and regressed to
+the mean. That is an excellent *central-tendency* engine and a structurally *blind*
+*discontinuity* engine: it treats an upward trajectory as noise around a mean, and it has **no
+information about next season's context**. Real risers/fallers are driven by signals absent from a
+player's own box scores:
+1. **Opportunity / role change** — vacated minutes & usage when a teammate leaves, role
+   compression from an arrival, coaching change. (Consensus #1 mechanism in the research.)
+2. **Skill trajectory** — breakouts cluster at **age 22–24**, in players *already* gradually
+   improving, with rising usage at held efficiency (TS%). Our 5/4/3 weighting damps this signal.
+3. **External availability** — injury history/reports; the only thing that can beat the R²≈0.03
+   box-score games-played ceiling (EXP-004).
+4. **Within-season recency** — late-season / post-trade role changes wash out of season totals.
+5. **The market** — ADP + public systems (DARKO/EPM) locate *where we disagree*, which is where
+   the value is.
+
+**Research basis (2026-07 survey):** DARKO (Bayesian/Kalman, per-possession, daily-updated) and
+the RAPM-family (EPM, LEBRON) all beat static box-score models mainly by *weighting recency
+intelligently and updating on new information* — not by a magic feature. Breakout literature
+converges on age 22–24 + prior gradual improvement + usage↑ at held TS% + minutes↑ + low
+established level (room to grow). Trade/roster research names the vacancy → redistribution →
+market-lag chain explicitly. Consensus/ensemble reduces variance but can wash out a real edge —
+so we use the market as a **benchmark and disagreement-finder**, not a crutch. (Sources logged in
+the session; key ones: darko.app, Bruin/Dartmouth breakout studies, Athlon trade-effect pieces,
+`nbainjuries` / prosportstransactions for injury data.)
+
+#### 7.0 — Riser/faller eval harness  ← **KEYSTONE, do first**
+- [ ] Nothing below is measurable until we can *see* risers/fallers. Build a dedicated eval that
+      scores the thing we actually care about — the **year-over-year change**, not the level:
+  - Define riser/faller by large YoY change in actual fantasy value/rank among the draftable pool.
+  - Metrics: directional accuracy on ΔY, error on Δ (not the level), recall/precision of our
+      top-K "biggest movers" calls, and calibration of those calls. Segment eval by role-change vs
+      stable, and by age band.
+  - **Rationale:** top-100 Spearman (EXP-003) is availability-dominated and rewards ranking the
+      stable core; it is blind to this stage's goal. Keep it, but 7.0 becomes the co-headline.
+- [ ] Wire into `models/backtest.py` (no-leakage; refit any curves/allocations on training years).
+
+#### 7.A — Opportunity / role-redistribution model  ← highest leverage
+- [ ] Model the **team-context change** each player walks into, not just their own past.
+      Depth-chart minutes allocation (team ≈ 240 min/game) + usage redistribution: when a player
+      departs (trade/FA/retire), reallocate their vacated minutes & usage to returning players by
+      position / trajectory; compress when a high-usage player arrives.
+- [ ] **Data needed:** transactions/roster-turnover (nba_api transactions or prosportstransactions;
+      rosters already pulled), which is the missing ingredient. Game logs (have) give the
+      redistribution priors.
+- [ ] **Test:** does modelling vacated minutes improve minutes MAE **and** 7.0 metrics *for the
+      role-change subpopulation* specifically? (Aggregate metrics will hide it — segment.)
+
+#### 7.B — Young-player trajectory / breakout layer  ← high, targeted
+- [ ] For young players (age ≤ 24, ≥2 seasons) add a **trajectory/momentum term** instead of pure
+      mean-reversion: extrapolate the improvement slope, gated by a breakout-probability model.
+- [ ] **Features (from research):** age 22–24, prior-season gradual improvement, usage↑ with held
+      TS%, minutes↑, low established level, draft pedigree.
+- [ ] **Test:** historical breakout recall/precision; does shifting projections for high-P(breakout)
+      players improve 7.0 metrics for the young cohort without hurting the rest? (EXP-000 warns
+      population aging curves alone don't help young players — this is the targeted fix.)
+
+#### 7.C — External availability / injury data  ← attacks the GP ceiling directly
+- [ ] The only lever that can beat EXP-004's R²≈0.03 box-score GP ceiling. Ingest historical
+      injury data (`nbainjuries` pkg / prosportstransactions; NBA official injury reports from
+      2021-22). Build injury-history features (chronic vs acute, games-missed trend, injury type —
+      Achilles/ACL/back/knee — age×injury interaction).
+- [ ] **Two uses:** (a) a GP point-estimate model that finally beats box-score-only; (b) a
+      **per-player** Monte-Carlo GP tail (Stage 6 currently uses an age-bucket pool, not player
+      history) — sharpen the floor for chronically-injured stars.
+- [ ] **Test:** does injury-featured GP beat the current GP model on next-season GP? Does the
+      per-player tail improve range calibration and `safe`-ranking on injury-prone players?
+
+#### 7.D — Within-season recency (game-log granularity)  ← medium
+- [ ] We hold 16 seasons / 404k game-log rows but project off *season totals*. Weight the **last N
+      games / post-All-Star / post-trade splits** more heavily to catch emerging roles a full-season
+      average buries.
+- [ ] **Test:** does a "last-25-games" weighting beat full-season weighting for next-season
+      projection, especially for role-change and late-emerging players?
+
+#### 7.E — Market / consensus integration  ← medium (also an eval tool)
+- [ ] Pull ADP + ≥1 public projection (DARKO / Hashtag / FantasyPros consensus). Use three ways:
+      (1) **benchmark** our accuracy vs the market; (2) **disagreement finder** — surface our
+      biggest deltas vs ADP as the actionable riser/faller calls; (3) optional ensemble member.
+- [ ] **Test:** where we systematically disagree with the market, who's right historically? Does a
+      blend beat us on 7.0 metrics — and does it *wash out* our edge on the movers (the known
+      ensemble trade-off)?
+
+#### 7.F — Usage-coupled rate/efficiency  ← parked (revisit only via 7.A)
+- [ ] Per-minute rates are already well-predicted (EXP-001); direct rate/efficiency modelling was
+      parked. Only worth revisiting **coupled to 7.A** — a usage change from a role shift should
+      propagate to rates. Low standalone priority.
+
+**Sequencing:** 7.0 (keystone) → 7.A (highest leverage) & 7.C (GP ceiling) in parallel → 7.B →
+7.D / 7.E → 7.F if warranted. Log every attempt in `EXPERIMENTS.md`, adopted **or** rejected.
+
+**Agent personas (user asked whether they'd add value):** recommendation — **one clear win, one
+optional.**
+- **Backtest/eval skeptic (recommended):** a reviewer persona whose only job is to hunt
+  data-leakage, selection effects, and p-hacking in every 7.x experiment before it's logged
+  `adopted`. High ROU given the ledger's whole point is trustworthy findings, and this stage adds
+  new data sources (prime leakage territory).
+- **Fantasy-basketball domain expert (optional):** a hypothesis-generator / sanity-checker for
+  role-change and injury priors and for eyeballing the "biggest movers" list. Genuine value as a
+  *prior*, but must be grounded against data — risk of confident-but-wrong specifics.
+- Not recommended: a zoo of personas. The work is one coherent modelling effort; two lightweight
+  definitions cover the real gaps.
 
 ## How we track progress
-- **This file** — durable checklist, the source of truth.
+- **`ROADMAP.md`** (this file) — durable forward-looking checklist, the source of truth for *plan*.
+- **`EXPERIMENTS.md`** — the backward-looking trail of what we've tested (so dead ends aren't
+  re-run). Every 7.x experiment gets an entry, adopted or rejected.
 - **Claude memory** — decisions and rationale (the "why").
 - **In-session todos** — the active working list for the current sitting.
