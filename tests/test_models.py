@@ -3,7 +3,8 @@
 import numpy as np
 import pandas as pd
 
-from fantasy_nba.models import aging, durability, minutes, uncertainty
+from fantasy_nba.models import aging, durability, learned, minutes, uncertainty
+from fantasy_nba.models._core import COUNTING
 
 
 def _flat_curves():
@@ -124,3 +125,48 @@ def test_safe_rank_demotes_the_injury_prone_peer():
     assert board.loc[durable, "rank"] < board.loc[fragile, "rank"]
     # median ranking is a pure central-estimate sort; ceiling favours upside.
     assert set(uncertainty.rank_board(r, method="median")["rank"]) == {1, 2}
+
+
+def _synthetic_league(seasons, n_players=40, seed=0):
+    """Tiny multi-season panel with all COUNTING source columns + bio ages (no network)."""
+    rng = np.random.default_rng(seed)
+    ss_rows, bio_rows = [], []
+    # Each player has a latent skill; stats scale with it so the model has signal to learn.
+    skill = rng.uniform(0.4, 1.6, size=n_players)
+    for si, season in enumerate(seasons):
+        for pid in range(n_players):
+            gp = int(np.clip(rng.normal(68, 10), 20, 82))
+            mpg = float(np.clip(rng.normal(26 * skill[pid], 4), 8, 38))
+            minutes_total = gp * mpg
+            s = skill[pid]
+            row = {
+                "SEASON": season, "PLAYER_ID": pid, "PLAYER_NAME": f"p{pid}",
+                "GP": gp, "MIN": minutes_total,
+                "FGM": 7 * s * gp, "FGA": 15 * s * gp, "FG3M": 2 * s * gp,
+                "FTM": 3 * s * gp, "FTA": 4 * s * gp, "OREB": 1.2 * s * gp,
+                "DREB": 4 * s * gp, "REB": 5.2 * s * gp, "AST": 4 * s * gp,
+                "STL": 1.1 * s * gp, "BLK": 0.6 * s * gp, "TOV": 2 * s * gp,
+                "PTS": 19 * s * gp,
+            }
+            ss_rows.append(row)
+            bio_rows.append({"SEASON": season, "PLAYER_ID": pid, "AGE": 22 + si})
+    return pd.DataFrame(ss_rows), pd.DataFrame(bio_rows)
+
+
+def test_project_learned_schema_bounds_and_determinism():
+    seasons = ["2019-20", "2020-21", "2021-22", "2022-23"]
+    ss, bio = _synthetic_league(seasons)
+    fast = {**learned.DEFAULT_LGBM_PARAMS, "n_estimators": 25}
+
+    out = learned.project_learned(ss, bio, "2023-24", params=fast)
+    out2 = learned.project_learned(ss, bio, "2023-24", params=fast)
+
+    expected = {"rank", "PLAYER_ID", "PLAYER_NAME", "gp", "mpg", "fpts_pg", "fpts_total", *COUNTING}
+    assert expected <= set(out.columns)
+    assert out["gp"].between(1, 82).all()
+    assert out["mpg"].between(0, 48).all()
+    assert (out[list(COUNTING)] >= 0).all().all()  # clamped non-negative rates
+    assert np.allclose(out["fpts_total"], (out["fpts_pg"] * out["gp"]).round(1))
+    assert list(out["rank"]) == list(range(1, len(out) + 1))
+    # random_state is fixed -> identical projections across runs.
+    assert np.allclose(out["fpts_pg"].to_numpy(), out2["fpts_pg"].to_numpy())

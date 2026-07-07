@@ -114,23 +114,63 @@ works) or against a **committed data snapshot** on the branch. Decision pending.
 
 **Planned (not yet run) — validation sequence for the 7.★ learned foundation:**
 
-### EXP-006 — as-of-date eval harness + current-model mover bias  ·  Status: planned
+### EXP-006 — as-of-date eval harness + current-model mover bias  ·  Status: **adopted** (preseason form) / in-season cutpoints **parked**
+- **Date:** 2026-07-07  ·  **Commit:** uncommitted  ·
 - **Hypothesis:** the current v2m model is accurate on stable players but **biased on movers**
   (under-projects risers, over-projects fallers) — the structural cost of mean-reversion.
-- **Method:** build the mover-segmented, draftable-pool **as-of-date** eval (per-game level MAE/RMSE
-  + signed bias per YoY-change bucket; directional Δ capture). Score both **preseason→season** and
-  **in-season cutpoints** (given games ≤ T, ROS projection vs actual remainder — especially early
-  season, the waiver case). Walk-forward, no-leakage.
-- **Success = the harness exists and quantifies the per-bucket bias** preseason *and* in-season
-  (baselines "the disease" for both the draft and waiver use cases).
-- **Note:** in-season eval needs game-log-date granularity (have) and eventually the daily news/status
-  feed (new — `nbainjuries` / official injury report / prosportstransactions).
+- **Method:** built `models/eval_movers.py` + `scripts/eval_movers.py` — mover-segmented,
+  draftable-pool eval on the shared no-leakage projection path (`backtest.project_models`, refactored
+  out of `run_backtest`). Pool = each model's own top-150 by projected total, restricted to players
+  with a prior-season actual (≥500 min) so "mover" is defined. Bucket by **actual** YoY per-game Δ
+  (fixed fpts/g edges ±2, ±6, stable across seasons); report per-bucket level MAE/RMSE + **signed
+  bias** `mean(proj_pg − act_pg)`, plus directional Δ capture (corr, sign accuracy). Seasons
+  2022-23…2025-26, points scoring.
+- **Result (pooled across 4 seasons, v2m default):** the structural bias is exactly as predicted and
+  large — signed bias by bucket: **big faller +6.8, faller +1.6, stable −1.7, riser −4.8, big riser
+  −8.9** fpts/g. i.e. we **over-project fallers and under-project risers** monotonically. The cause is
+  visible: `mean_proj_delta` is compressed to ~[−2.8, +0.1] in *every* bucket while `mean_actual_delta`
+  spans −9.6…+9.0 — the models essentially predict "same as last year" and barely move a player off
+  his prior level. Directional Δ corr is weak (0.07–0.42; best for v2m) and sign accuracy ~0.52–0.68.
+  baseline/v2/v2m all show the pattern; v2m's negative minutes bias helps the big-faller bucket
+  (+6.8 vs +8.0) but worsens the stable bucket (−1.7 vs −0.9).
+- **Verdict:** adopted as the Stage-7 headline diagnostic — this is the number every 7.★/7.A–E
+  experiment is judged against. "The disease" is now quantified: **~±8 fpts/g bias at the tails.**
+- **Ledger note:** the mover buckets, not aggregate MAE/Spearman, are the metric of record for Stage 7
+  (aggregate level MAE is a flat ~4.1–4.9 across models and hides all of this). In-season as-of-date
+  cutpoints (the waiver case) are **parked** — they need game-log-date-granular as-of-date projection
+  (project off `game_logs.date ≤ T`), which the current season-total projection path doesn't yet do;
+  tracked for a follow-up once the learned as-of-date model (EXP-007) lands.
 
-### EXP-007 — learned decompositional model, Marcel-equivalent features  ·  Status: planned
+### EXP-007 — learned decompositional model, Marcel-equivalent features  ·  Status: **adopted** (signal-safe; modest win)
+- **Date:** 2026-07-07  ·  **Commit:** uncommitted
 - **Hypothesis:** a LightGBM decompositional model given only Marcel-equivalent inputs ≈ ties v2m
   (proves the framework loses no signal and is a safe swap; Marcel stays the fallback).
-- **Success = within-noise parity on the 7.0 metrics.** A loss means the framework is dropping
-  signal and must be fixed before adding features.
+- **Method:** `models/learned.py` — one `LGBMRegressor` per decomposition target (MPG, GP, per-minute
+  rate ×13 stats) trained on the historical as-of-date panel (`build_panel`: for each season S with
+  ≥2 prior seasons, Marcel aggregates from `<S` as features, realized outcomes in S as labels, MIN≥200).
+  Features = **only** Marcel-equivalent: own recency-weighted rates, weighted MPG/GP, recent GP, from/
+  target age. Compose `stat_pg = rate × MPG`, score via config. Wired into `backtest.project_models`,
+  so it refits per fold on strictly prior seasons (no leakage). Params: 300 trees, lr .05, 31 leaves,
+  subsample/colsample .8, seed 0. Eval: EXP-006 mover eval + EXP-003 ranking backtest, 2022-23…2025-26.
+- **Result:** **beat the "tie" bar** — even with no new features it is *less mean-reverting* than
+  hand-set Marcel. Pooled signed bias by bucket (learned vs baseline vs v2m):
+  - stable **−0.11** vs −0.90 vs −1.70 · riser **−3.12** vs −4.27 vs −4.81 · big riser **−6.89** vs
+    −8.37 vs −8.89. It is the only model that projects risers *upward* (big-riser mean proj Δ **+2.28**
+    vs ~0). Directional Δ-corr 0.30–0.43 (≥ every hand-set model). Per-game fpts MAE also lower
+    (3.71 vs v2m 4.16 in 2024-25; 4.71 vs 5.11 in 2025-26); ranking Spearman ~ even-to-better.
+  - **Honest caveats (skeptic pass):** (1) small **positive overall level bias** (+0.15…+1.24 fpts/g;
+    worst in 2025-26) — it slightly over-projects on average, the mirror of v2m's negative bias.
+    (2) **Faller buckets did not improve** (learned faller +2.77 vs v2m +1.57): v2m's downward minutes
+    bias *accidentally* helps fallers; learned trades that for much better stable/riser calibration.
+    (3) The riser gains come from Marcel's fixed 5/4/3 + fixed regression constant being *too*
+    shrink-happy; a learned shrinkage is simply better — this is a real but *modest* structural win,
+    **not** the context-feature win (that's EXP-008/009).
+- **Verdict:** adopted as the Stage-7 foundation model. The swap is signal-safe **and** nets a small
+  mover-bias reduction; Marcel (baseline/v2/v2m) kept as fallback + "did we lose signal?" baseline.
+- **Ledger note:** the big-faller/faller over-projection and the ~R²≈0.03 GP ceiling (EXP-004) are
+  **untouched** — expected, since no availability/context feature was added. The next real levers are
+  trajectory/slope (EXP-008) and vacated-minutes/context (EXP-009). Do **not** read EXP-007's win as
+  evidence features aren't needed — it only re-fit the shrinkage Marcel hand-set.
 
 ### EXP-008 — + trajectory / slope features  ·  Status: planned
 - **Hypothesis:** own multi-year trends/slopes reduce the riser under-projection bias for the young

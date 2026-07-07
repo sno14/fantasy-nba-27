@@ -22,6 +22,7 @@ from ._core import COUNTING, _season_start
 from .aging import build_aging_curves
 from .baseline import project_baseline
 from .durability import build_gp_age_curve
+from .learned import project_learned
 from .minutes import build_minutes_age_curve
 from .projection import project_v2
 
@@ -53,24 +54,19 @@ def _metrics(merged: pd.DataFrame, pred: str, act: str) -> dict:
     }
 
 
-def run_backtest(
+def project_models(
     target_season: str,
     season_stats: pd.DataFrame,
     bio: pd.DataFrame,
-    cfg: ScoringConfig | None = None,
-    pool_top_n: int = 100,
-) -> pd.DataFrame:
-    """Return a metrics table comparing baseline/v2/v2m for ``target_season``.
+    cfg: ScoringConfig,
+) -> dict[str, pd.DataFrame]:
+    """Project ``target_season`` with every model using **only** prior-season data.
 
-    Each model is scored on its **own** top-``pool_top_n`` players by projected season fantasy
-    total (the players you'd actually draft), so models aren't judged on bench-player noise.
-    Players projected into the pool who then didn't play are penalised via the inner join with
-    actuals only if they logged at least one game; a projected star who missed the whole season
-    simply drops out (a limitation to revisit once injury data exists).
+    Aging / GP / minutes curves are refit on the training years (seasons strictly before
+    the target), so there is no leakage. Returns ``{model_name: projection_frame}`` — the
+    shared no-leakage projection step behind both the ranking backtest and the mover eval.
     """
-    cfg = cfg or load_scoring()
     ty = _season_start(target_season)
-
     train_ss = season_stats[season_stats["SEASON"].map(_season_start) < ty]
     train_bio = bio[bio["SEASON"].map(_season_start) < ty]
     if train_ss["SEASON"].nunique() < 2:
@@ -87,10 +83,33 @@ def run_backtest(
         train_ss, train_bio, target_season, cfg=cfg, curves=curves, gp_curve=gp_curve,
         mpg_curve=mpg_curve, age_minutes=True,
     )
+    # learned: LightGBM decompositional model on Marcel-equivalent features (EXP-007). Trains
+    # on the (prior-only) panel inside project_learned, so it stays no-leakage per fold.
+    learned = project_learned(train_ss, train_bio, target_season, cfg=cfg)
+    return {"baseline": base, "v2": v2, "v2m": v2m, "learned": learned}
+
+
+def run_backtest(
+    target_season: str,
+    season_stats: pd.DataFrame,
+    bio: pd.DataFrame,
+    cfg: ScoringConfig | None = None,
+    pool_top_n: int = 100,
+) -> pd.DataFrame:
+    """Return a metrics table comparing baseline/v2/v2m for ``target_season``.
+
+    Each model is scored on its **own** top-``pool_top_n`` players by projected season fantasy
+    total (the players you'd actually draft), so models aren't judged on bench-player noise.
+    Players projected into the pool who then didn't play are penalised via the inner join with
+    actuals only if they logged at least one game; a projected star who missed the whole season
+    simply drops out (a limitation to revisit once injury data exists).
+    """
+    cfg = cfg or load_scoring()
+    projections = project_models(target_season, season_stats, bio, cfg)
     actual = _actual(season_stats, target_season, cfg, min_minutes=0.0)
 
     rows = []
-    for name, proj in (("baseline", base), ("v2", v2), ("v2m", v2m)):
+    for name, proj in projections.items():
         pool = proj.nsmallest(pool_top_n, "rank")  # top-N by projected fantasy total
         m = pool[["PLAYER_ID", "mpg", "fpts_pg", "fpts_total"]].merge(actual, on="PLAYER_ID", how="inner")
         for metric_name, pred, act in (

@@ -176,29 +176,30 @@ so we use the market as a **benchmark and disagreement-finder**, not a crutch. (
 the session; key ones: darko.app, Bruin/Dartmouth breakout studies, Athlon trade-effect pieces,
 `nbainjuries` / prosportstransactions for injury data.)
 
-#### 7.0 — Draftable-pool accuracy eval, mover-segmented  ← **KEYSTONE, do first**
+#### 7.0 — Draftable-pool accuracy eval, mover-segmented  ← **KEYSTONE (preseason form DONE; in-season parked)**
 Universe: the **top ~100–150** (draftable) pool — players outside it won't be drafted, so we
 don't care about them. Goal (user, 2026-07): get each player's projected **production level**
 right, *especially the movers* — if a player goes 35→40, we want the projection to say ~40 so he's
 drafted there. This is **not** a big-mover *classifier* and it's **not** about % move size; it's
 level accuracy that doesn't fall apart on players whose level changed.
-- [ ] Primary metric: per-game fantasy-points (and total) **error** (MAE/RMSE + signed bias) over
-      the pool, plus rank fidelity (Spearman, top-K overlap — keep EXP-003's metric as a component).
-- [ ] **Mover segmentation (the new diagnostic):** bucket players by *actual* YoY change in value
-      (big fallers … stable … big risers); report error **and signed bias per bucket**. This exposes
-      the structural flaw we expect — mean-reversion **under-projects risers and over-projects
-      fallers**. Shrinking that per-bucket bias is the deliverable.
-- [ ] **Directional capture:** projected Δ vs actual Δ (correlation + sign accuracy) — do we even
-      move a player the right way relative to his own last season?
-- [ ] Score **per-game level** (the skill signal we *can* improve) separately from **totals**
-      (GP-capped preseason — the availability ceiling; in-season this opens up via news).
-      The 35→40 case is a per-game-level case.
+- [x] Primary metric: per-game fantasy-points **error** (MAE/RMSE + signed bias) over the pool.
+      (`models/eval_movers.py`; ranking/Spearman stays in `backtest.py` as the EXP-003 component.)
+- [x] **Mover segmentation (the new diagnostic):** bucket players by *actual* YoY change in value
+      (big fallers … stable … big risers); report error **and signed bias per bucket**. EXP-006
+      confirmed the structural flaw and sized it: **signed bias runs +6.8 (big fallers) → −8.9 (big
+      risers) fpts/g** — we over-project fallers and under-project risers monotonically, because
+      projected Δ is compressed to ~0 in every bucket. Shrinking this per-bucket bias is the deliverable.
+- [x] **Directional capture:** projected Δ vs actual Δ (correlation + sign accuracy). Baselined weak
+      (Δ-corr 0.07–0.42, sign acc ~0.52–0.68).
+- [x] Score **per-game level** separately (done); **totals** (GP-capped — availability ceiling) left to
+      the ranking backtest. The 35→40 case is a per-game-level case.
 - [ ] **In-season as-of-date eval:** at cutpoints through the season, score the ROS projection vs the
       actual remainder — *especially early-season*, where the waiver edge lives ("given 10 games, did
-      we call the riser?"). Not just preseason→season.
-- [ ] First run doubles as measuring the *current* model's mover bias — baseline the disease (EXP-006).
-- [ ] Wire into `models/backtest.py` (no-leakage, walk-forward **within season and across seasons**;
-      refit curves/models per fold).
+      we call the riser?"). **Parked** — needs game-log-date-granular `project(data ≤ T)`; revisit with
+      EXP-007's as-of-date model (current path projects off season totals only).
+- [x] First run doubles as measuring the *current* model's mover bias — baseline the disease (EXP-006). ✔
+- [x] Wire into `models/backtest.py` (no-leakage; shared `project_models` path). Across-season
+      walk-forward done; within-season folds come with the in-season eval above.
 
 #### 7.★ — Foundational refactor: a learned, decompositional panel model
 **Full weighing of alternatives (GBM panel vs DARKO-style state-space vs hierarchical Bayes vs
@@ -240,13 +241,16 @@ bolt-on adjustments — the scalable foundation the user asked for.
   **not** judge the refactor on the expected tie.
 
 **Validation sequence (each → an `EXPERIMENTS.md` entry, adopt or reject):**
-- EXP-006 — build the 7.0 eval; quantify the current model's mover bias (baseline the disease).
-- EXP-007 — learned decompositional model on Marcel-equivalent features → expect ~tie (proves the
-  swap is signal-safe; keeps Marcel as fallback if not).
-- EXP-008 — + trajectory/slope features → does mover accuracy/bias improve on the young cohort (7.B)?
-- EXP-009 — + team-context / vacated-minutes features (needs transactions data) → the decisive
+- [x] EXP-006 — build the 7.0 eval; quantify the current model's mover bias (baseline the disease). ✔
+- [x] EXP-007 — learned decompositional model on Marcel-equivalent features (`models/learned.py`,
+  LightGBM per target, wired into `project_models`). Expected a tie; **beat it** — signal-safe *and*
+  modestly less mean-reverting (riser bias −4.8→−3.1, big-riser −8.9→−6.9), even before context
+  features. Adopted as the foundation; Marcel kept as fallback. Caveats logged (small +bias; fallers
+  not improved). ✔
+- [ ] EXP-008 — + trajectory/slope features → does mover accuracy/bias improve on the young cohort (7.B)?
+- [ ] EXP-009 — + team-context / vacated-minutes features (needs transactions data) → the decisive
   riser/faller test (7.A).
-- EXP-010+ — injury data (7.C), market/ADP (7.E), hyper-parameter tuning.
+- [ ] EXP-010+ — injury data (7.C), market/ADP (7.E), hyper-parameter tuning.
 
 #### 7.A — Opportunity / role-redistribution model  ← highest leverage
 - [ ] Model the **team-context change** each player walks into, not just their own past.
