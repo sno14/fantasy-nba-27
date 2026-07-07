@@ -147,6 +147,8 @@ def _synthetic_league(seasons, n_players=40, seed=0):
                 "DREB": 4 * s * gp, "REB": 5.2 * s * gp, "AST": 4 * s * gp,
                 "STL": 1.1 * s * gp, "BLK": 0.6 * s * gp, "TOV": 2 * s * gp,
                 "PTS": 19 * s * gp,
+                "USG_PCT": float(np.clip(0.12 + 0.10 * s, 0.05, 0.40)),
+                "TS_PCT": float(np.clip(rng.normal(0.55, 0.03), 0.40, 0.70)),
             }
             ss_rows.append(row)
             bio_rows.append({"SEASON": season, "PLAYER_ID": pid, "AGE": 22 + si})
@@ -170,3 +172,22 @@ def test_project_learned_schema_bounds_and_determinism():
     assert list(out["rank"]) == list(range(1, len(out) + 1))
     # random_state is fixed -> identical projections across runs.
     assert np.allclose(out["fpts_pg"].to_numpy(), out2["fpts_pg"].to_numpy())
+
+
+def test_trajectory_features_slope_sign_and_learned_traj_runs():
+    seasons = ["2019-20", "2020-21", "2021-22", "2022-23"]
+    ss, bio = _synthetic_league(seasons)
+    # Force one player's MPG to rise monotonically so the slope must come out positive.
+    riser = 0
+    for i, season in enumerate(seasons):
+        mask = (ss["SEASON"] == season) & (ss["PLAYER_ID"] == riser)
+        ss.loc[mask, "MIN"] = ss.loc[mask, "GP"] * (12 + 6 * i)  # 12,18,24,30 MPG
+
+    traj = learned.trajectory_features(ss, "2023-24")
+    assert set(learned.TRAJ_FEATURES) <= set(traj.columns)
+    assert traj.loc[traj["PLAYER_ID"] == riser, "mpg_slope"].iloc[0] > 0
+
+    # The trajectory variant (EXP-008, rejected but retained) still produces a valid board.
+    fast = {**learned.DEFAULT_LGBM_PARAMS, "n_estimators": 25}
+    out = learned.project_learned(ss, bio, "2023-24", params=fast, use_trajectory=True)
+    assert out["gp"].between(1, 82).all() and out["mpg"].between(0, 48).all()

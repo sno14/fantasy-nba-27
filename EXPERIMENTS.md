@@ -172,10 +172,30 @@ works) or against a **committed data snapshot** on the branch. Decision pending.
   trajectory/slope (EXP-008) and vacated-minutes/context (EXP-009). Do **not** read EXP-007's win as
   evidence features aren't needed — it only re-fit the shrinkage Marcel hand-set.
 
-### EXP-008 — + trajectory / slope features  ·  Status: planned
+### EXP-008 — + trajectory / slope features  ·  Status: **rejected** (no lift; slightly regressed risers)
+- **Date:** 2026-07-07  ·  **Commit:** uncommitted
 - **Hypothesis:** own multi-year trends/slopes reduce the riser under-projection bias for the young
   (age ≤ 24) cohort without hurting the stable core.
-- **Success = lower signed bias in the riser buckets, no regression elsewhere.**
+- **Method:** added 8 season-over-season trajectory features to the EXP-007 learned model
+  (`learned.trajectory_features`, gated by `use_trajectory=True`): OLS slopes of MPG / USG / and
+  deltas over the last 3 seasons, most-recent USG, TS level + TS stability (std), n seasons observed.
+  Multi-team seasons collapsed with minutes-weighted USG/TS; single-season players get neutral 0 fills.
+  A/B'd `learned_traj` vs `learned` in the EXP-006 mover eval, 2022-23…2025-26.
+- **Result:** trajectory **did not help and slightly hurt the movers**. Pooled signed bias
+  learned → learned_traj: riser **−3.12 → −3.49**, big riser **−6.89 → −7.33**, stable −0.11 → −0.38;
+  fallers ~unchanged. Directional Δ-corr also fell (e.g. 2023-24 0.352 → 0.304; 2025-26 0.318 → 0.267).
+  Per-game MAE mixed (better 2024-25 4.08→3.96, worse 2023-24/2025-26). All differences small (~0.3–0.4
+  fpts/g) — the honest read is "no signal, mild variance cost," not a large regression.
+- **Verdict:** **rejected** as a standalone feature group. Kept as fallback baseline: plain EXP-007
+  `learned` stays the foundation. Code + `use_trajectory` flag retained (not wired into
+  `project_models`) for later recombination.
+- **Ledger note:** a 2–3-point OLS slope is a **noisy** trend estimator, and LightGBM already recovers
+  the usable trajectory from raw rates + age — the explicit slopes are largely redundant noise on a
+  ~5k-row panel. This matches EXP-000's warning (season-level aging/trend alone doesn't fix the young
+  cohort). **Do not re-run season-granularity slope features expecting a mover win.** The untested,
+  more-promising trajectory signal is **within-season recency (last-N games from the 404k game-log
+  rows)** — a different experiment (call it EXP-008b) — and **team-context / vacated minutes**
+  (EXP-009). Trajectory may still matter *coupled* to those, not standalone.
 
 ### EXP-009 — + team-context / vacated-minutes features  ·  Status: planned  ·  needs transactions data
 - **Hypothesis:** modelling the opportunity a player walks into (vacated minutes/usage from roster

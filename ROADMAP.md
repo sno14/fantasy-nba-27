@@ -247,7 +247,12 @@ bolt-on adjustments — the scalable foundation the user asked for.
   modestly less mean-reverting (riser bias −4.8→−3.1, big-riser −8.9→−6.9), even before context
   features. Adopted as the foundation; Marcel kept as fallback. Caveats logged (small +bias; fallers
   not improved). ✔
-- [ ] EXP-008 — + trajectory/slope features → does mover accuracy/bias improve on the young cohort (7.B)?
+- [x] EXP-008 — + season-level trajectory/slope features → **rejected**: no lift, slightly worse
+  riser buckets (−3.12→−3.49) and directional capture. Season-granularity slopes are too noisy and
+  redundant with what the GBM already learns. Code kept, unwired. Next trajectory test is
+  **within-season recency (last-N games)**, not season slopes. → **EXP-008b**.
+- [ ] EXP-008b — + within-season recency (last-N-games / post-trade splits from the 404k game-log
+  rows) → the trajectory signal EXP-008 *should* have been (7.D). Untested.
 - [ ] EXP-009 — + team-context / vacated-minutes features (needs transactions data) → the decisive
   riser/faller test (7.A).
 - [ ] EXP-010+ — injury data (7.C), market/ADP (7.E), hyper-parameter tuning.

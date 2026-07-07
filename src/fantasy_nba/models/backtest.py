@@ -86,6 +86,9 @@ def project_models(
     # learned: LightGBM decompositional model on Marcel-equivalent features (EXP-007). Trains
     # on the (prior-only) panel inside project_learned, so it stays no-leakage per fold.
     learned = project_learned(train_ss, train_bio, target_season, cfg=cfg)
+    # NOTE: season-level trajectory features (project_learned(use_trajectory=True), EXP-008) were
+    # A/B'd here and *rejected* — no lift, slightly worse riser buckets (see EXPERIMENTS.md).
+    # The capability is kept in learned.py for recombination with recent-window/context signal.
     return {"baseline": base, "v2": v2, "v2m": v2m, "learned": learned}
 
 
