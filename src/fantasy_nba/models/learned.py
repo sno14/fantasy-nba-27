@@ -55,6 +55,16 @@ FEATURES = BASE_FEATURES  # back-compat default (Marcel-equivalent); see feature
 RATE_TARGETS = [f"y_rate_{s}" for s in COUNTING]
 TARGETS = ["y_mpg", "y_gp"] + RATE_TARGETS
 
+# Each target's own Marcel-aggregate *feature* — the anchor for the EXP-013 objective modes.
+# ``target_mode="delta"`` trains on (label − anchor) and adds the anchor back at prediction:
+# regularization then shrinks toward "league-average *change*" instead of the pool-average
+# *level* (which pulls stars down / bench up). ``weight_mode="mover"`` up-weights rows whose
+# label moved far from its anchor. y_gp keeps ``weighted_gp`` as its weighting anchor but is
+# excluded from delta mode (no meaningful additive anchor for games played).
+WEIGHT_ANCHORS = {"y_mpg": "proj_mpg", "y_gp": "weighted_gp",
+                  **{f"y_rate_{s}": f"rate_{s}" for s in COUNTING}}
+DELTA_ANCHORS = {k: v for k, v in WEIGHT_ANCHORS.items() if k != "y_gp"}
+
 DEFAULT_LGBM_PARAMS = dict(
     n_estimators=300,
     learning_rate=0.05,
@@ -71,15 +81,20 @@ DEFAULT_LGBM_PARAMS = dict(
 
 
 def feature_columns(
-    use_trajectory: bool, use_context: bool = False, use_recency: bool = False
+    use_trajectory: bool,
+    use_context: bool = False,
+    use_recency: bool = False,
+    use_trade_split: bool = False,
 ) -> list[str]:
     """Feature set for the learned model — Marcel-equivalent, optionally + trajectory (EXP-008),
-    + team-context/vacated-minutes (EXP-009), and/or + within-season recency (EXP-008b)."""
+    + team-context/vacated-minutes (EXP-009), + within-season recency (EXP-008b), and/or
+    + the post-trade split (EXP-012; requires ``use_recency``)."""
     return (
         BASE_FEATURES
         + (TRAJ_FEATURES if use_trajectory else [])
         + (ctx.CONTEXT_FEATURES if use_context else [])
         + (rec.RECENCY_FEATURES if use_recency else [])
+        + (rec.TRADE_FEATURES if use_trade_split else [])
     )
 
 
@@ -178,8 +193,10 @@ def _features_for(
             feats[col] = feats[col].fillna(0.0)
     if recency_feats is not None:
         feats = feats.merge(recency_feats, on="PLAYER_ID", how="left")
-        for col in rec.RECENCY_FEATURES:
-            feats[col] = feats[col].fillna(0.0)
+        # Neutral fill for every joined column (RECENCY_FEATURES + TRADE_FEATURES when present).
+        for col in recency_feats.columns:
+            if col != "PLAYER_ID":
+                feats[col] = feats[col].fillna(0.0)
     return feats
 
 
@@ -189,6 +206,7 @@ def build_panel(
     use_trajectory: bool = False,
     use_context: bool = False,
     recency_table: pd.DataFrame | None = None,
+    trade_table: pd.DataFrame | None = None,
     min_prior_seasons: int = 2,
     min_label_minutes: float = 200.0,
     n_seasons: int = 3,
@@ -212,7 +230,10 @@ def build_panel(
             continue
         prior_bio = bio[bio["SEASON"].map(_season_start) < _season_start(s)]
         context_feats = ctx.context_for_season(season_stats, s) if use_context else None
-        recency_feats = rec.recency_features(recency_table, s) if recency_table is not None else None
+        recency_feats = (
+            rec.recency_features(recency_table, s, trade_table)
+            if recency_table is not None else None
+        )
         feats = _features_for(
             prior, prior_bio, s, use_trajectory, n_seasons, weights, reg_minutes,
             context_feats, recency_feats,
@@ -226,16 +247,62 @@ def build_panel(
     return pd.concat(frames, ignore_index=True)
 
 
-def _fit_models(panel: pd.DataFrame, params: dict, feature_cols: list[str]) -> dict:
+def _sample_weight(
+    panel: pd.DataFrame, target: str, weight_mode: str | None, weight_alpha: float
+) -> np.ndarray | None:
+    """Training-row weights for the EXP-013b objective modes (labels are fair game at train time).
+
+    * ``"mover"``     — ``1 + alpha × |label − anchor| / MAD(label − anchor)``: rows whose outcome
+      moved far from their own Marcel anchor count more, so the loss stops being dominated by the
+      stable majority. ``alpha`` is unitless (deviation is MAD-scaled).
+    * ``"relevance"`` — ``clip(recency-weighted avg season minutes / 2000, 0.25, 2)``: draftable
+      players count more, bench noise less.
+    """
+    if weight_mode is None:
+        return None
+    if weight_mode == "mover":
+        dev = (panel[target] - panel[WEIGHT_ANCHORS[target]]).abs()
+        mad = float(dev.median())
+        return (1.0 + weight_alpha * dev / max(mad, 1e-9)).to_numpy()
+    if weight_mode == "relevance":
+        avg_min = panel["wMIN"] / panel["w"].replace(0, np.nan)
+        return np.clip((avg_min / 2000.0).fillna(0.25).to_numpy(), 0.25, 2.0)
+    raise ValueError(f"weight_mode must be None, 'mover' or 'relevance', got {weight_mode!r}")
+
+
+def _fit_models(
+    panel: pd.DataFrame,
+    params: dict,
+    feature_cols: list[str],
+    target_mode: str = "level",
+    weight_mode: str | None = None,
+    weight_alpha: float = 1.0,
+) -> dict:
+    if target_mode not in ("level", "delta"):
+        raise ValueError(f"target_mode must be 'level' or 'delta', got {target_mode!r}")
     from lightgbm import LGBMRegressor
 
     X = panel[feature_cols]
     models = {}
     for target in TARGETS:
+        label = panel[target]
+        if target_mode == "delta" and target in DELTA_ANCHORS:
+            label = label - panel[DELTA_ANCHORS[target]]  # train on change from own anchor
         model = LGBMRegressor(**params)
-        model.fit(X, panel[target])
+        model.fit(X, label, sample_weight=_sample_weight(panel, target, weight_mode, weight_alpha))
         models[target] = model
     return models
+
+
+def _predict_target(
+    models: dict, target: str, X: pd.DataFrame, agg: pd.DataFrame, target_mode: str
+) -> np.ndarray:
+    """Predict one target, adding the anchor back in delta mode (anchors are feature columns,
+    so ``agg`` always carries them)."""
+    pred = models[target].predict(X)
+    if target_mode == "delta" and target in DELTA_ANCHORS:
+        pred = pred + agg[DELTA_ANCHORS[target]].to_numpy(dtype=float)
+    return pred
 
 
 def project_learned(
@@ -249,6 +316,11 @@ def project_learned(
     target_team_map: pd.DataFrame | None = None,
     use_recency: bool = False,
     game_logs: pd.DataFrame | None = None,
+    recency_skip_last: int = 0,
+    use_trade_split: bool = False,
+    target_mode: str = "level",
+    weight_mode: str | None = None,
+    weight_alpha: float = 1.0,
     min_label_minutes: float = 200.0,
     n_seasons: int = 3,
     weights: tuple[float, ...] = DEFAULT_WEIGHTS,
@@ -264,23 +336,38 @@ def project_learned(
     since ``season_stats`` here is prior-only and doesn't contain the target season. ``use_recency``
     adds the EXP-008b within-season last-N-game features — pass ``game_logs`` (``recency_features``
     self-restricts to seasons before the target, so passing the full frame is safe).
+
+    EXP-012 knobs (need ``use_recency``): ``recency_skip_last`` trims each prior season's final
+    played games from the recency window (rest/tanking de-confound); ``use_trade_split`` adds the
+    post-trade ``TRADE_FEATURES`` (game logs must carry ``TEAM_ABBREVIATION``).
+    EXP-013 knobs: ``target_mode='delta'`` trains on change-from-own-anchor instead of levels;
+    ``weight_mode`` ∈ {``'mover'``, ``'relevance'``} re-weights training rows (see
+    :func:`_sample_weight`), scaled by ``weight_alpha``.
     """
     cfg = cfg or load_scoring()
     params = params or DEFAULT_LGBM_PARAMS
-    feature_cols = feature_columns(use_trajectory, use_context, use_recency)
+    if use_trade_split and not use_recency:
+        raise ValueError("use_trade_split requires use_recency (both ride the game-log tables).")
+    feature_cols = feature_columns(use_trajectory, use_context, use_recency, use_trade_split)
 
-    recency_table = None
+    recency_table = trade_table = None
     if use_recency:
         if game_logs is None:
             raise ValueError("use_recency needs game_logs ([PLAYER_ID, SEASON, GAME_DATE, MIN, PTS]).")
-        recency_table = rec.season_recency_table(game_logs)  # computed once, sliced per fold
+        # Computed once, sliced per fold.
+        recency_table = rec.season_recency_table(game_logs, skip_last=recency_skip_last)
+        trade_table = rec.trade_split_table(game_logs) if use_trade_split else None
 
     panel = build_panel(
         season_stats, bio, use_trajectory=use_trajectory, use_context=use_context,
-        recency_table=recency_table, min_label_minutes=min_label_minutes,
+        recency_table=recency_table, trade_table=trade_table,
+        min_label_minutes=min_label_minutes,
         n_seasons=n_seasons, weights=weights, reg_minutes=reg_minutes,
     )
-    models = _fit_models(panel, params, feature_cols)
+    models = _fit_models(
+        panel, params, feature_cols,
+        target_mode=target_mode, weight_mode=weight_mode, weight_alpha=weight_alpha,
+    )
 
     context_feats = None
     if use_context:
@@ -293,7 +380,9 @@ def project_learned(
             season_stats, target_team_map, ctx.season_before(target_season)
         )
 
-    recency_feats = rec.recency_features(recency_table, target_season) if use_recency else None
+    recency_feats = (
+        rec.recency_features(recency_table, target_season, trade_table) if use_recency else None
+    )
 
     agg = _features_for(
         season_stats, bio, target_season, use_trajectory, n_seasons, weights, reg_minutes,
@@ -301,8 +390,8 @@ def project_learned(
     )
     X = agg[feature_cols]
 
-    pred_mpg = np.clip(models["y_mpg"].predict(X), 0.0, 48.0)
-    pred_gp = np.clip(models["y_gp"].predict(X), 1.0, 82.0)
+    pred_mpg = np.clip(_predict_target(models, "y_mpg", X, agg, target_mode), 0.0, 48.0)
+    pred_gp = np.clip(_predict_target(models, "y_gp", X, agg, target_mode), 1.0, 82.0)
 
     out = pd.DataFrame(
         {
@@ -315,7 +404,7 @@ def project_learned(
         }
     )
     for canon in COUNTING:
-        rate = np.clip(models[f"y_rate_{canon}"].predict(X), 0.0, None)
+        rate = np.clip(_predict_target(models, f"y_rate_{canon}", X, agg, target_mode), 0.0, None)
         out[canon] = (rate * pred_mpg).round(2)
 
     out["fpts_pg"] = score_frame(out, cfg).round(2)

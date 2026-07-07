@@ -48,27 +48,40 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 7. **Environment:** all steps that touch data run **locally** (`stats.nba.com` and scraping
    are blocked in the remote env). Remote sessions can still do pure-code steps if a data
    snapshot is committed (see Appendix C).
+8. **Noise guards on every adopt decision (the optimization discipline).**
+   - **Seed protocol:** any gate involving a learned model is judged on the **mean over
+     LightGBM seeds {0, 1, 2}** (three eval runs with `--seed 0/1/2`); the claimed win must
+     exceed the max spread across the three runs, or it's seed luck.
+   - **Bootstrap CI:** run `--ci <control> <candidate>` (paired 90% CI on the per-bucket
+     bias delta, pooled across seasons). If the CI on the decisive bucket straddles 0, the
+     best available verdict is **adopted-tentative** — re-affirm after the next real season.
+   - The floor (Step 2) is **recomputed whenever a new default model is adopted** — it
+     scales with the current model's residual spread.
+9. **Code-built ≠ done.** Much of Steps 1–6 was pre-built and unit-tested in a remote
+   session (2026-07; `tests/test_stage7_infra.py` pins the mechanics — arithmetic,
+   no-leakage, monotonicity, determinism). The tracker's **Code** column marks that. A step
+   *completes* only when its gate is evaluated on real data and the ledger entry is written.
 
 ## Progress tracker
 
-| Step | Phase | What | Experiment | Status |
-|---|---|---|---|---|
-| 0 | — | Docs alignment + data refresh | — | ☑ docs (this commit) / ☐ data |
-| 1 | 0 | Eval refactor + predicted-Δ calibration table | — | ☐ |
-| 2 | 0 | Selection-floor simulation | EXP-011a | ☐ |
-| 3 | 0 | Per-bucket oracle decomposition + Phase-0 verdict | EXP-011b | ☐ |
-| 4 | 1 | Recency de-confound (skip-last + post-trade) | EXP-012 | ☐ |
-| 5 | 1 | Objective-side changes (Δ-targets, weights, quantiles) | EXP-013a/b/c | ☐ |
-| 6 | 1 | Team-constrained minutes allocation | EXP-014 | ☐ |
-| 7 | 2 | Injury/availability data | EXP-015 | ☐ |
-| 8 | 2 | Dated transactions + preseason rosters | EXP-016 | ☐ |
-| 9 | 2 | ADP / market benchmark | EXP-017 | ☐ |
-| 10 | 3 | As-of-date projection function | EXP-018 | ☐ |
-| 11 | 3 | In-season eval + lead-time metric | EXP-019 | ☐ |
-| 12 | 3 | Nightly update pipeline + status overrides | — | ☐ |
-| 13 | 3 | External in-season benchmarks (DARKO/ADP archives) | EXP-020 | ☐ |
-| 14 | 4 | Distributional board (quantile ranges, GP tails, coverage) | EXP-021 | ☐ |
-| 15 | 4 | Ship: default model switch, explorer, final doc sweep | — | ☐ |
+| Step | Phase | What | Experiment | Code | Run + logged |
+|---|---|---|---|---|---|
+| 0 | — | Docs alignment + data refresh | — | ☑ docs | ☐ data |
+| 1 | 0 | Eval refactor + predicted-Δ calibration + bootstrap CI | — | ☑ | ☐ |
+| 2 | 0 | Selection-floor simulation | EXP-011a | ☑ | ☐ |
+| 3 | 0 | Per-bucket oracle decomposition + Phase-0 verdict | EXP-011b | ☑ | ☐ |
+| 4 | 1 | Recency de-confound (skip-last + post-trade) | EXP-012 | ☑ | ☐ |
+| 5 | 1 | Objective-side changes (Δ-targets, weights, quantiles, tuning) | EXP-013a/b/c/d | ☑ a/b/c · ☐ d | ☐ |
+| 6 | 1 | Team-constrained minutes allocation | EXP-014 | ◐ feature layer | ☐ |
+| 7 | 2 | Injury/availability data | EXP-015 | ☐ | ☐ |
+| 8 | 2 | Dated transactions + preseason rosters | EXP-016 | ☐ | ☐ |
+| 9 | 2 | ADP / market benchmark | EXP-017 | ☐ | ☐ |
+| 10 | 3 | As-of-date projection function | EXP-018 | ☐ | ☐ |
+| 11 | 3 | In-season eval + lead-time metric | EXP-019 | ☐ | ☐ |
+| 12 | 3 | Nightly update pipeline + status overrides | — | ☐ | ☐ |
+| 13 | 3 | External in-season benchmarks (DARKO/ADP archives) | EXP-020 | ☐ | ☐ |
+| 14 | 4 | Distributional board (quantile ranges, GP tails, coverage) | EXP-021 | ☐ | ☐ |
+| 15 | 4 | Ship: default model switch, explorer, final doc sweep | — | ☐ | ☐ |
 
 ---
 
@@ -123,12 +136,23 @@ reuse it instead of copy-pasting; (b) add the first selection-free metric — bi
    `n, mean_proj_delta, mean_actual_delta, calib_gap = mean_actual_delta − mean_proj_delta,
    level_MAE`. Interpretation: when we *say* a player rises ~5, does he? `calib_gap` is fully
    reducible (no outcome selection) — a second headline alongside the actual-Δ buckets.
-3. `run_mover_eval` returns `(per_bucket, directional, per_pred_bucket)`. Update
+3. `run_mover_eval` returns `(per_bucket, directional, per_pred_bucket)` — plus a
+   `{model: pool_frame}` dict when `return_pools=True` (feeds Steps 2–3 and the CI). Update
    `scripts/eval_movers.py` to print the third table (same pooled-weighted-mean pattern as
    `per_bucket`).
+4. The rule-8 noise guard: `bootstrap_bias_delta_ci(pool_a, pool_b, on=("PLAYER_ID","season"))`
+   — paired bootstrap 90% CI on the per-bucket bias delta between two models, exposed as
+   `--ci MODEL_A MODEL_B` in the script.
 
 **Tests:** synthetic 3-player frame through `pool_frame` asserting deltas/buckets; a
-`per_pred_bucket` row-shape + `calib_gap` arithmetic check.
+`per_pred_bucket` row-shape + `calib_gap` arithmetic check; CI = exactly 0 on identical
+pools, excludes 0 on a shifted pool.
+
+> **As built (2026-07, remote):** all of the above is implemented — `pool_frame`,
+> `oracle_variant`, `bootstrap_bias_delta_ci`, the three-table return + `return_pools` in
+> `src/fantasy_nba/models/eval_movers.py`; script flags in `scripts/eval_movers.py`; tests
+> in `tests/test_stage7_infra.py`. **Remaining (local):** run on real data, confirm the
+> pooled `learned` bias table still reproduces the EXP-007 ledger numbers, tick ROADMAP.
 
 **Done when:** eval script prints three tables; old numbers unchanged (pure refactor for
 tables 1–2); tests green. *(Closes ROADMAP 7.0 "predicted-Δ calibration" — add the checkbox
@@ -174,7 +198,12 @@ a new model is adopted** (add this to the doc-sync checklist mentally for Steps 
 
 **Tests:** pure-noise synthetic pool (mu = truth + N(0,σ)) → measured bias per bucket ≈
 floor per bucket (an *unbiased* forecaster's tail bias is entirely selection), tolerance
-±0.5.
+±0.6.
+
+> **As built (2026-07, remote):** `src/fantasy_nba/models/floor_sim.py` —
+> `selection_floor`, `floor_table` (sigma band), `reducible_gap`; `--floor` prints the band
+> + gap for `learned`, pooled. The pure-noise identity test passes. **Remaining (local):**
+> run on real data, fill the EXP-011a ledger rows.
 
 **Ledger stub:**
 ```
@@ -206,6 +235,10 @@ Wire into the script behind `--oracles`: adds rows `oracle_minutes(learned)` and
 `oracle_rates(learned)` to all three tables. **The pool must stay the real model's top-150**
 (pool on `learned`'s ranks, then swap the oracle columns) — pooling on oracle ranks would
 select on the outcome.
+
+> **As built (2026-07, remote):** `oracle_variant` + `--oracles` implemented and tested
+> (identity when `act_mpg == mpg`; scaling; re-scored via `score_frame`, never scaled fpts).
+> **Remaining (local):** the runs, the share arithmetic, and the Phase-0 verdict below.
 
 **Read-out arithmetic (write it in the ledger):**
 - `minutes_share = (bias_learned − bias_oracle_minutes) / (bias_learned − floor_bias)` per
@@ -253,19 +286,30 @@ riser buckets.
    `leaguegamelog` pull; verify it survived `storage.read("player_game_logs")` and add it to
    the recency module docstring's required-columns list.
 
-**Run — the A/B matrix (one eval invocation per variant; add flags
-`--recency-skip-last N` and `--recency-trade` to `scripts/eval_movers.py`, which pass
-through `project_models` → `project_learned` via new kwargs `recency_skip_last`,
-`use_trade_split`):**
+**Run — the A/B matrix. As built, variants are selected by registry name
+(`backtest.VARIANT_SPECS` → `--variants` on the eval script); one run covers the matrix:**
 
-| Variant | Setting |
+```bash
+python scripts/eval_movers.py --seasons 2022-23 2023-24 2024-25 2025-26 \
+  --variants learned_recency learned_recency_s5 learned_recency_s10 \
+  --ci learned_recency learned_recency_s5 --seed 0   # repeat --seed 1, 2 (rule 8)
+# then, with the winning skip: learned_recency_trade / learned_recency_s5_trade
+```
+
+| Variant (registry name) | Setting |
 |---|---|
 | learned | control |
 | learned_recency | window 20, skip 0 (EXP-008b baseline) |
 | learned_recency_s5 | window 20, skip 5 |
-| learned_recency_s10 | window 20, skip 10 |
-| learned_recency_mid | window 20 ending 10 games before season end (equivalent to skip 10) — *same as s10; do not run twice* |
-| learned_recency_trade | skip winner + TRADE_FEATURES |
+| learned_recency_s10 | window 20, skip 10 (≡ a "mid window ending 10 early" — do not test twice) |
+| learned_recency_trade | skip 0 + TRADE_FEATURES |
+| learned_recency_s5_trade | skip 5 + TRADE_FEATURES |
+
+> **As built (2026-07, remote):** `season_recency_table(skip_last=…)`,
+> `trade_split_table` (+`TRADE_FEATURES`, `MIN_POST_TRADE_GAMES=5` noise guard),
+> `recency_features(trade_table=…)`, the `project_learned` kwargs, and all six registry
+> variants — tested incl. the no-leakage same-season case and the rest-tail trim
+> arithmetic. **Remaining (local):** the runs and the verdict.
 
 **Gate (adopt):** vs `learned_recency`: pooled riser + big-riser signed bias improve by
 ≥ 25% of their reducible gap **and** the aggregate win vs `learned` is retained (level MAE
@@ -301,12 +345,16 @@ infrastructure for Step 14 even if (a)/(b) reject.
   for deltas it is "league-average change". Different geometry, unknown sign — that's why
   it's an A/B and not an assumption.
 
-**(b) Sample weights.** `project_learned(..., weight_mode=None|"mover"|"relevance")`:
+**(b) Sample weights.** `project_learned(..., weight_mode=None|"mover"|"relevance",
+weight_alpha=…)`:
 - `"mover"`: per target, `w = 1 + alpha × |y − anchor| / scale` with `alpha ∈ {0.5, 1.0}`,
-  `scale` = the target's panel-wide MAD (so alpha is unitless); anchor as in (a). Weights
-  computed from **labels**, which is legitimate at train time (never at eval).
-- `"relevance"`: `w = clip(weighted MIN of the row / 2000, 0.25, 2.0)` — draftable players
-  count more; bench noise counts less.
+  `scale` = the target's panel-wide MAD (so alpha is unitless); anchor as in (a) —
+  `WEIGHT_ANCHORS` includes `y_gp → weighted_gp` for weighting even though gp is excluded
+  from delta mode. Weights computed from **labels**, which is legitimate at train time
+  (never at eval).
+- `"relevance"`: `w = clip(avg_season_min / 2000, 0.25, 2.0)` where `avg_season_min` is the
+  recency-weighted average season minutes already in the panel (`wMIN / w`) — draftable
+  players count more; bench noise counts less.
 
 **(c) Quantile heads (infrastructure + experiment).** New
 `src/fantasy_nba/models/quantiles.py`:
@@ -322,26 +370,47 @@ def predict_quantiles(models, X) -> pd.DataFrame:  # fpts_pg_q25/q50/q75/q90, so
 Direct-on-fpts (not per-target) because quantiles don't compose across rate × minutes.
 Point estimates remain decompositional; this frame is used **only** for ranges (Step 14).
 
+**(d) Hyperparameter tuning (the never-done pass).** `DEFAULT_LGBM_PARAMS` were set once in
+EXP-007 and never tuned — cheap potential accuracy left on the table. Build a small
+walk-forward tuner (new `scripts/tune_learned.py`): grid over
+`num_leaves ∈ {15, 31, 63}`, `min_child_samples ∈ {10, 30, 60}`,
+`learning_rate ∈ {0.03, 0.05, 0.10}`, with `n_estimators` chosen by early stopping
+(validation fold = the **last training season** of each backtest fold — never the eval
+season). Score each combo on the standard 4-season eval (pooled level MAE + riser bias);
+optional extras if the grid winner is unstable: `reg_lambda ∈ {0.5, 1, 5}`, monotone
+constraint on `proj_mpg → y_mpg`. Tune **once, after (a)/(b) settle** — tuning before the
+objective is chosen wastes the grid.
+
 **Run:**
-- (a)/(b): eval matrix `learned` vs `learned_delta` vs `learned_w_mover(α)` vs
-  `learned_w_rel` (new kwargs threaded through `project_models` behind an `--objectives`
-  script flag).
+- (a)/(b): one eval invocation covers the matrix —
+  `--variants learned_delta learned_w_mover learned_w_mover_a05 learned_w_rel`, with
+  `--ci learned <candidate>` on the front-runner and seeds {0,1,2} (rule 8).
 - (c): per season, **pinball loss** at each q vs two baselines (constant-spread normal
   around `learned`'s point estimate with σ = pooled residual std — the SD_PG analogue — and
   the empirical pool quantiles), plus **coverage**: fraction of pool actuals ≤ each
   predicted quantile, target within ±5pp of nominal, overall and per actual-Δ bucket.
+- (d): `python scripts/tune_learned.py` → winning params; re-run the standard eval with
+  them; only then update `DEFAULT_LGBM_PARAMS`.
 
 **Gates:** (a)/(b) adopt if pooled riser+big-riser floor-adjusted bias improves ≥ 25% with
 stable bucket bias within ±0.5 of control and ranking Spearman within noise. (c) adopt (as
 Step-14 input) if it beats the constant-σ baseline on pinball loss overall **and** in the
-riser bucket. Combinations: if both (a) and (b) pass individually, run the combination once;
-adopt the best single-or-combo by riser bias.
+riser bucket. (d) adopt if pooled level MAE improves with riser bias not worse — judged
+under rule 8 like everything else. Combinations: if both (a) and (b) pass individually, run
+the combination once; adopt the best single-or-combo by riser bias.
 
-**Ledger stub:** one EXP-013 entry with a/b/c sub-results (mirrors EXP-008's style).
+**Ledger stub:** one EXP-013 entry with a/b/c/d sub-results (mirrors EXP-008's style).
 
-**Done when:** all three sub-A/Bs logged; any adopted mode becomes a default in
-`project_models` (+ floor recompute); `quantiles.py` exists with tests (monotone quantiles
-on synthetic data; pinball-loss helper correctness) regardless of adopt/reject.
+> **As built (2026-07, remote):** (a)/(b) — `target_mode` / `weight_mode` / `weight_alpha`
+> in `learned.py` (`DELTA_ANCHORS`/`WEIGHT_ANCHORS`, `_sample_weight`, `_predict_target`),
+> registry variants `learned_delta`, `learned_w_mover`, `learned_w_mover_a05`,
+> `learned_w_rel`; (c) — `src/fantasy_nba/models/quantiles.py` complete
+> (`fit_fpts_quantiles`, `predict_quantiles` with monotone enforcement, `pinball_loss`,
+> `project_fpts_quantiles` wrapper). All tested. **Remaining (local):** the runs, the (c)
+> baselines script glue, and (d) — the tuner script is *not* built yet.
+
+**Done when:** all four sub-A/Bs logged; any adopted mode/params become the default in
+`project_models` (+ floor recompute).
 
 ## Step 6 — EXP-014: team-constrained minutes allocation (the structural bet)
 
@@ -407,6 +476,17 @@ improves ≥ 25%, **or** segment (i)+(ii) level MAE improves ≥ 15% with segmen
 roster/position data and depth features stay (Step 10 reuses them as in-season features).
 
 **Ledger stub:** EXP-014, with the segment table and the Σ-share sanity distribution.
+
+> **As built (2026-07, remote):** the **feature layer** —
+> `src/fantasy_nba/models/allocation.py` (`ALLOC_FEATURES`, `position_group` with loud
+> unmapped-string failure, `allocation_features` depth-chart math, `rookie_reserve`,
+> `normalize_shares`) — implemented and tested (synthetic 2-team league: departed same-pos
+> teammate's vacated share, depth ranks, normalization to 1 − reserve). **Remaining
+> (local):** 6.1 historical-rosters pull, the `y_min_share` LightGBM model, the
+> `minutes_mode="allocation"` wiring in `project_learned`, and the A/B. One known
+> limitation to carry into the run: a departed player's position comes from his *new*
+> roster — players who left the league entirely drop out of the vacated-share sums until
+> the historical-roster pull supplies prior-season positions.
 
 **Done when:** logged adopt/park/reject; ROADMAP 7.A refinement checkbox ticked; tests
 (synthetic 2-team league: departed star → his same-pos teammate's `same_pos_vacated_share`
@@ -693,6 +773,7 @@ floor-adjusted on movers, updating nightly, benchmarked against the market — t
 | 012 | riser+big-riser ≥25% reducible-gap closed vs learned_recency AND aggregate win kept (3/4 seasons) |
 | 013a/b | riser+big-riser ≥25% closed, stable-bucket bias within ±0.5, ranking Spearman within noise |
 | 013c | beats constant-σ baseline on pinball loss overall AND in riser bucket |
+| 013d | tuned params: pooled level MAE improves AND riser bias not worse (rule-8 guarded) |
 | 014 | minutes MAE ≤ control AND riser ≥25% closed; OR role-change segments −15% level MAE, others ≤3% worse |
 | 015a | GP Spearman +0.05 vs current | 015b: coverage ∈ [78,88]% AND safe-Spearman ties/wins |
 | 016 | unconditional for backtests (correctness); re-affirm Step-6 verdicts on honest rosters |

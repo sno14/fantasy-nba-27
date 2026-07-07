@@ -23,7 +23,7 @@ from .aging import build_aging_curves
 from .baseline import project_baseline
 from .context import target_team_map
 from .durability import build_gp_age_curve
-from .learned import project_learned
+from .learned import DEFAULT_LGBM_PARAMS, project_learned
 from .minutes import build_minutes_age_curve
 from .projection import project_v2
 
@@ -55,19 +55,50 @@ def _metrics(merged: pd.DataFrame, pred: str, act: str) -> dict:
     }
 
 
+# Named learned-model configurations for A/B matrices (kwargs passed to ``project_learned``).
+# Every experiment variant lives here so eval runs are reproducible from a name — the ledger
+# records variant names, and scripts select them via ``--variants``. Rejected/parked variants
+# stay listed (EXPERIMENTS.md explains each verdict); re-running them is one flag, not code.
+VARIANT_SPECS: dict[str, dict] = {
+    # EXP-008 (rejected) / EXP-009 (parked) / EXP-008b (parked) / EXP-009b (rejected):
+    "learned_traj": {"use_trajectory": True},
+    "learned_ctx": {"use_context": True},
+    "learned_recency": {"use_recency": True},
+    "learned_rc": {"use_recency": True, "use_context": True},
+    # EXP-012 (Step 4) — recency de-confound:
+    "learned_recency_s5": {"use_recency": True, "recency_skip_last": 5},
+    "learned_recency_s10": {"use_recency": True, "recency_skip_last": 10},
+    "learned_recency_trade": {"use_recency": True, "use_trade_split": True},
+    "learned_recency_s5_trade": {"use_recency": True, "recency_skip_last": 5, "use_trade_split": True},
+    # EXP-013a/b (Step 5) — objective-side changes:
+    "learned_delta": {"target_mode": "delta"},
+    "learned_w_mover": {"weight_mode": "mover", "weight_alpha": 1.0},
+    "learned_w_mover_a05": {"weight_mode": "mover", "weight_alpha": 0.5},
+    "learned_w_rel": {"weight_mode": "relevance"},
+}
+
+
 def project_models(
     target_season: str,
     season_stats: pd.DataFrame,
     bio: pd.DataFrame,
     cfg: ScoringConfig,
     game_logs: pd.DataFrame | None = None,
+    variants: list[str] | dict[str, dict] | None = None,
+    seed: int | None = None,
 ) -> dict[str, pd.DataFrame]:
     """Project ``target_season`` with every model using **only** prior-season data.
 
     Aging / GP / minutes curves are refit on the training years (seasons strictly before
     the target), so there is no leakage. Returns ``{model_name: projection_frame}`` — the
     shared no-leakage projection step behind both the ranking backtest and the mover eval.
-    When ``game_logs`` is supplied, also produces the ``learned_recency`` variant (EXP-008b).
+
+    ``variants`` adds learned-model configurations beyond the four defaults: a list of
+    ``VARIANT_SPECS`` names, or a dict of custom ``{name: project_learned-kwargs}``.
+    Variants using recency/trade features need ``game_logs``; ``use_context`` variants get
+    their ``target_team_map`` derived here automatically. ``seed`` overrides LightGBM's
+    ``random_state`` for the whole learned family — the seed-stability protocol
+    (implementation-plan §0 rules) runs the eval at seeds {0, 1, 2} and averages.
     """
     ty = _season_start(target_season)
     train_ss = season_stats[season_stats["SEASON"].map(_season_start) < ty]
@@ -86,33 +117,30 @@ def project_models(
         train_ss, train_bio, target_season, cfg=cfg, curves=curves, gp_curve=gp_curve,
         mpg_curve=mpg_curve, age_minutes=True,
     )
+
+    seed_params = (
+        {"params": {**DEFAULT_LGBM_PARAMS, "random_state": seed}} if seed is not None else {}
+    )
     # learned: LightGBM decompositional model on Marcel-equivalent features (EXP-007). Trains
     # on the (prior-only) panel inside project_learned, so it stays no-leakage per fold.
-    learned = project_learned(train_ss, train_bio, target_season, cfg=cfg)
-    # NOTE: two feature groups were A/B'd against plain `learned` and **not adopted** (kept in code,
-    # unwired from the default eval to keep it fast — see EXPERIMENTS.md EXP-008/009):
-    #   * trajectory slopes (use_trajectory=True, EXP-008) — no lift, slightly worse risers.
-    #   * team-context / vacated minutes (use_context=True, EXP-009) — net wash on the buckets
-    #     (better fallers, worse risers), inconsistent across seasons; coarse season-level turnover
-    #     isn't decisive and the backtest mildly flatters it (end-of-season team assignment).
-    # Reproduce the EXP-009 A/B by importing `from .context import target_team_map` and adding:
-    #   project_learned(train_ss, train_bio, target_season, cfg=cfg, use_context=True,
-    #                   target_team_map=target_team_map(season_stats, target_season))
+    learned = project_learned(train_ss, train_bio, target_season, cfg=cfg, **seed_params)
     models = {"baseline": base, "v2": v2, "v2m": v2m, "learned": learned}
 
-    # learned_recency: + within-season last-N-game features (EXP-008b). recency_features
-    # self-restricts to seasons before the target, so passing full game_logs stays no-leakage.
-    # learned_rc: recency **coupled with** team-context (EXP-009b) — the hypothesis that recency
-    # (a role changed) + context (where the minutes came from) crack risers where neither did alone.
-    if game_logs is not None:
-        models["learned_recency"] = project_learned(
-            train_ss, train_bio, target_season, cfg=cfg, use_recency=True, game_logs=game_logs
+    if variants:
+        specs = (
+            {name: VARIANT_SPECS[name] for name in variants}
+            if not isinstance(variants, dict) else variants
         )
-        models["learned_rc"] = project_learned(
-            train_ss, train_bio, target_season, cfg=cfg,
-            use_recency=True, game_logs=game_logs,
-            use_context=True, target_team_map=target_team_map(season_stats, target_season),
-        )
+        for name, spec in specs.items():
+            kw = {**spec, **seed_params}
+            if kw.get("use_recency") or kw.get("use_trade_split"):
+                if game_logs is None:
+                    raise ValueError(f"Variant {name!r} needs game_logs.")
+                kw["game_logs"] = game_logs
+            if kw.get("use_context"):
+                # Target-season team assignment (a preseason roster fact, not an outcome).
+                kw["target_team_map"] = target_team_map(season_stats, target_season)
+            models[name] = project_learned(train_ss, train_bio, target_season, cfg=cfg, **kw)
     return models
 
 
