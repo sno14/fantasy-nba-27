@@ -25,6 +25,7 @@ import numpy as np
 import pandas as pd
 
 from ..scoring import ScoringConfig, load_scoring, score_frame
+from . import context as ctx
 from ._core import COUNTING, DEFAULT_REG_MINUTES, DEFAULT_WEIGHTS, _season_start, weighted_aggregates
 
 # Marcel-equivalent feature set: the player's own recency-weighted signal + age. Nothing
@@ -44,6 +45,8 @@ TRAJ_FEATURES = [
 ]
 
 FEATURES = BASE_FEATURES  # back-compat default (Marcel-equivalent); see feature_columns().
+
+# Team-context / vacated-minutes features (EXP-009) live in models.context.CONTEXT_FEATURES.
 
 # One regression target per decomposition layer. Labels are prefixed ``y_`` so they never
 # collide with the same-named recency-weighted *feature* columns (e.g. feature ``rate_pts`` is
@@ -66,9 +69,14 @@ DEFAULT_LGBM_PARAMS = dict(
 )
 
 
-def feature_columns(use_trajectory: bool) -> list[str]:
-    """Feature set for the learned model — Marcel-equivalent, optionally + trajectory (EXP-008)."""
-    return BASE_FEATURES + (TRAJ_FEATURES if use_trajectory else [])
+def feature_columns(use_trajectory: bool, use_context: bool = False) -> list[str]:
+    """Feature set for the learned model — Marcel-equivalent, optionally + trajectory (EXP-008)
+    and/or + team-context/vacated-minutes (EXP-009)."""
+    return (
+        BASE_FEATURES
+        + (TRAJ_FEATURES if use_trajectory else [])
+        + (ctx.CONTEXT_FEATURES if use_context else [])
+    )
 
 
 def _slope_by_player(long: pd.DataFrame, value: str) -> pd.Series:
@@ -142,8 +150,14 @@ def _features_for(
     n_seasons: int,
     weights: tuple[float, ...],
     reg_minutes: float,
+    context_feats: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
-    """Marcel aggregates (+ trajectory features if requested) for ``target_season``, prior-only."""
+    """Marcel aggregates (+ trajectory and/or team-context features) for ``target_season``.
+
+    ``prior`` is prior-only (drives the Marcel aggregates and trajectory). Team-context features
+    are computed by the caller (they need the target-season team map, not just prior data) and
+    passed in as ``context_feats`` — a ``[PLAYER_ID, *CONTEXT_FEATURES]`` frame — to merge here.
+    """
     feats = weighted_aggregates(
         prior, prior_bio, target_season, n_seasons=n_seasons, weights=weights, reg_minutes=reg_minutes
     )
@@ -153,6 +167,10 @@ def _features_for(
         # Players with a single prior season get no slope — neutral fills, not NaN.
         for col in TRAJ_FEATURES:
             feats[col] = feats[col].fillna(0.0)
+    if context_feats is not None:
+        feats = feats.merge(context_feats, on="PLAYER_ID", how="left")
+        for col in ctx.CONTEXT_FEATURES:
+            feats[col] = feats[col].fillna(0.0)
     return feats
 
 
@@ -160,6 +178,7 @@ def build_panel(
     season_stats: pd.DataFrame,
     bio: pd.DataFrame,
     use_trajectory: bool = False,
+    use_context: bool = False,
     min_prior_seasons: int = 2,
     min_label_minutes: float = 200.0,
     n_seasons: int = 3,
@@ -169,8 +188,10 @@ def build_panel(
     """Stack (features as-of-S, labels-in-S) rows over every eligible training season S.
 
     For each season with at least ``min_prior_seasons`` seasons before it, features are the
-    Marcel aggregates (+ trajectory features when ``use_trajectory``) computed from data strictly
-    before S, joined to the realized outcomes in S. This is the as-of-date supervised panel.
+    Marcel aggregates (+ trajectory when ``use_trajectory``, + team-context when ``use_context``)
+    computed from data strictly before S, joined to the realized outcomes in S. The team-context
+    features additionally read S's *team assignment* (a preseason roster fact, not an outcome) —
+    ``season_stats`` contains S here, so ``context_for_season`` can slice it.
     """
     seasons = sorted(season_stats["SEASON"].unique(), key=_season_start)
     frames = []
@@ -179,7 +200,10 @@ def build_panel(
         if prior["SEASON"].nunique() < min_prior_seasons:
             continue
         prior_bio = bio[bio["SEASON"].map(_season_start) < _season_start(s)]
-        feats = _features_for(prior, prior_bio, s, use_trajectory, n_seasons, weights, reg_minutes)
+        context_feats = ctx.context_for_season(season_stats, s) if use_context else None
+        feats = _features_for(
+            prior, prior_bio, s, use_trajectory, n_seasons, weights, reg_minutes, context_feats
+        )
         labels = _labels(season_stats, s, min_label_minutes)
         merged = feats.merge(labels, on="PLAYER_ID", how="inner")
         if not merged.empty:
@@ -208,6 +232,8 @@ def project_learned(
     cfg: ScoringConfig | None = None,
     params: dict | None = None,
     use_trajectory: bool = False,
+    use_context: bool = False,
+    target_team_map: pd.DataFrame | None = None,
     min_label_minutes: float = 200.0,
     n_seasons: int = 3,
     weights: tuple[float, ...] = DEFAULT_WEIGHTS,
@@ -217,21 +243,34 @@ def project_learned(
 
     Trains one LightGBM per decomposition target on the historical panel drawn from
     ``season_stats`` (already prior-only in the backtest/eval), then predicts for the target
-    season and composes a scored stat line — same output schema as ``project_v2``. When
-    ``use_trajectory`` is set, adds the EXP-008 season-over-season trajectory features.
+    season and composes a scored stat line — same output schema as ``project_v2``. ``use_trajectory``
+    adds the EXP-008 trajectory features; ``use_context`` adds the EXP-009 team-context features,
+    which need the target-season team assignment — pass ``target_team_map`` (``[PLAYER_ID, team]``)
+    since ``season_stats`` here is prior-only and doesn't contain the target season.
     """
     cfg = cfg or load_scoring()
     params = params or DEFAULT_LGBM_PARAMS
-    feature_cols = feature_columns(use_trajectory)
+    feature_cols = feature_columns(use_trajectory, use_context)
 
     panel = build_panel(
-        season_stats, bio, use_trajectory=use_trajectory, min_label_minutes=min_label_minutes,
-        n_seasons=n_seasons, weights=weights, reg_minutes=reg_minutes,
+        season_stats, bio, use_trajectory=use_trajectory, use_context=use_context,
+        min_label_minutes=min_label_minutes, n_seasons=n_seasons, weights=weights, reg_minutes=reg_minutes,
     )
     models = _fit_models(panel, params, feature_cols)
 
+    context_feats = None
+    if use_context:
+        if target_team_map is None:
+            raise ValueError(
+                "use_context inference needs target_team_map ([PLAYER_ID, team]); season_stats is "
+                "prior-only. Pass context.target_team_map(full_stats, target) or a roster-derived map."
+            )
+        context_feats = ctx.team_context_features(
+            season_stats, target_team_map, ctx.season_before(target_season)
+        )
+
     agg = _features_for(
-        season_stats, bio, target_season, use_trajectory, n_seasons, weights, reg_minutes
+        season_stats, bio, target_season, use_trajectory, n_seasons, weights, reg_minutes, context_feats
     )
     X = agg[feature_cols]
 

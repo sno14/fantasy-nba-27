@@ -86,9 +86,15 @@ def project_models(
     # learned: LightGBM decompositional model on Marcel-equivalent features (EXP-007). Trains
     # on the (prior-only) panel inside project_learned, so it stays no-leakage per fold.
     learned = project_learned(train_ss, train_bio, target_season, cfg=cfg)
-    # NOTE: season-level trajectory features (project_learned(use_trajectory=True), EXP-008) were
-    # A/B'd here and *rejected* — no lift, slightly worse riser buckets (see EXPERIMENTS.md).
-    # The capability is kept in learned.py for recombination with recent-window/context signal.
+    # NOTE: two feature groups were A/B'd against plain `learned` and **not adopted** (kept in code,
+    # unwired from the default eval to keep it fast — see EXPERIMENTS.md EXP-008/009):
+    #   * trajectory slopes (use_trajectory=True, EXP-008) — no lift, slightly worse risers.
+    #   * team-context / vacated minutes (use_context=True, EXP-009) — net wash on the buckets
+    #     (better fallers, worse risers), inconsistent across seasons; coarse season-level turnover
+    #     isn't decisive and the backtest mildly flatters it (end-of-season team assignment).
+    # Reproduce the EXP-009 A/B by importing `from .context import target_team_map` and adding:
+    #   project_learned(train_ss, train_bio, target_season, cfg=cfg, use_context=True,
+    #                   target_team_map=target_team_map(season_stats, target_season))
     return {"baseline": base, "v2": v2, "v2m": v2m, "learned": learned}
 
 

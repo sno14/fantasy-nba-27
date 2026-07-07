@@ -2,8 +2,9 @@
 
 import numpy as np
 import pandas as pd
+import pytest
 
-from fantasy_nba.models import aging, darko, durability, learned, minutes, uncertainty
+from fantasy_nba.models import aging, context, darko, durability, learned, minutes, uncertainty
 from fantasy_nba.models._core import COUNTING
 
 
@@ -218,3 +219,25 @@ def test_darko_name_normalization_and_join():
     # Kevin Porter: 25 - 33 = -8 (we project fewer minutes than DARKO); shows up, Jokić (-4) too.
     kp = gaps.loc[gaps["PLAYER_NAME"] == "Kevin Porter Jr.", "mpg_gap"].iloc[0]
     assert kp == -8.0
+
+
+def test_team_context_vacated_minutes_math():
+    # Prior season: team AAA has P1(1000), P2(800), P3(600); team BBB has P4(900).
+    prior = pd.DataFrame({
+        "SEASON": ["2022-23"] * 4,
+        "PLAYER_ID": [1, 2, 3, 4],
+        "TEAM_ABBREVIATION": ["AAA", "AAA", "AAA", "BBB"],
+        "MIN": [1000.0, 800.0, 600.0, 900.0],
+    })
+    # Target season: P1 stays AAA; P2 leaves for BBB; P3 leaves the league; P5 is a newcomer on AAA.
+    team_map = pd.DataFrame({"PLAYER_ID": [1, 4, 2, 5], "team": ["AAA", "BBB", "BBB", "AAA"]})
+
+    feat = context.team_context_features(prior, team_map, "2022-23").set_index("PLAYER_ID")
+
+    # AAA vacated P2+P3 = 1400 of its prior 2400 -> turnover 1400/2400.
+    assert feat.loc[5, "team_turnover_share"] == pytest.approx(1400 / 2400)
+    # Normalized by league avg team-min = (2400+900)/2 = 1650.
+    assert feat.loc[5, "team_vacated_min_norm"] == pytest.approx(1400 / 1650)
+    # Newcomer P5 has no prior role; returning P1's prior share is 1000/2400.
+    assert feat.loc[5, "own_prev_min_share"] == 0.0
+    assert feat.loc[1, "own_prev_min_share"] == pytest.approx(1000 / 2400)

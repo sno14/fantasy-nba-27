@@ -197,10 +197,32 @@ works) or against a **committed data snapshot** on the branch. Decision pending.
   rows)** — a different experiment (call it EXP-008b) — and **team-context / vacated minutes**
   (EXP-009). Trajectory may still matter *coupled* to those, not standalone.
 
-### EXP-009 — + team-context / vacated-minutes features  ·  Status: planned  ·  needs transactions data
+### EXP-009 — + team-context / vacated-minutes features  ·  Status: **parked** (real but coarse; not adopted)
+- **Date:** 2026-07-07  ·  **Commit:** uncommitted
 - **Hypothesis:** modelling the opportunity a player walks into (vacated minutes/usage from roster
   turnover) is the decisive riser/faller lever — the largest single reduction in mover error.
-- **Success = material mover-bucket error reduction for the role-change subpopulation.**
+- **Method:** `models/context.py` — per (player, target-season) team-context features from prior-season
+  minutes + the target-season team assignment (a preseason roster fact): `team_vacated_min_norm`
+  (minutes freed by non-returning teammates ÷ avg team-season minutes), `team_returning_min_norm`,
+  `team_turnover_share`, `own_prev_min_share`. Wired into the learned model via `use_context=True`
+  (`learned_ctx`), A/B'd vs `learned` in the mover eval, 2022-23…2025-26. **Discovery that reframed the
+  data plan:** no transactions scrape was needed for a *first cut* — vacated minutes are computable from
+  `player_season_stats` team membership alone (see memory `data-source-map`).
+- **Result:** **net wash on the mover buckets, and inconsistent across seasons.** Pooled signed bias
+  learned → learned_ctx: faller **+2.77 → +2.43** (better), but riser **−3.12 → −3.55** and big riser
+  **−6.89 → −7.12** (worse); stable/big-faller ~flat. Per season it swings: context clearly *helped*
+  2025-26 (level MAE 5.00 → 4.72, bias 1.24 → 0.39, sign-acc 0.63 → 0.67) but *hurt* 2023-24 (MAE
+  4.28 → 4.62, Δ-corr 0.35 → 0.26). Since risers are the priority and the aggregate is a wash, not adopted.
+- **Verdict:** **parked** — the signal is real (one strong season) but too **coarse and unstable** to ship.
+  Kept in code (`use_context`, unwired from default eval like EXP-008's trajectory).
+- **Ledger note / why it's coarse + the honest caveat:** (1) `team_turnover_share` is a **team-level**
+  feature shared by every player on the team — a blunt instrument; it doesn't say *who* absorbs the
+  vacated minutes (position/fit/trajectory). Roadmap 7.A always specified position-aware redistribution.
+  (2) **The backtest mildly flatters it:** target-season team = *end-of-season* team (mid-season trades),
+  so for the very mid-season movers the feature peeks slightly — true preseason value is likely a bit
+  lower than measured. ⇒ **EXP-009b:** strict *preseason* rosters / dated transactions
+  (prosportstransactions) + position-aware redistribution + couple to within-season recency (EXP-008b).
+  Do not re-run coarse team-level turnover expecting a decisive win.
 
 ### EXP-010 — DARKO live integration (minutes cross-check + disagreement finder)  ·  Status: **adopted (live-only, unbacktested)**
 - **Date:** 2026-07-07  ·  **Commit:** uncommitted

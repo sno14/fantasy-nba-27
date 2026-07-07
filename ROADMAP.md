@@ -253,20 +253,28 @@ bolt-on adjustments — the scalable foundation the user asked for.
   **within-season recency (last-N games)**, not season slopes. → **EXP-008b**.
 - [ ] EXP-008b — + within-season recency (last-N-games / post-trade splits from the 404k game-log
   rows) → the trajectory signal EXP-008 *should* have been (7.D). Untested.
-- [ ] EXP-009 — + team-context / vacated-minutes features (needs transactions data) → the decisive
-  riser/faller test (7.A).
-- [ ] EXP-010+ — injury data (7.C), market/ADP (7.E), hyper-parameter tuning.
+- [x] EXP-009 — + team-context / vacated-minutes features (`models/context.py`) → **parked**: a *net
+  wash* on the buckets (better fallers, worse risers) and inconsistent across seasons (helped 2025-26,
+  hurt 2023-24). Real but coarse — team-level turnover is blunt and the backtest mildly flatters it
+  (end-of-season team assignment). **No transactions scrape was needed for the first cut** (computable
+  from season-stats team membership). Code kept, unwired. → **EXP-009b** (below).
+- [ ] EXP-009b — strict *preseason* rosters / dated transactions (prosportstransactions) + **position-
+  aware** redistribution + couple to within-season recency (EXP-008b). The refinement EXP-009 points to.
+- [x] EXP-010 — DARKO live overlay (adopted live-only; see 7.E). Injury data (7.C), market/ADP remain.
 
-#### 7.A — Opportunity / role-redistribution model  ← highest leverage
-- [ ] Model the **team-context change** each player walks into, not just their own past.
-      Depth-chart minutes allocation (team ≈ 240 min/game) + usage redistribution: when a player
-      departs (trade/FA/retire), reallocate their vacated minutes & usage to returning players by
-      position / trajectory; compress when a high-usage player arrives.
-- [ ] **Data needed:** transactions/roster-turnover (nba_api transactions or prosportstransactions;
-      rosters already pulled), which is the missing ingredient. Game logs (have) give the
-      redistribution priors.
-- [ ] **Test:** does modelling vacated minutes improve minutes MAE **and** 7.0 metrics *for the
-      role-change subpopulation* specifically? (Aggregate metrics will hide it — segment.)
+#### 7.A — Opportunity / role-redistribution model  ← highest leverage (first cut done → EXP-009 parked)
+- [x] **First cut (EXP-009, `models/context.py`):** team-level vacated/returning minutes + turnover
+      share as learned-model features. **Parked** — net wash on the mover buckets, coarse. **Key
+      correction to the old plan:** transactions were **not** the missing ingredient for a first pass —
+      vacated minutes are computable from `player_season_stats` team membership alone.
+- [ ] **Refinement (EXP-009b):** the vacated minutes must be **redistributed by position / trajectory**
+      (team-level turnover is too blunt — it doesn't say *who* absorbs the minutes), and use **strict
+      preseason rosters / dated transactions** (prosportstransactions) instead of end-of-season team
+      assignment (which mildly flatters the backtest on mid-season movers).
+- [ ] **Data:** season-stats team membership (have; used in v1) → prosportstransactions for dated,
+      preseason-accurate moves (EXP-009b). Game logs (have) give the redistribution priors.
+- [ ] **Test:** does position-aware vacated-minutes redistribution improve minutes MAE **and** the 7.0
+      mover buckets *for the role-change subpopulation*? (Aggregate metrics hide it — segment.)
 
 #### 7.B — Young-player trajectory / breakout layer  ← high, targeted
 - [ ] For young players (age ≤ 24, ≥2 seasons) add a **trajectory/momentum term** instead of pure
