@@ -5,6 +5,19 @@ season and converts it to fantasy points under a configurable scoring system.
 
 See [ROADMAP.md](ROADMAP.md) for the build plan, current progress, and modeling philosophy.
 
+## Documentation map (reading order)
+
+1. **[ROADMAP.md](ROADMAP.md)** — stages, progress checkboxes, key findings. Start here.
+2. **[EXPERIMENTS.md](EXPERIMENTS.md)** — the append-only ledger of everything tested
+   (adopted *and* rejected), so dead ends are never re-run.
+3. **[docs/model-foundation.md](docs/model-foundation.md)** — the architecture decision
+   record: why a learned, decompositional, as-of-date model (historical; kept as-is).
+4. **[docs/breakthrough-plan.md](docs/breakthrough-plan.md)** — the Stage-7 diagnosis: why
+   the riser bias resisted every feature experiment, and where the real headroom is.
+5. **[docs/implementation-plan.md](docs/implementation-plan.md)** — **the execution spec**:
+   a strictly linear, step-by-step build plan with file-level specs, commands, and
+   adopt/reject gates. Active work happens from this file.
+
 ## Setup
 
 ```bash

@@ -227,6 +227,12 @@ Two cadences feed the one as-of-date engine:
 
 ## 8. Picking this up later — concrete run order
 
+> **⚠️ SUPERSEDED (2026-07):** this section's run order (EXP-006…009) has been **completed** —
+> see `EXPERIMENTS.md` for the results. The current run order lives in
+> [`docs/implementation-plan.md`](implementation-plan.md) (the step-by-step execution spec),
+> with the post-EXP-010 diagnosis in [`docs/breakthrough-plan.md`](breakthrough-plan.md).
+> Kept below unedited as the historical record of the original plan.
+
 Do these in order; log each to `EXPERIMENTS.md` (adopt/reject) so the trail stays complete.
 
 0. **Prereqs (local — the remote/web env can't reach `stats.nba.com`):** `pip install -e .`, then
