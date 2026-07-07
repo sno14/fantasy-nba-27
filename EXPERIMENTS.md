@@ -202,4 +202,33 @@ works) or against a **committed data snapshot** on the branch. Decision pending.
   turnover) is the decisive riser/faller lever — the largest single reduction in mover error.
 - **Success = material mover-bucket error reduction for the role-change subpopulation.**
 
-_EXP-010+ — injury data (7.C), market/ADP (7.E), hyper-parameter tuning — after the above._
+### EXP-010 — DARKO live integration (minutes cross-check + disagreement finder)  ·  Status: **adopted (live-only, unbacktested)**
+- **Date:** 2026-07-07  ·  **Commit:** uncommitted
+- **Hypothesis:** consuming DARKO (public daily skill/minutes projection) as a live overlay adds an
+  independent signal for our weakest layer (minutes) and surfaces actionable market disagreements.
+- **Method:** `scripts/pull_darko.py` (Playwright — darko.app renders client-side, exposes a
+  "Download CSV" button, no API) → date-stamped `data/raw/darko/`. `models/darko.py` normalizes names
+  (accent/suffix-insensitive) and joins to our board (no PLAYER_ID in DARKO → name join); reports
+  minutes gaps + rank gaps. `scripts/darko_report.py`. **User decision: live-only, waive the backtest
+  gate** — no historical as-of-date DARKO snapshots exist, so it can't be a *trained* GBM feature; it's
+  an output-level overlay only.
+- **Result:** works — **99% name match** (575/582). Minutes-gap list is topped by young/rising players
+  (DARKO projects more minutes for Fears/Castle/Sheppard/Wembanyama; we project more for Sharpe/White).
+- **Key reframing (from DARKO's own About page, user-supplied):** (1) **minutes is DARKO's
+  self-admitted *weakest* output** — the one stat it lost to DFS on — so a minutes gap is a
+  *mutual-uncertainty flag*, not a correction. (2) **Rookies/young players are placeholder-initialized**
+  (no NCAA/preseason data) → the young-player-dominated disagreement list is partly artefactual;
+  down-weight it. (3) DARKO's *strength is per-minute rates*, which per **EXP-001 is already our
+  strength** → DARKO's skill layer is **largely redundant** with what we do well, and weakest exactly
+  where we most need help (minutes). Net: **modest** marginal value — a disagreement/uncertainty
+  highlighter and skill prior, **not** a fix for the minutes/role gap. Also: DARKO's `#` rank is a
+  per-possession *skill* rank, not fantasy-volume, so rank-gap flags volume scorers (DeRozan) as false
+  fades — minutes-gap is the cleaner signal.
+- **Verdict:** adopted as a live overlay (informational; never silently moves projections). Every pull
+  archived date-stamped, which *also* accumulates the as-of-date history we'd need to someday backtest it.
+- **Ledger note:** do **not** treat DARKO MPG as ground truth (its weakest stat) and do **not** expect
+  DARKO to solve risers/fallers — it's context-blind by construction. The real levers remain
+  within-season recency (EXP-008b) and team-context/vacated-minutes (EXP-009). Requires a Playwright
+  browser (`python -m playwright install chromium`).
+
+_EXP-011+ — injury data (7.C), within-season recency (EXP-008b, 7.D), team-context (EXP-009, 7.A)._

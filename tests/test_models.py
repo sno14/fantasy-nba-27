@@ -3,7 +3,7 @@
 import numpy as np
 import pandas as pd
 
-from fantasy_nba.models import aging, durability, learned, minutes, uncertainty
+from fantasy_nba.models import aging, darko, durability, learned, minutes, uncertainty
 from fantasy_nba.models._core import COUNTING
 
 
@@ -191,3 +191,30 @@ def test_trajectory_features_slope_sign_and_learned_traj_runs():
     fast = {**learned.DEFAULT_LGBM_PARAMS, "n_estimators": 25}
     out = learned.project_learned(ss, bio, "2023-24", params=fast, use_trajectory=True)
     assert out["gp"].between(1, 82).all() and out["mpg"].between(0, 48).all()
+
+
+def test_darko_name_normalization_and_join():
+    # Accents and suffixes must not break the name join to DARKO (which uses ASCII, no suffix).
+    assert darko.normalize_name("Nikola Jokić") == darko.normalize_name("Nikola Jokic")
+    assert darko.normalize_name("Kevin Porter Jr.") == "kevin porter"
+
+    board = pd.DataFrame({
+        "rank": [1, 2, 3],
+        "PLAYER_NAME": ["Nikola Jokić", "Kevin Porter Jr.", "Nobody Here"],
+        "mpg": [34.0, 25.0, 20.0],
+    })
+    dk = pd.DataFrame({
+        "name_key": ["nikola jokic", "kevin porter"],
+        "darko_name": ["Nikola Jokic", "Kevin Porter"],
+        "darko_rank": pd.array([1, 200], dtype="Int64"),
+        "darko_mpg": [38.0, 33.0],
+        "darko_dpm": [7.4, -1.0],
+        "darko_value": [90.0, 5.0],
+    })
+    joined, stats = darko.join_board(board, dk)
+    assert stats["n_matched"] == 2 and stats["n_board"] == 3  # 'Nobody Here' is unmatched
+
+    gaps = darko.minutes_disagreement(joined, top_n=3, min_gap=4.0)
+    # Kevin Porter: 25 - 33 = -8 (we project fewer minutes than DARKO); shows up, Jokić (-4) too.
+    kp = gaps.loc[gaps["PLAYER_NAME"] == "Kevin Porter Jr.", "mpg_gap"].iloc[0]
+    assert kp == -8.0

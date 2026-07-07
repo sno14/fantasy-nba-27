@@ -18,3 +18,8 @@ requests>=2.31
 
 # Local interactive explorer (scripts/explore.py); bundles altair for charts
 streamlit>=1.40
+
+# DARKO live pull (scripts/pull_darko.py) — darko.app has no API and renders client-side, so we
+# drive a headless browser. Needs a one-time browser install: `python -m playwright install chromium`.
+# Only scripts/pull_darko.py imports it (lazily); models/darko.py reads the cached CSV without it.
+playwright>=1.44

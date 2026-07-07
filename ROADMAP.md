@@ -296,12 +296,15 @@ bolt-on adjustments — the scalable foundation the user asked for.
       projection, especially for role-change and late-emerging players?
 
 #### 7.E — Market / consensus integration  ← medium (also an eval tool)
-- [ ] Pull ADP + ≥1 public projection (DARKO / Hashtag / FantasyPros consensus). Use three ways:
-      (1) **benchmark** our accuracy vs the market; (2) **disagreement finder** — surface our
-      biggest deltas vs ADP as the actionable riser/faller calls; (3) optional ensemble member.
-- [ ] **Test:** where we systematically disagree with the market, who's right historically? Does a
-      blend beat us on 7.0 metrics — and does it *wash out* our edge on the movers (the known
-      ensemble trade-off)?
+- [x] **DARKO consumed as a live overlay** (`scripts/pull_darko.py` + `models/darko.py` +
+      `scripts/darko_report.py`, EXP-010). Playwright pull (no API), name-join (99% match), archived
+      date-stamped. Disagreement finder = minutes gaps + rank gaps vs our board. **Live-only /
+      unbacktested** (no historical DARKO snapshots) and, honestly, **modest value**: DARKO's strength
+      is rates (already ours, EXP-001), its minutes is its *weakest* stat (our need), and rookies are
+      placeholder-initialized — so it's a risk/disagreement highlighter, not a mover fix.
+- [ ] Pull ADP + ≥1 more public projection (Hashtag / FantasyPros consensus) for a true market benchmark.
+- [ ] **Test (blocked until historical snapshots accumulate):** where we systematically disagree, who's
+      right? Does a blend beat us on 7.0 metrics — and does it wash out our edge on the movers?
 
 #### 7.F — Usage-coupled rate/efficiency  ← parked (revisit only via 7.A)
 - [ ] Per-minute rates are already well-predicted (EXP-001); direct rate/efficiency modelling was
