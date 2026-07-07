@@ -61,6 +61,7 @@ def run_mover_eval(
     cfg: ScoringConfig | None = None,
     pool_top_n: int = 150,
     min_prior_minutes: float = 500.0,
+    game_logs: pd.DataFrame | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Mover-segmented level accuracy for one target season.
 
@@ -69,9 +70,11 @@ def run_mover_eval(
         signed bias (proj_pg - act_pg), and mean actual/proj delta.
       * ``directional`` — one row per model: pool size, overall level MAE/bias, delta
         correlation, and directional sign-agreement fraction.
+
+    Passing ``game_logs`` adds the EXP-008b ``learned_recency`` variant to the comparison.
     """
     cfg = cfg or load_scoring()
-    projections = project_models(target_season, season_stats, bio, cfg)
+    projections = project_models(target_season, season_stats, bio, cfg, game_logs=game_logs)
 
     actual = _actual(season_stats, target_season, cfg, min_minutes=0.0)[
         ["PLAYER_ID", "act_fpts_pg"]

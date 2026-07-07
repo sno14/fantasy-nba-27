@@ -59,12 +59,14 @@ def project_models(
     season_stats: pd.DataFrame,
     bio: pd.DataFrame,
     cfg: ScoringConfig,
+    game_logs: pd.DataFrame | None = None,
 ) -> dict[str, pd.DataFrame]:
     """Project ``target_season`` with every model using **only** prior-season data.
 
     Aging / GP / minutes curves are refit on the training years (seasons strictly before
     the target), so there is no leakage. Returns ``{model_name: projection_frame}`` — the
     shared no-leakage projection step behind both the ranking backtest and the mover eval.
+    When ``game_logs`` is supplied, also produces the ``learned_recency`` variant (EXP-008b).
     """
     ty = _season_start(target_season)
     train_ss = season_stats[season_stats["SEASON"].map(_season_start) < ty]
@@ -95,7 +97,15 @@ def project_models(
     # Reproduce the EXP-009 A/B by importing `from .context import target_team_map` and adding:
     #   project_learned(train_ss, train_bio, target_season, cfg=cfg, use_context=True,
     #                   target_team_map=target_team_map(season_stats, target_season))
-    return {"baseline": base, "v2": v2, "v2m": v2m, "learned": learned}
+    models = {"baseline": base, "v2": v2, "v2m": v2m, "learned": learned}
+
+    # learned_recency: + within-season last-N-game features (EXP-008b). recency_features
+    # self-restricts to seasons before the target, so passing full game_logs stays no-leakage.
+    if game_logs is not None:
+        models["learned_recency"] = project_learned(
+            train_ss, train_bio, target_season, cfg=cfg, use_recency=True, game_logs=game_logs
+        )
+    return models
 
 
 def run_backtest(

@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from fantasy_nba.models import aging, context, darko, durability, learned, minutes, uncertainty
+from fantasy_nba.models import aging, context, darko, durability, learned, minutes, recency, uncertainty
 from fantasy_nba.models._core import COUNTING
 
 
@@ -241,3 +241,27 @@ def test_team_context_vacated_minutes_math():
     # Newcomer P5 has no prior role; returning P1's prior share is 1000/2400.
     assert feat.loc[5, "own_prev_min_share"] == 0.0
     assert feat.loc[1, "own_prev_min_share"] == pytest.approx(1000 / 2400)
+
+
+def test_recency_last_n_window_and_leakage():
+    # Player 1 plays 40 games in 2022-23: first 20 at 20 MPG, last 20 at 34 MPG (role surged late).
+    dates = pd.date_range("2022-11-01", periods=40, freq="2D").strftime("%Y-%m-%d")
+    mins = [20.0] * 20 + [34.0] * 20
+    logs = pd.DataFrame({
+        "SEASON": ["2022-23"] * 40,
+        "PLAYER_ID": [1] * 40,
+        "GAME_DATE": dates,
+        "MIN": mins,
+        "PTS": [m * 0.5 for m in mins],  # constant 0.5 pts/min -> recent_ppm_delta ~ 0
+    })
+    table = recency.season_recency_table(logs, window=20)
+    feat = recency.recency_features(table, "2023-24").set_index("PLAYER_ID")
+
+    # Season MPG = mean(20*20, 34*20)/40 = 27; recent (last 20) = 34 -> delta +7.
+    assert feat.loc[1, "recent_mpg"] == pytest.approx(34.0)
+    assert feat.loc[1, "recent_mpg_delta"] == pytest.approx(7.0)
+    assert feat.loc[1, "recent_games"] == 20
+    assert feat.loc[1, "recent_ppm_delta"] == pytest.approx(0.0)  # constant rate
+
+    # No-leakage: asking for the same season the games are in yields nothing (games are not < target).
+    assert recency.recency_features(table, "2022-23").empty

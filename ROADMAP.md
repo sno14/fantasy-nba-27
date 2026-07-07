@@ -251,8 +251,11 @@ bolt-on adjustments — the scalable foundation the user asked for.
   riser buckets (−3.12→−3.49) and directional capture. Season-granularity slopes are too noisy and
   redundant with what the GBM already learns. Code kept, unwired. Next trajectory test is
   **within-season recency (last-N games)**, not season slopes. → **EXP-008b**.
-- [ ] EXP-008b — + within-season recency (last-N-games / post-trade splits from the 404k game-log
-  rows) → the trajectory signal EXP-008 *should* have been (7.D). Untested.
+- [x] EXP-008b — + within-season recency (last-N-games form, `models/recency.py`) → **parked**: best
+  add-on on *aggregate* (level MAE better 3/4 seasons, directional sign-acc 4/4) but **not the riser
+  fix** — mover buckets a wash-to-worse because the season-end window is confounded by rest/tanking
+  (biases projections down). Kept, opt-in (`--recency`). Refinement: trim rest games / post-trade split,
+  couple with EXP-009b.
 - [x] EXP-009 — + team-context / vacated-minutes features (`models/context.py`) → **parked**: a *net
   wash* on the buckets (better fallers, worse risers) and inconsistent across seasons (helped 2025-26,
   hurt 2023-24). Real but coarse — team-level turnover is blunt and the backtest mildly flatters it
@@ -296,12 +299,15 @@ bolt-on adjustments — the scalable foundation the user asked for.
 - [ ] **Test:** does injury-featured GP beat the current GP model on next-season GP? Does the
       per-player tail improve range calibration and `safe`-ranking on injury-prone players?
 
-#### 7.D — Within-season recency (game-log granularity)  ← medium
-- [ ] We hold 16 seasons / 404k game-log rows but project off *season totals*. Weight the **last N
-      games / post-All-Star / post-trade splits** more heavily to catch emerging roles a full-season
-      average buries.
-- [ ] **Test:** does a "last-25-games" weighting beat full-season weighting for next-season
-      projection, especially for role-change and late-emerging players?
+#### 7.D — Within-season recency (game-log granularity)  ← first cut done (EXP-008b, parked)
+- [x] **Last-N-games form** as learned-model features (`models/recency.py`, EXP-008b): recent MPG /
+      production vs the player's own season average. **Result:** best *aggregate* add-on (level MAE
+      better 3/4 seasons, directional sign-acc 4/4) but **doesn't crack the riser buckets** — the
+      season-end window is confounded by **rest / load-management / tanking**, which biases it *down*.
+- [ ] **Refinement:** trim rest-contaminated final games (or mid-late window), and/or an explicit
+      **post-trade split** (games since last `TEAM_ABBREVIATION` change) — cleaner role-change signal.
+- [ ] **Couple with EXP-009b:** recency says *a role changed*; team-context says *why / where the
+      minutes came from*. The two together are the real riser test — neither alone cracked it.
 
 #### 7.E — Market / consensus integration  ← medium (also an eval tool)
 - [x] **DARKO consumed as a live overlay** (`scripts/pull_darko.py` + `models/darko.py` +

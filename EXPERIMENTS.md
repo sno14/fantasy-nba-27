@@ -224,6 +224,35 @@ works) or against a **committed data snapshot** on the branch. Decision pending.
   (prosportstransactions) + position-aware redistribution + couple to within-season recency (EXP-008b).
   Do not re-run coarse team-level turnover expecting a decisive win.
 
+### EXP-008b — + within-season recency (last-N-games form)  ·  Status: **parked** (best add-on on aggregate; not the riser fix)
+- **Date:** 2026-07-08  ·  **Commit:** uncommitted
+- **Hypothesis:** the trajectory signal EXP-008 *should* have used — a player's **last-N-game form vs
+  his full-season average** — catches late-emerging (and post-trade) roles that season totals bury,
+  and shrinks the riser under-projection.
+- **Method:** `models/recency.py` — from the last `window=20` games of a player's **most recent prior
+  season**: `recent_mpg`, `recent_mpg_delta` (recent − season MPG, the core signal), `recent_ppm_delta`
+  (points-per-min trend), `recent_games`. Heavy per-(player, season) aggregation done once
+  (`season_recency_table`), sliced per fold; `recency_features` self-restricts to seasons `< target`
+  (no-leakage, unit-tested). Wired via `use_recency=True`/`game_logs` → `learned_recency`, A/B'd vs
+  `learned`, 2022-23…2025-26.
+- **Result:** **best aggregate improvement of any add-on so far, but it does not crack the riser
+  buckets.** Overall level MAE improves in **3/4** seasons (2025-26 5.00→4.70, 2023-24 4.28→4.12,
+  2022-23 4.34→4.23; 2024-25 worse 4.08→4.20) and directional **sign-accuracy improves in 4/4**. BUT
+  the pooled mover buckets (the metric of record) are a wash-to-worse: faller **+2.77→+2.63** (better),
+  yet stable **−0.11→−0.64** and big riser **−6.89→−7.39** (worse). The tell: per-season level *bias*
+  shifts **downward** everywhere (e.g. 2025-26 +1.24→+0.60).
+- **Verdict:** **parked** — helps the overall board (a real, consistent MAE/directional gain) but fails
+  the stated success criterion (riser buckets). Kept in code; **opt-in** in the eval (`--recency`), not
+  a default model.
+- **Ledger note / the confound:** the last-N-game window at **season's end is contaminated by rest /
+  load-management / tanking** (bad teams rest players, contenders rest starters), so `recent_mpg_delta`
+  skews **negative** — a downward pull that helps fallers + aggregate MAE but is noise for the riser
+  signal and can't distinguish a *rested star* from a *faded player*. ⇒ **EXP-008b refinement:** trim
+  the final rest-contaminated games (or use a mid-late window), and/or use an explicit **post-trade
+  split** (games since last `TEAM_ABBREVIATION` change) — a cleaner role-change signal than raw last-N.
+  Most promising when **coupled with team-context (EXP-009b)**: recency says a role changed, context
+  says why/where the minutes came from.
+
 ### EXP-010 — DARKO live integration (minutes cross-check + disagreement finder)  ·  Status: **adopted (live-only, unbacktested)**
 - **Date:** 2026-07-07  ·  **Commit:** uncommitted
 - **Hypothesis:** consuming DARKO (public daily skill/minutes projection) as a live overlay adds an

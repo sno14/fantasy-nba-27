@@ -28,16 +28,20 @@ def main() -> None:
     parser.add_argument("--seasons", nargs="+", default=["2023-24", "2024-25", "2025-26"])
     parser.add_argument("--top-n", type=int, default=150, help="Draftable pool size.")
     parser.add_argument("--scoring", default=None)
+    parser.add_argument("--recency", action="store_true",
+                        help="Include the learned_recency (EXP-008b) variant in the A/B (opt-in).")
     args = parser.parse_args()
 
     season_stats = storage.read("player_season_stats")
     bio = storage.read("player_bio")
+    # Game logs power the EXP-008b within-season recency variant (learned_recency); opt-in.
+    game_logs = storage.read("player_game_logs") if args.recency else None
     cfg = load_scoring(args.scoring)
 
     per_bucket_frames, dir_frames = [], []
     for season in args.seasons:
         per_bucket, directional = run_mover_eval(
-            season, season_stats, bio, cfg=cfg, pool_top_n=args.top_n
+            season, season_stats, bio, cfg=cfg, pool_top_n=args.top_n, game_logs=game_logs
         )
         per_bucket.insert(0, "season", season)
         directional.insert(0, "season", season)
