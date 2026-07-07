@@ -261,9 +261,17 @@ bolt-on adjustments — the scalable foundation the user asked for.
   hurt 2023-24). Real but coarse — team-level turnover is blunt and the backtest mildly flatters it
   (end-of-season team assignment). **No transactions scrape was needed for the first cut** (computable
   from season-stats team membership). Code kept, unwired. → **EXP-009b** (below).
-- [ ] EXP-009b — strict *preseason* rosters / dated transactions (prosportstransactions) + **position-
-  aware** redistribution + couple to within-season recency (EXP-008b). The refinement EXP-009 points to.
+- [x] EXP-009b — recency **coupled with** team-context (`learned_rc`) → **rejected**: coupling doesn't
+  crack risers (riser −3.12→−3.40) and context is **inert on top of recency** (`learned_rc` ≈
+  `learned_recency`). **META-FINDING: four feature experiments now (008/009/008b/009b) all improve
+  aggregate MAE but none moves the riser buckets** — the riser bias is stubborn against every
+  own-history + season-roster feature. Remaining untried levers: **(1) de-confound recency** (trim
+  season-end rest/tanking games — `skip_last` — or post-trade split); **(2) exogenous injury/news (7.C)**.
 - [x] EXP-010 — DARKO live overlay (adopted live-only; see 7.E). Injury data (7.C), market/ADP remain.
+
+**Shipped board:** `learned` (EXP-007) is now selectable in `scripts/project.py --model learned`
+(→ `data/processed/learned_2026-27.parquet`, `--ranges` supported). The parked add-on variants are
+eval-only (opt-in `--recency`); the shipped board uses the plain `learned` foundation.
 
 #### 7.A — Opportunity / role-redistribution model  ← highest leverage (first cut done → EXP-009 parked)
 - [x] **First cut (EXP-009, `models/context.py`):** team-level vacated/returning minutes + turnover

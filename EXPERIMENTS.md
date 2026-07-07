@@ -253,6 +253,29 @@ works) or against a **committed data snapshot** on the branch. Decision pending.
   Most promising when **coupled with team-context (EXP-009b)**: recency says a role changed, context
   says why/where the minutes came from.
 
+### EXP-009b — recency **coupled with** team-context  ·  Status: **rejected** (coupling doesn't crack risers)
+- **Date:** 2026-07-08  ·  **Commit:** uncommitted
+- **Hypothesis:** recency (a role changed) + team-context (where the vacated minutes came from) *together*
+  crack the riser buckets where neither did alone — the two signals are complementary.
+- **Method:** `learned_rc` = `project_learned(use_recency=True, use_context=True, ...)`. A/B'd vs `learned`,
+  `learned_recency`, `learned_ctx` in the mover eval (`--recency`), 2022-23…2025-26.
+- **Result:** **no.** Pooled signed bias learned → learned_rc: riser **−3.12 → −3.40**, big riser
+  **−6.89 → −7.41** (both *worse*, same downward-bias pattern as recency alone); fallers slightly better.
+  Critically **`learned_rc` ≈ `learned_recency`** on every bucket — **team-context adds essentially nothing
+  on top of recency.** Aggregate stays recency-like (2025-26 best-of-all: MAE 4.48, Δ-corr 0.394).
+- **Verdict:** **rejected** — coupling inherits recency's aggregate gain and its riser miss; context is inert
+  on top. Variants kept opt-in behind `--recency`.
+- **Ledger note — the meta-finding (important):** **four feature experiments now** — EXP-008 trajectory,
+  EXP-009 context, EXP-008b recency, EXP-009b recency+context — **all improve aggregate level MAE but none
+  moves the riser buckets.** The riser under-projection is stubborn against every *own-history + season-level
+  roster* feature we've built. This is consistent with `docs/model-foundation.md`'s honest caveat
+  ("opportunity-driven moves are forecastable; pure skill leaps partly aren't") and the EXP-004 GP ceiling.
+  The two remaining, *untried* levers are: (1) **de-confound recency** — trim the season-end
+  rest/tanking games (`season_recency_table(skip_last=…)`) or use a **post-trade split**, the specific fix
+  for EXP-008b's downward bias; (2) **exogenous injury/news data (7.C)** — genuinely new information, not
+  derivable from what we hold. Recommend (1) as a cheap next test, then (2). Do **not** keep recombining the
+  existing four feature groups expecting a riser win.
+
 ### EXP-010 — DARKO live integration (minutes cross-check + disagreement finder)  ·  Status: **adopted (live-only, unbacktested)**
 - **Date:** 2026-07-07  ·  **Commit:** uncommitted
 - **Hypothesis:** consuming DARKO (public daily skill/minutes projection) as a live overlay adds an

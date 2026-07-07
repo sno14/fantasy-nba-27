@@ -21,6 +21,7 @@ from ..scoring import ScoringConfig, load_scoring, score_frame
 from ._core import COUNTING, _season_start
 from .aging import build_aging_curves
 from .baseline import project_baseline
+from .context import target_team_map
 from .durability import build_gp_age_curve
 from .learned import project_learned
 from .minutes import build_minutes_age_curve
@@ -101,9 +102,16 @@ def project_models(
 
     # learned_recency: + within-season last-N-game features (EXP-008b). recency_features
     # self-restricts to seasons before the target, so passing full game_logs stays no-leakage.
+    # learned_rc: recency **coupled with** team-context (EXP-009b) — the hypothesis that recency
+    # (a role changed) + context (where the minutes came from) crack risers where neither did alone.
     if game_logs is not None:
         models["learned_recency"] = project_learned(
             train_ss, train_bio, target_season, cfg=cfg, use_recency=True, game_logs=game_logs
+        )
+        models["learned_rc"] = project_learned(
+            train_ss, train_bio, target_season, cfg=cfg,
+            use_recency=True, game_logs=game_logs,
+            use_context=True, target_team_map=target_team_map(season_stats, target_season),
         )
     return models
 

@@ -16,6 +16,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 from fantasy_nba.data import storage
 from fantasy_nba.models.baseline import project_baseline
+from fantasy_nba.models.learned import project_learned
 from fantasy_nba.models.projection import project_v2
 from fantasy_nba.scoring import load_scoring
 
@@ -27,10 +28,11 @@ def main() -> None:
     parser.add_argument(
         "--model",
         default="v2m",
-        choices=["baseline", "v2", "v2m"],
+        choices=["baseline", "v2", "v2m", "learned"],
         help="baseline (Marcel); v2 (+ empirical aging curves & durability); "
-        "v2m (+ Stage 3 minutes aging curve). Backtests: baseline~v2; v2m improves minutes "
-        "MAE and per-game fpts MAE in every tested season.",
+        "v2m (+ Stage 3 minutes aging curve); learned (LightGBM decompositional model, EXP-007 — "
+        "the Stage-7 foundation: best per-game MAE and least mean-reverting on movers). "
+        "Backtests: baseline~v2; v2m improves minutes MAE; learned improves both further.",
     )
     parser.add_argument(
         "--scoring", default=None, help="Path to a scoring YAML (defaults to config/scoring.yaml)."
@@ -51,7 +53,9 @@ def main() -> None:
     bio = storage.read("player_bio")
     cfg = load_scoring(args.scoring)
 
-    if args.model == "v2m":
+    if args.model == "learned":
+        proj = project_learned(season_stats, bio, target_season=args.target, cfg=cfg)
+    elif args.model == "v2m":
         proj = project_v2(season_stats, bio, target_season=args.target, cfg=cfg, age_minutes=True)
     elif args.model == "v2":
         proj = project_v2(season_stats, bio, target_season=args.target, cfg=cfg)
