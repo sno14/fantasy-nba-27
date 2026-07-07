@@ -24,10 +24,8 @@ special-case handling.
 
 ## Key decisions
 
-- **Scoring:** set to **ESPN Fantasy default points** (`config/scoring.yaml`, `espn_points`:
-  PTS 1, 3PM 1, FGM 2, FGA −1, FTM 1, FTA −1, REB 1, AST 2, STL 4, BLK 4, TOV −2; no DD/TD).
-  Swappable config layer (category/9-cat later); box-score projections are league-independent, so
-  changing scoring is a pure re-weight (only re-check `SD_PG` if the fpts *scale* shifts a lot).
+- **Scoring:** points league first, but scoring is a swappable **config** (`config/scoring.yaml`)
+  so category/9-cat works later. Default weights are DraftKings-style placeholders — user to adjust.
 - **Granularity:** season-long per-game first; game-by-game (opponent/rest-aware) later.
 - **Data:** `nba_api` primary, Basketball Reference supplement, college/draft data for rookies. ~10-15 seasons.
 - **Stack:** Python (pandas, scikit-learn, LightGBM/XGBoost, Parquet storage).
@@ -103,38 +101,19 @@ special-case handling.
   - Aside: stars are NOT load-managed down (36+ MPG has the highest GP); modern rotation GP ~66-68.
   - ⇒ Point-estimate GP/rate/minutes modeling is **capped for ranking**. Next real levers are
     external availability data OR uncertainty ranges — see below. (`key-finding-availability-ceiling`.)
-- [x] **🔑 ROLE-CHANGE INVESTIGATION** (2026-07-07) — "why doesn't it catch busts/sleepers?"
-  - Diagnosis: busts/sleepers are **~85% minutes/role changes** (corr per-game-miss vs minutes-miss
-    0.84–0.89). The momentum model can't see them: it projects minutes from a player's *own* history,
-    not their *team's* context (Braun rising because KCP left, etc.).
-  - **Automated depth-chart / roster-turnover redistribution FAILED** — 4 formulations (team-wide,
-    within-position, youth/room-weighted, targeted "next man up"), all lost the backtest (hurt the
-    majority; surgical version made confident wrong bets). Causes: height→position only 67% accurate
-    (no historical positions), and "who slots up" is a coaching/breakout call not in box scores.
-    **Do not re-attempt from box-score data.** (`key-finding-role-change-lever`.)
-- [ ] **Recent-form minutes blend** — CANDIDATE, validated, NOT yet implemented. Blend `w≈0.4–0.5`
-      of a player's last-~25-game MPG (from game logs) into the momentum MPG. Improves minutes MAE
-      for all players *and* movers every season, no new data; ~neutral on draft *outcome* (totals
-      still availability-bound). Low-risk free win — fold into `models/minutes.py`.
+- [ ] Depth-chart / roster-turnover MPG redistribution — data now available (rosters + game logs);
+      deferred because the top-100 lever is availability, not MPG-role (a smaller measured effect).
 - [ ] Pace adjustment — deferred (low measured leverage).
 
 ### Stage 4 — Special cases
-- [ ] Rookie model (draft position + college/international stats) — also a natural fit for the
-      Stage 7 news layer (rookies like Dybantsa/Boozer show up in preseason role news).
-- [ ] Role-change / traded-player adjustment — the box-score route failed (Stage 3); the real
-      path is the Stage 7 editorial/news signal.
+- [ ] Rookie model (draft position + college/international stats)
+- [ ] Role-change / traded-player adjustment
 
-### Stage 5 — Scoring & delivery  ← PARTLY DONE
-- [x] **ESPN default points scoring** wired in (`config/scoring.yaml`); `fpts_pg` (avg FP/G) shown
-      on the board; `--rank-by` CLI board.
-- [x] **Interactive explorer** (`scripts/explore.py`, Streamlit) — Draft Board (season selector incl.
-      no-leakage past seasons vs actuals + hit-rate; model selector; rank stance; search/filter),
-      Player drill-down (career + minutes trend/volatility), raw Data browser.
-      Run: `python -m streamlit run scripts/explore.py`.
+### Stage 5 — Scoring & delivery
 - [ ] Category-league scoring mode (z-scores / rankings)
-- [ ] Final ranked projections + export (CSV/board hand-off)
+- [ ] Final ranked projections + export
 
-### Stage 6 — Uncertainty / risk ranges  ← DONE (the honest answer to the availability ceiling)
+### Stage 6 — Uncertainty / risk ranges  ← IN PROGRESS (the honest answer to the availability ceiling)
 - [x] **Monte-Carlo risk ranges** (`models/uncertainty.py`) — simulate each player's season:
       games drawn from the empirical (no-leakage, modern-era, elite-tier ≥2000-min) GP
       distribution, additively re-centred on the player's projected GP (keeps the real
@@ -152,33 +131,196 @@ special-case handling.
       top-100 has ~79% overlap with actual top-100, but only ~60% at top-24 (fine-grained order is
       injury-limited — the availability ceiling).
 - [ ] (Optional, higher effort) source external availability data — injury history/reports — the
-      only way to beat the R²≈0.03 box-score ceiling on games-played (folds into Stage 7).
+      only way to beat the R²≈0.03 box-score ceiling on games-played. **→ now tracked as Stage 7.C**
+      (same data serves both a GP point-estimate and a per-player Monte-Carlo injury tail).
 
-### Stage 7 — External / news / editorial signal  ← THE FRONTIER (agreed direction; deferred by user)
-The box-score model provably can't predict busts/sleepers (Stage 3) or availability (Stage 6
-ceiling) because the deciding info is **forward-looking and editorial** — expected minutes,
-depth-chart/starter changes, injury timelines, transactions. Basketball Monster/RotoWire solve this
-with hand-maintained depth charts + expert projections (humans reading news). It's an *information*
-input to acquire, not an algorithm to derive. **Demonstrated feasible** via live web search (2026-07-07):
-LLM extraction surfaced exactly the needed signal (e.g. "Amen Thompson → full-time starter, 32 mpg";
-"Reed Sheppard usage spike after HOU trades"; injuries Luka/Curry; rookies Dybantsa/Boozer).
-- [ ] **LLM news-signal layer** → structured extraction (`expected_mpg`, `injury_games_risk`,
-      `role_note`, **with source citations**) → feed as a **minutes override + availability
-      adjustment** → recompute stat line + risk ranges. Its edge over editorial services: full
-      coverage/consistency, freshness, and fusion with our *calibrated* risk ranges.
-- [ ] **Manual expected-minutes override** in the explorer (type a player's minutes → live re-project).
-- [ ] **Opportunity-change flags** — surface each team's vacated/added minutes from roster turnover.
-- **Build options:** (A) *in-session* — research top ~150 players' news → sourced override table
-      that plugs in today (no infra; best for the actual draft); (B) *automated* — Claude-API script
-      over news feeds on a schedule (needs API key + cost + source handling). Start with (A).
-- **Caveats (must respect):** data-acquisition/ToS (24/7 scraping is fraught; some sources paid);
-      verification (LLM can hallucinate → require citations + spot-checks, never silently move a
-      projection); **cannot be cleanly backtested** (no point-in-time news archive → trust on sourced
-      face-validity, not MAE); "sentiment" per se is weak — use *facts* (injuries, depth charts,
-      transactions, coach quotes); it's operational — refresh near the draft.
-      See memory `project-direction-news-signal`, `key-finding-role-change-lever`.
+### Stage 7 — Catching risers & fallers (the discontinuity frontier)  ← NEXT (the real value)
+
+**The problem statement (user, 2026-07):** we project the stable core well but **miss the risers
+and fallers** — and capitalising on those is the entire edge of a projection system. This stage
+is the response. It is deliberately researched and sequenced *before* committing to any build;
+see `EXPERIMENTS.md` for the trail of what's already been tested so we don't repeat it.
+
+**Season-long, daily-updating use (user, 2026-07 clarification).** This is not a one-shot draft
+tool. It runs **all season**: the preseason draft board **and** a **rest-of-season (ROS)
+projection refreshed daily** as box scores + news arrive — the waiver-wire and trade-value engine.
+Highest-value in-season job: catch a riser **early**, from a small sample, before the market does.
+Design consequence: the projection is a **pure as-of-date function** — `project(data ≤ T) → ROS
+line`, runnable at any T (T₀ = draft, every day after = the updated ROS number). This reshapes the
+eval (in-season as-of-date walk-forward, not just season boundaries) and adds a **daily news/status
+feed** as a data requirement. Full weighing in `docs/model-foundation.md`.
+
+**Why every model so far misses them (structural, not a bug).** Baseline → v2 → v2m all project
+each player **almost entirely from their own recent history**, recency-weighted and regressed to
+the mean. That is an excellent *central-tendency* engine and a structurally *blind*
+*discontinuity* engine: it treats an upward trajectory as noise around a mean, and it has **no
+information about next season's context**. Real risers/fallers are driven by signals absent from a
+player's own box scores:
+1. **Opportunity / role change** — vacated minutes & usage when a teammate leaves, role
+   compression from an arrival, coaching change. (Consensus #1 mechanism in the research.)
+2. **Skill trajectory** — breakouts cluster at **age 22–24**, in players *already* gradually
+   improving, with rising usage at held efficiency (TS%). Our 5/4/3 weighting damps this signal.
+3. **External availability** — injury history/reports; the only thing that can beat the R²≈0.03
+   box-score games-played ceiling (EXP-004).
+4. **Within-season recency** — late-season / post-trade role changes wash out of season totals.
+5. **The market** — ADP + public systems (DARKO/EPM) locate *where we disagree*, which is where
+   the value is.
+
+**Research basis (2026-07 survey):** DARKO (Bayesian/Kalman, per-possession, daily-updated) and
+the RAPM-family (EPM, LEBRON) all beat static box-score models mainly by *weighting recency
+intelligently and updating on new information* — not by a magic feature. Breakout literature
+converges on age 22–24 + prior gradual improvement + usage↑ at held TS% + minutes↑ + low
+established level (room to grow). Trade/roster research names the vacancy → redistribution →
+market-lag chain explicitly. Consensus/ensemble reduces variance but can wash out a real edge —
+so we use the market as a **benchmark and disagreement-finder**, not a crutch. (Sources logged in
+the session; key ones: darko.app, Bruin/Dartmouth breakout studies, Athlon trade-effect pieces,
+`nbainjuries` / prosportstransactions for injury data.)
+
+#### 7.0 — Draftable-pool accuracy eval, mover-segmented  ← **KEYSTONE, do first**
+Universe: the **top ~100–150** (draftable) pool — players outside it won't be drafted, so we
+don't care about them. Goal (user, 2026-07): get each player's projected **production level**
+right, *especially the movers* — if a player goes 35→40, we want the projection to say ~40 so he's
+drafted there. This is **not** a big-mover *classifier* and it's **not** about % move size; it's
+level accuracy that doesn't fall apart on players whose level changed.
+- [ ] Primary metric: per-game fantasy-points (and total) **error** (MAE/RMSE + signed bias) over
+      the pool, plus rank fidelity (Spearman, top-K overlap — keep EXP-003's metric as a component).
+- [ ] **Mover segmentation (the new diagnostic):** bucket players by *actual* YoY change in value
+      (big fallers … stable … big risers); report error **and signed bias per bucket**. This exposes
+      the structural flaw we expect — mean-reversion **under-projects risers and over-projects
+      fallers**. Shrinking that per-bucket bias is the deliverable.
+- [ ] **Directional capture:** projected Δ vs actual Δ (correlation + sign accuracy) — do we even
+      move a player the right way relative to his own last season?
+- [ ] Score **per-game level** (the skill signal we *can* improve) separately from **totals**
+      (GP-capped preseason — the availability ceiling; in-season this opens up via news).
+      The 35→40 case is a per-game-level case.
+- [ ] **In-season as-of-date eval:** at cutpoints through the season, score the ROS projection vs the
+      actual remainder — *especially early-season*, where the waiver edge lives ("given 10 games, did
+      we call the riser?"). Not just preseason→season.
+- [ ] First run doubles as measuring the *current* model's mover bias — baseline the disease (EXP-006).
+- [ ] Wire into `models/backtest.py` (no-leakage, walk-forward **within season and across seasons**;
+      refit curves/models per fold).
+
+#### 7.★ — Foundational refactor: a learned, decompositional panel model
+**Full weighing of alternatives (GBM panel vs DARKO-style state-space vs hierarchical Bayes vs
+neural vs Marcel-incremental), the research mapping, and the honest "is it worthwhile" analysis:
+see [`docs/model-foundation.md`](docs/model-foundation.md).** Summary below.
+
+**Proposed decision (2026-07).** Keep the decomposition (proven right — minutes is the error
+driver, EXP-001) but replace the hand-set Marcel layers (fixed 5/4/3 weights, fixed regression
+constants, population curves) with **learned, feature-based models over the historical
+player-season panel**. This is the base that lets 7.A–7.E become *features in one place* rather than
+bolt-on adjustments — the scalable foundation the user asked for.
+- **Interface: an as-of-date function** `project(data ≤ T) → ROS line`, run daily (T₀ = draft,
+  every day after = updated ROS). Trained on as-of-date snapshots across seasons **and in-season
+  cutpoints** so it learns small-sample shrinkage ("6 hot games" → how far to move).
+- **Targets (kept separate — different drivers, different stability):** (1) per-minute rate per stat;
+  (2) MPG / role — the dominant lever and most **news-sensitive** layer; (3) remaining games —
+  in-season **news-driven** ("out 2 weeks"), preseason via durability + injury history (7.C).
+  Compose `stat_pg = MPG × rate`; fantasy points via the swappable scoring config; uncertainty via
+  the Monte-Carlo layer (Stage 6).
+- **Model class:** gradient-boosted trees (LightGBM — already a dep). Chosen because it **subsumes
+  Marcel**: given only "own recency-weighted rate + age" it can rediscover recency-weighting,
+  mean-reversion and aging, so it's a strict generalization — can't do worse on the same inputs, and
+  it can *use* the context features Marcel structurally cannot. Handles age × usage × trajectory ×
+  role interactions natively; fast to iterate; feature importances give interpretability.
+- **Feature families (where risers/fallers actually get captured):** own multi-year levels **and
+  trends/slopes** · **recent-window (last-N-games) vs season splits** (in-season riser detection) ·
+  age/experience · role & usage · **team-context / vacated minutes (7.A)** · efficiency/TS% ·
+  **injury/lineup news status** (in-season) · optional **public daily skill feed (DARKO/DPM) and
+  market/ADP (7.E)** · per-stat recency summaries. **7.A–7.E stop being separate models and become
+  feature groups feeding this one.**
+- **Don't rebuild DARKO — consider consuming it.** DARKO is already an excellent daily-updating
+  *box-score skill* engine but is blind to context/news. Rather than rebuild a Kalman, we can
+  **consume a public daily skill feed as a feature** and spend our effort on the minutes / role /
+  news / availability layer where our fantasy-specific edge is. A home-grown online skill estimator
+  stays an eval-gated future upgrade, not the base.
+- **Honest framing of the test:** EXP-000/003 already showed a learned model on *Marcel-equivalent
+  inputs* will roughly **tie** (rates are already well-predicted). The architecture swap is the
+  *enabler*; the win must come from the *new context features*. We validate in that order and do
+  **not** judge the refactor on the expected tie.
+
+**Validation sequence (each → an `EXPERIMENTS.md` entry, adopt or reject):**
+- EXP-006 — build the 7.0 eval; quantify the current model's mover bias (baseline the disease).
+- EXP-007 — learned decompositional model on Marcel-equivalent features → expect ~tie (proves the
+  swap is signal-safe; keeps Marcel as fallback if not).
+- EXP-008 — + trajectory/slope features → does mover accuracy/bias improve on the young cohort (7.B)?
+- EXP-009 — + team-context / vacated-minutes features (needs transactions data) → the decisive
+  riser/faller test (7.A).
+- EXP-010+ — injury data (7.C), market/ADP (7.E), hyper-parameter tuning.
+
+#### 7.A — Opportunity / role-redistribution model  ← highest leverage
+- [ ] Model the **team-context change** each player walks into, not just their own past.
+      Depth-chart minutes allocation (team ≈ 240 min/game) + usage redistribution: when a player
+      departs (trade/FA/retire), reallocate their vacated minutes & usage to returning players by
+      position / trajectory; compress when a high-usage player arrives.
+- [ ] **Data needed:** transactions/roster-turnover (nba_api transactions or prosportstransactions;
+      rosters already pulled), which is the missing ingredient. Game logs (have) give the
+      redistribution priors.
+- [ ] **Test:** does modelling vacated minutes improve minutes MAE **and** 7.0 metrics *for the
+      role-change subpopulation* specifically? (Aggregate metrics will hide it — segment.)
+
+#### 7.B — Young-player trajectory / breakout layer  ← high, targeted
+- [ ] For young players (age ≤ 24, ≥2 seasons) add a **trajectory/momentum term** instead of pure
+      mean-reversion: extrapolate the improvement slope, gated by a breakout-probability model.
+- [ ] **Features (from research):** age 22–24, prior-season gradual improvement, usage↑ with held
+      TS%, minutes↑, low established level, draft pedigree.
+- [ ] **Test:** historical breakout recall/precision; does shifting projections for high-P(breakout)
+      players improve 7.0 metrics for the young cohort without hurting the rest? (EXP-000 warns
+      population aging curves alone don't help young players — this is the targeted fix.)
+
+#### 7.C — External availability / injury data  ← attacks the GP ceiling directly
+- [ ] The only lever that can beat EXP-004's R²≈0.03 box-score GP ceiling. Ingest historical
+      injury data (`nbainjuries` pkg / prosportstransactions; NBA official injury reports from
+      2021-22). Build injury-history features (chronic vs acute, games-missed trend, injury type —
+      Achilles/ACL/back/knee — age×injury interaction).
+- [ ] **Two uses:** (a) a GP point-estimate model that finally beats box-score-only; (b) a
+      **per-player** Monte-Carlo GP tail (Stage 6 currently uses an age-bucket pool, not player
+      history) — sharpen the floor for chronically-injured stars.
+- [ ] **Test:** does injury-featured GP beat the current GP model on next-season GP? Does the
+      per-player tail improve range calibration and `safe`-ranking on injury-prone players?
+
+#### 7.D — Within-season recency (game-log granularity)  ← medium
+- [ ] We hold 16 seasons / 404k game-log rows but project off *season totals*. Weight the **last N
+      games / post-All-Star / post-trade splits** more heavily to catch emerging roles a full-season
+      average buries.
+- [ ] **Test:** does a "last-25-games" weighting beat full-season weighting for next-season
+      projection, especially for role-change and late-emerging players?
+
+#### 7.E — Market / consensus integration  ← medium (also an eval tool)
+- [ ] Pull ADP + ≥1 public projection (DARKO / Hashtag / FantasyPros consensus). Use three ways:
+      (1) **benchmark** our accuracy vs the market; (2) **disagreement finder** — surface our
+      biggest deltas vs ADP as the actionable riser/faller calls; (3) optional ensemble member.
+- [ ] **Test:** where we systematically disagree with the market, who's right historically? Does a
+      blend beat us on 7.0 metrics — and does it *wash out* our edge on the movers (the known
+      ensemble trade-off)?
+
+#### 7.F — Usage-coupled rate/efficiency  ← parked (revisit only via 7.A)
+- [ ] Per-minute rates are already well-predicted (EXP-001); direct rate/efficiency modelling was
+      parked. Only worth revisiting **coupled to 7.A** — a usage change from a role shift should
+      propagate to rates. Low standalone priority.
+
+**Sequencing:** 7.0 eval (keystone) → 7.★ learned foundation → then 7.A–7.E enter as **feature
+families** into that model, in leverage order (7.A team-context & 7.B trajectory first, then 7.C
+injury / 7.E market), 7.F only if warranted. Log every attempt in `EXPERIMENTS.md`, adopted **or**
+rejected. **Note (2026-07): experiments need the NBA data cache, which this remote environment
+cannot pull (`stats.nba.com` is blocked by egress policy). Runs happen locally or off a committed
+data snapshot — see EXPERIMENTS.md "Active experiments".**
+
+**Agent personas (user asked whether they'd add value):** recommendation — **one clear win, one
+optional.**
+- **Backtest/eval skeptic (recommended):** a reviewer persona whose only job is to hunt
+  data-leakage, selection effects, and p-hacking in every 7.x experiment before it's logged
+  `adopted`. High ROU given the ledger's whole point is trustworthy findings, and this stage adds
+  new data sources (prime leakage territory).
+- **Fantasy-basketball domain expert (optional):** a hypothesis-generator / sanity-checker for
+  role-change and injury priors and for eyeballing the "biggest movers" list. Genuine value as a
+  *prior*, but must be grounded against data — risk of confident-but-wrong specifics.
+- Not recommended: a zoo of personas. The work is one coherent modelling effort; two lightweight
+  definitions cover the real gaps.
 
 ## How we track progress
-- **This file** — durable checklist, the source of truth.
+- **`ROADMAP.md`** (this file) — durable forward-looking checklist, the source of truth for *plan*.
+- **`EXPERIMENTS.md`** — the backward-looking trail of what we've tested (so dead ends aren't
+  re-run). Every 7.x experiment gets an entry, adopted or rejected.
 - **Claude memory** — decisions and rationale (the "why").
 - **In-session todos** — the active working list for the current sitting.
