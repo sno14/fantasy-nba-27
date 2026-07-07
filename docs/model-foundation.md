@@ -201,3 +201,55 @@ vacated-minutes features; use the market as benchmark + disagreement-finder.
 year-round; availability opens up **in-season** via news (the preseason ceiling doesn't bind once
 games start); the one honest cap is *preseason* games-played, addressable only with injury history
 (7.C). The season-long, daily-updating use — waivers and trades — is where this system earns its keep.
+
+---
+
+## 7. Data pipeline shape (season-long)
+
+Two cadences feed the one as-of-date engine:
+
+- **Preseason / periodic (already built):** `scripts/pull_data.py` pulls per-season `player_season_stats`,
+  `player_game_logs`, `player_bio`, `team_rosters`; curves (aging / minutes / durability / GP pool) are
+  fit once. Refresh weekly-ish before the draft as rosters settle.
+- **Nightly, in-season (new — needed for the daily ROS use):**
+  1. **Box scores** — incremental `player_game_logs` for games since the last pull (early AM, after
+     stats settle). Append-only to the cache, keyed by game date.
+  2. **News / status feed (new fetchers):** injury report + designations (out / questionable / GTD),
+     **starting lineups**, and **transactions** (`nbainjuries` / NBA official injury report /
+     prosportstransactions). Lineups finalize ~30–60 min pre-tip, so a late-afternoon refresh is the
+     one that matters for same-day decisions; overnight is enough for ROS/waiver planning.
+  3. **Re-project:** run `project(data ≤ today)` → updated ROS board + risk ranges.
+- **Storage discipline:** everything append-only and **date-stamped**, so `project(data ≤ T)` is a
+  clean filter (`rows.date ≤ T`) — this is what makes the same code serve the draft (T₀), any
+  backtest cutpoint, and today. Never overwrite history; that's how in-season no-leakage stays honest.
+- **Optional external inputs:** a public daily skill feed (DARKO/DPM) and market/ADP — pulled on their
+  own cadence, joined by player + date.
+
+## 8. Picking this up later — concrete run order
+
+Do these in order; log each to `EXPERIMENTS.md` (adopt/reject) so the trail stays complete.
+
+0. **Prereqs (local — the remote/web env can't reach `stats.nba.com`):** `pip install -e .`, then
+   `python scripts/pull_data.py --seasons 2009-10 … 2025-26 --datasets player_season_stats
+   player_game_logs player_bio team_rosters`. Confirm the current model still runs
+   (`python scripts/project.py --target 2026-27 --ranges`).
+1. **EXP-006 — as-of-date eval harness (keystone).** Extend `models/backtest.py` (or a new
+   `models/eval_movers.py`): draftable top ~150; per-game level MAE/RMSE + **signed bias per
+   YoY-change bucket**; directional Δ capture; run at **preseason and in-season cutpoints**. First
+   output = the current v2m model's mover bias — the number every later experiment is judged against.
+2. **EXP-007 — learned decompositional model, Marcel-equivalent features.** New
+   `models/learned.py`: LightGBM per target (rate per stat, MPG, GP) over the as-of-date panel; only
+   features Marcel already uses. Expect a **tie** on EXP-006 metrics → proves the swap is signal-safe.
+   Keep Marcel as fallback.
+3. **EXP-008 — + trajectory / recent-window features.** Slopes, last-N-games vs season splits,
+   age×trajectory. Target: shrink the riser under-projection bias (young cohort + in-season early risers).
+4. **EXP-009 — + team-context / vacated-minutes features.** Needs a transactions/roster-turnover pull.
+   The decisive lever for both draft role-changes and the in-season waiver engine.
+5. **In parallel:** build the nightly news/status ingestion (§7) so in-season availability + role can
+   respond to "out 2 weeks" and lineup changes. **EXP-010+:** injury history (7.C), consume a public
+   skill feed / market (7.E), hyper-parameter tuning.
+
+**Guardrails to keep the findings trustworthy:** strict date-based no-leakage (train only on
+`date < cutpoint`; refit curves/models per fold); judge each layer on the **mover buckets**, not
+aggregate correlation (aggregate hides the whole point); keep Marcel as the "did we lose signal?"
+baseline — because the learned model subsumes it, the floor is "no worse."
