@@ -112,7 +112,8 @@ as the established baseline of what we already know.
 cache to run against here. Until resolved, Stage-7 experiments run **locally** (where `nba_api`
 works) or against a **committed data snapshot** on the branch. Decision pending.
 
-**Planned (not yet run) — validation sequence for the 7.★ learned foundation:**
+**Validation sequence for the 7.★ learned foundation (EXP-006…010 below — all run; the
+follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs/implementation-plan.md)):**
 
 ### EXP-006 — as-of-date eval harness + current-model mover bias  ·  Status: **adopted** (preseason form) / in-season cutpoints **parked**
 - **Date:** 2026-07-07  ·  **Commit:** uncommitted  ·
@@ -305,4 +306,10 @@ works) or against a **committed data snapshot** on the branch. Decision pending.
   within-season recency (EXP-008b) and team-context/vacated-minutes (EXP-009). Requires a Playwright
   browser (`python -m playwright install chromium`).
 
-_EXP-011+ — injury data (7.C), within-season recency (EXP-008b, 7.D), team-context (EXP-009, 7.A)._
+_Next experiments — numbering reserved by [`docs/implementation-plan.md`](docs/implementation-plan.md)
+(the execution spec; run in its Step order): **EXP-011** ceiling diagnostics (selection floor +
+per-bucket oracles) · **EXP-012** recency de-confound (skip-last / post-trade split) · **EXP-013**
+objective-side changes (Δ-targets, sample weights, quantile heads) · **EXP-014** team-constrained
+minutes allocation · **EXP-015** injury data (7.C) · **EXP-016** dated preseason transactions ·
+**EXP-017** ADP/market · **EXP-018/019** in-season as-of-date engine + eval · **EXP-020** external
+in-season benchmarks · **EXP-021** learned distributional ranges._

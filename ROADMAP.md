@@ -339,6 +339,9 @@ select on realized outcomes, so part of the tail bias is irreducible — size th
 untried in-repo levers (recency de-confound, loss-side changes, **team-constrained minutes
 allocation**) → exogenous data (7.C injury, dated transactions, ADP) → the **in-season as-of-date
 engine** (largest headroom) → distributional board. Original sequencing kept below for history.
+**The step-by-step execution spec (files, signatures, commands, adopt/reject gates, progress
+tracker) is [`docs/implementation-plan.md`](docs/implementation-plan.md) — work from that file;
+it names the ROADMAP checkbox each step closes.**
 
 **Sequencing (original):** 7.0 eval (keystone) → 7.★ learned foundation → then 7.A–7.E enter as **feature
 families** into that model, in leverage order (7.A team-context & 7.B trajectory first, then 7.C

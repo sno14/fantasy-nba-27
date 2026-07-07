@@ -9,6 +9,10 @@ This note answers: *why* has no experiment produced a breakthrough, what is the 
 accuracy ceiling of the current problem formulation, and what plan actually gets to "the
 most accurate fantasy prediction model."
 
+> **Execution:** this doc is the *diagnosis and rationale*. The step-by-step build spec —
+> exact files, function signatures, commands, and adopt/reject gates, in a strictly linear
+> order — is [`docs/implementation-plan.md`](implementation-plan.md). Work from that file.
+
 ---
 
 ## 1. Why nothing has cracked the riser buckets — a structural diagnosis
