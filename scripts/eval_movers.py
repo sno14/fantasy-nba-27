@@ -1,11 +1,21 @@
-"""Mover-segmented, draftable-pool eval (ROADMAP Stage 7.0 / EXP-006).
+"""Mover-segmented, draftable-pool eval (ROADMAP Stage 7.0 / EXP-006, extended Steps 1–5).
 
-Quantifies the current models' bias on players whose production *level* changed year over
-year — the "risers & fallers" the ranking backtest is blind to.
+Quantifies the models' bias on players whose production *level* changed year over year — the
+"risers & fallers" the ranking backtest is blind to — plus the Stage-7 diagnostics:
+predicted-Δ calibration (Step 1), the selection floor (Step 2, --floor), the minutes/rates
+oracle decomposition (Step 3, --oracles), A/B variants by registry name (Steps 4–5,
+--variants), a paired bootstrap CI between two models (--ci), and the seed-stability
+protocol (--seed).
 
-Example
--------
+Examples
+--------
+    # metric of record:
     python scripts/eval_movers.py --seasons 2022-23 2023-24 2024-25 2025-26
+    # Phase-0 diagnostics (Steps 2–3):
+    python scripts/eval_movers.py --seasons 2022-23 2023-24 2024-25 2025-26 --floor --oracles
+    # Step-4 A/B with a noise guard on the verdict:
+    python scripts/eval_movers.py --variants learned_recency learned_recency_s5 \
+        --ci learned_recency learned_recency_s5 --seed 0
 """
 
 from __future__ import annotations
@@ -19,64 +29,128 @@ if hasattr(sys.stdout, "reconfigure"):
 import pandas as pd
 
 from fantasy_nba.data import storage
-from fantasy_nba.models.eval_movers import run_mover_eval
+from fantasy_nba.models import floor_sim
+from fantasy_nba.models.backtest import VARIANT_SPECS
+from fantasy_nba.models.eval_movers import bootstrap_bias_delta_ci, run_mover_eval
 from fantasy_nba.scoring import load_scoring
+
+BUCKET_ORDER = ["big faller", "faller", "stable", "riser", "big riser"]
+
+
+def _needs_game_logs(variant_names: list[str]) -> bool:
+    return any(
+        VARIANT_SPECS[v].get("use_recency") or VARIANT_SPECS[v].get("use_trade_split")
+        for v in variant_names
+    )
+
+
+def _pooled(per_bucket: pd.DataFrame, value_cols: list[str]) -> pd.DataFrame:
+    """n-weighted mean of per-bucket metrics across seasons, ordered faller -> riser."""
+    pooled = (
+        per_bucket.dropna(subset=["n"])
+        .assign(w=lambda d: d["n"])
+        .groupby(["model", "bucket"], observed=False)
+        .apply(
+            lambda g: pd.Series(
+                {"n": g["n"].sum(), **{c: (g[c] * g["w"]).sum() / g["w"].sum() for c in value_cols}}
+            ),
+            include_groups=False,
+        )
+        .reset_index()
+    )
+    pooled["bucket"] = pd.Categorical(pooled["bucket"], categories=BUCKET_ORDER, ordered=True)
+    return pooled.sort_values(["model", "bucket"])
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Mover-segmented draftable-pool eval.")
-    parser.add_argument("--seasons", nargs="+", default=["2023-24", "2024-25", "2025-26"])
+    parser.add_argument("--seasons", nargs="+", default=["2022-23", "2023-24", "2024-25", "2025-26"])
     parser.add_argument("--top-n", type=int, default=150, help="Draftable pool size.")
     parser.add_argument("--scoring", default=None)
+    parser.add_argument("--variants", nargs="*", default=[], choices=sorted(VARIANT_SPECS),
+                        metavar="NAME",
+                        help=f"Learned-model A/B variants to add: {', '.join(sorted(VARIANT_SPECS))}")
     parser.add_argument("--recency", action="store_true",
-                        help="Include the learned_recency (EXP-008b) variant in the A/B (opt-in).")
+                        help="Back-compat alias for --variants learned_recency learned_rc "
+                             "(the EXP-008b/009b pair).")
+    parser.add_argument("--floor", action="store_true",
+                        help="Step 2: print the selection-floor table (learned model, pooled) "
+                             "at sigma scales 0.75/1.0/1.25, and the derived reducible gap.")
+    parser.add_argument("--oracles", action="store_true",
+                        help="Step 3: add oracle_minutes/oracle_rates rows built from the "
+                             "learned board (EXP-011b decomposition).")
+    parser.add_argument("--ci", nargs=2, metavar=("MODEL_A", "MODEL_B"),
+                        help="Paired bootstrap 90%% CI on per-bucket bias delta (B − A), pooled "
+                             "across seasons — the noise guard for adopt gates.")
+    parser.add_argument("--seed", type=int, default=None,
+                        help="Override LightGBM random_state for all learned models. The "
+                             "seed-stability protocol: run at 0/1/2 and average before judging "
+                             "a gate.")
     args = parser.parse_args()
+
+    variants = list(dict.fromkeys(args.variants + (["learned_recency", "learned_rc"] if args.recency else [])))
 
     season_stats = storage.read("player_season_stats")
     bio = storage.read("player_bio")
-    # Game logs power the EXP-008b within-season recency variant (learned_recency); opt-in.
-    game_logs = storage.read("player_game_logs") if args.recency else None
+    game_logs = storage.read("player_game_logs") if _needs_game_logs(variants) else None
     cfg = load_scoring(args.scoring)
 
-    per_bucket_frames, dir_frames = [], []
+    per_bucket_frames, dir_frames, pred_frames = [], [], []
+    pools_by_model: dict[str, list[pd.DataFrame]] = {}
     for season in args.seasons:
-        per_bucket, directional = run_mover_eval(
-            season, season_stats, bio, cfg=cfg, pool_top_n=args.top_n, game_logs=game_logs
+        per_bucket, directional, per_pred, pools = run_mover_eval(
+            season, season_stats, bio, cfg=cfg, pool_top_n=args.top_n,
+            game_logs=game_logs, variants=variants, oracles=args.oracles,
+            seed=args.seed, return_pools=True,
         )
-        per_bucket.insert(0, "season", season)
-        directional.insert(0, "season", season)
+        for frame in (per_bucket, directional, per_pred):
+            frame.insert(0, "season", season)
         per_bucket_frames.append(per_bucket)
         dir_frames.append(directional)
+        pred_frames.append(per_pred)
+        for name, pool in pools.items():
+            pool = pool.copy()
+            pool["season"] = season
+            pools_by_model.setdefault(name, []).append(pool)
 
     per_bucket = pd.concat(per_bucket_frames, ignore_index=True)
     directional = pd.concat(dir_frames, ignore_index=True)
+    per_pred = pd.concat(pred_frames, ignore_index=True)
 
-    with pd.option_context("display.width", 200, "display.max_columns", None):
+    with pd.option_context("display.width", 220, "display.max_columns", None):
         print("\n=== Directional capture (per model, per season) ===")
         print(directional.round(3).to_string(index=False))
 
-        print("\n=== Per-bucket level error & signed bias (pooled across seasons) ===")
-        pooled = (
-            per_bucket.dropna(subset=["n"])
-            .assign(w=lambda d: d["n"])
-            .groupby(["model", "bucket"], observed=False)
-            .apply(
-                lambda g: pd.Series({
-                    "n": g["n"].sum(),
-                    "level_MAE": (g["level_MAE"] * g["w"]).sum() / g["w"].sum(),
-                    "signed_bias": (g["signed_bias"] * g["w"]).sum() / g["w"].sum(),
-                    "mean_actual_delta": (g["mean_actual_delta"] * g["w"]).sum() / g["w"].sum(),
-                    "mean_proj_delta": (g["mean_proj_delta"] * g["w"]).sum() / g["w"].sum(),
-                }),
-                include_groups=False,
-            )
-            .reset_index()
-        )
-        # Order buckets faller -> riser for readability.
-        order = ["big faller", "faller", "stable", "riser", "big riser"]
-        pooled["bucket"] = pd.Categorical(pooled["bucket"], categories=order, ordered=True)
-        pooled = pooled.sort_values(["model", "bucket"])
+        print("\n=== Per-bucket level error & signed bias (actual-Δ buckets, pooled) ===")
+        pooled = _pooled(per_bucket, ["level_MAE", "signed_bias", "mean_actual_delta", "mean_proj_delta"])
         print(pooled.round(3).to_string(index=False))
+
+        print("\n=== Predicted-Δ calibration (selection-free; calib_gap -> 0 is perfect) ===")
+        pooled_pred = _pooled(per_pred, ["mean_proj_delta", "mean_actual_delta", "calib_gap", "level_MAE"])
+        print(pooled_pred.round(3).to_string(index=False))
+
+        if args.floor:
+            pooled_learned = pd.concat(pools_by_model["learned"], ignore_index=True)
+            floors = floor_sim.floor_table(pooled_learned)
+            print("\n=== Selection floor (learned, pooled; sigma sensitivity band) ===")
+            print(floors.round(3).to_string(index=False))
+            measured = pooled[pooled["model"] == "learned"][["bucket", "signed_bias"]]
+            gap = floor_sim.reducible_gap(measured, floors)
+            print("\n=== Reducible gap (measured bias − floor @ sigma 1.0) ===")
+            print(gap.round(3).to_string(index=False))
+
+        if args.ci:
+            a, b = args.ci
+            if a not in pools_by_model or b not in pools_by_model:
+                raise SystemExit(f"--ci models must be in the run; have {sorted(pools_by_model)}")
+            ci = bootstrap_bias_delta_ci(
+                pd.concat(pools_by_model[a], ignore_index=True),
+                pd.concat(pools_by_model[b], ignore_index=True),
+                on=("PLAYER_ID", "season"),
+            )
+            print(f"\n=== Paired bootstrap 90% CI: per-bucket bias delta ({b} − {a}) ===")
+            print(ci.round(3).to_string(index=False))
+            print("(CI straddling 0 => difference unresolved at this sample size; see plan rules.)")
 
 
 if __name__ == "__main__":
