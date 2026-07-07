@@ -187,6 +187,10 @@ level accuracy that doesn't fall apart on players whose level changed.
 - [ ] Wire into `models/backtest.py` (no-leakage, walk-forward; refit curves/models per fold).
 
 #### 7.★ — Foundational refactor: a learned, decompositional panel model
+**Full weighing of alternatives (GBM panel vs DARKO-style state-space vs hierarchical Bayes vs
+neural vs Marcel-incremental), the research mapping, and the honest "is it worthwhile" analysis:
+see [`docs/model-foundation.md`](docs/model-foundation.md).** Summary below.
+
 **Proposed decision (2026-07).** Keep the decomposition (proven right — minutes is the error
 driver, EXP-001) but replace the hand-set Marcel layers (fixed 5/4/3 weights, fixed regression
 constants, population curves) with **learned, feature-based models over the historical
