@@ -107,5 +107,34 @@ as the established baseline of what we already know.
 
 ## Active experiments (Stage 7 — risers & fallers)
 
-_None yet. First entry should be the riser/faller eval harness (Stage 7.0) — we can't score any
-lever below until that exists._
+**Data-access note (2026-07):** the remote/web environment **cannot pull NBA data** —
+`stats.nba.com` is blocked by egress policy (403 CONNECT) and `data/` is gitignored, so there is no
+cache to run against here. Until resolved, Stage-7 experiments run **locally** (where `nba_api`
+works) or against a **committed data snapshot** on the branch. Decision pending.
+
+**Planned (not yet run) — validation sequence for the 7.★ learned foundation:**
+
+### EXP-006 — 7.0 eval harness + current-model mover bias  ·  Status: planned
+- **Hypothesis:** the current v2m model is accurate on stable players but **biased on movers**
+  (under-projects risers, over-projects fallers) — the structural cost of mean-reversion.
+- **Method:** build the mover-segmented, draftable-pool eval (per-game level MAE/RMSE + signed bias
+  per YoY-change bucket; directional Δ capture); run current model through it, walk-forward.
+- **Success = the harness exists and quantifies the per-bucket bias** (baselines "the disease").
+
+### EXP-007 — learned decompositional model, Marcel-equivalent features  ·  Status: planned
+- **Hypothesis:** a LightGBM decompositional model given only Marcel-equivalent inputs ≈ ties v2m
+  (proves the framework loses no signal and is a safe swap; Marcel stays the fallback).
+- **Success = within-noise parity on the 7.0 metrics.** A loss means the framework is dropping
+  signal and must be fixed before adding features.
+
+### EXP-008 — + trajectory / slope features  ·  Status: planned
+- **Hypothesis:** own multi-year trends/slopes reduce the riser under-projection bias for the young
+  (age ≤ 24) cohort without hurting the stable core.
+- **Success = lower signed bias in the riser buckets, no regression elsewhere.**
+
+### EXP-009 — + team-context / vacated-minutes features  ·  Status: planned  ·  needs transactions data
+- **Hypothesis:** modelling the opportunity a player walks into (vacated minutes/usage from roster
+  turnover) is the decisive riser/faller lever — the largest single reduction in mover error.
+- **Success = material mover-bucket error reduction for the role-change subpopulation.**
+
+_EXP-010+ — injury data (7.C), market/ADP (7.E), hyper-parameter tuning — after the above._

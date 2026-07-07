@@ -167,16 +167,57 @@ so we use the market as a **benchmark and disagreement-finder**, not a crutch. (
 the session; key ones: darko.app, Bruin/Dartmouth breakout studies, Athlon trade-effect pieces,
 `nbainjuries` / prosportstransactions for injury data.)
 
-#### 7.0 — Riser/faller eval harness  ← **KEYSTONE, do first**
-- [ ] Nothing below is measurable until we can *see* risers/fallers. Build a dedicated eval that
-      scores the thing we actually care about — the **year-over-year change**, not the level:
-  - Define riser/faller by large YoY change in actual fantasy value/rank among the draftable pool.
-  - Metrics: directional accuracy on ΔY, error on Δ (not the level), recall/precision of our
-      top-K "biggest movers" calls, and calibration of those calls. Segment eval by role-change vs
-      stable, and by age band.
-  - **Rationale:** top-100 Spearman (EXP-003) is availability-dominated and rewards ranking the
-      stable core; it is blind to this stage's goal. Keep it, but 7.0 becomes the co-headline.
-- [ ] Wire into `models/backtest.py` (no-leakage; refit any curves/allocations on training years).
+#### 7.0 — Draftable-pool accuracy eval, mover-segmented  ← **KEYSTONE, do first**
+Universe: the **top ~100–150** (draftable) pool — players outside it won't be drafted, so we
+don't care about them. Goal (user, 2026-07): get each player's projected **production level**
+right, *especially the movers* — if a player goes 35→40, we want the projection to say ~40 so he's
+drafted there. This is **not** a big-mover *classifier* and it's **not** about % move size; it's
+level accuracy that doesn't fall apart on players whose level changed.
+- [ ] Primary metric: per-game fantasy-points (and total) **error** (MAE/RMSE + signed bias) over
+      the pool, plus rank fidelity (Spearman, top-K overlap — keep EXP-003's metric as a component).
+- [ ] **Mover segmentation (the new diagnostic):** bucket players by *actual* YoY change in value
+      (big fallers … stable … big risers); report error **and signed bias per bucket**. This exposes
+      the structural flaw we expect — mean-reversion **under-projects risers and over-projects
+      fallers**. Shrinking that per-bucket bias is the deliverable.
+- [ ] **Directional capture:** projected Δ vs actual Δ (correlation + sign accuracy) — do we even
+      move a player the right way relative to his own last season?
+- [ ] Score **per-game level** (the skill signal we *can* improve) separately from **totals**
+      (GP-capped — the availability ceiling). The 35→40 case is a per-game-level case.
+- [ ] First run doubles as measuring the *current* model's mover bias — baseline the disease (EXP-006).
+- [ ] Wire into `models/backtest.py` (no-leakage, walk-forward; refit curves/models per fold).
+
+#### 7.★ — Foundational refactor: a learned, decompositional panel model
+**Proposed decision (2026-07).** Keep the decomposition (proven right — minutes is the error
+driver, EXP-001) but replace the hand-set Marcel layers (fixed 5/4/3 weights, fixed regression
+constants, population curves) with **learned, feature-based models over the historical
+player-season panel**. This is the base that lets 7.A–7.E become *features in one place* rather than
+bolt-on adjustments — the scalable foundation the user asked for.
+- **Targets (predict season t+1 from t and earlier, walk-forward):** (1) per-minute rate per stat;
+  (2) MPG; (3) GP — kept separate (different drivers, different stability). Compose
+  `stat_pg = MPG × rate`; fantasy points via the swappable scoring config (scoring stays
+  independent). Uncertainty via the existing Monte-Carlo layer (Stage 6).
+- **Model class:** gradient-boosted trees (LightGBM — already a dep). Chosen because it **subsumes
+  Marcel**: given only "own recency-weighted rate + age" it can rediscover recency-weighting,
+  mean-reversion and aging, so it's a strict generalization — can't do worse on the same inputs, and
+  it can *use* the context features Marcel structurally cannot. Handles age × usage × trajectory ×
+  role interactions natively; fast to iterate; feature importances give interpretability.
+- **Feature families (where risers/fallers actually get captured):** own multi-year levels **and
+  trends/slopes** (the "already gradually improving" breakout signal) · age/experience · role &
+  usage · **team-context / vacated minutes (7.A)** · efficiency/TS% · later injury history (7.C) and
+  market/ADP (7.E). **7.A–7.E stop being separate models and become feature groups feeding this one.**
+- **Honest framing of the test:** EXP-000/003 already showed a learned model on *Marcel-equivalent
+  inputs* will roughly **tie** (rates are already well-predicted). The architecture swap is the
+  *enabler*; the win must come from the *new context features*. We validate in that order and do
+  **not** judge the refactor on the expected tie.
+
+**Validation sequence (each → an `EXPERIMENTS.md` entry, adopt or reject):**
+- EXP-006 — build the 7.0 eval; quantify the current model's mover bias (baseline the disease).
+- EXP-007 — learned decompositional model on Marcel-equivalent features → expect ~tie (proves the
+  swap is signal-safe; keeps Marcel as fallback if not).
+- EXP-008 — + trajectory/slope features → does mover accuracy/bias improve on the young cohort (7.B)?
+- EXP-009 — + team-context / vacated-minutes features (needs transactions data) → the decisive
+  riser/faller test (7.A).
+- EXP-010+ — injury data (7.C), market/ADP (7.E), hyper-parameter tuning.
 
 #### 7.A — Opportunity / role-redistribution model  ← highest leverage
 - [ ] Model the **team-context change** each player walks into, not just their own past.
@@ -229,8 +270,12 @@ the session; key ones: darko.app, Bruin/Dartmouth breakout studies, Athlon trade
       parked. Only worth revisiting **coupled to 7.A** — a usage change from a role shift should
       propagate to rates. Low standalone priority.
 
-**Sequencing:** 7.0 (keystone) → 7.A (highest leverage) & 7.C (GP ceiling) in parallel → 7.B →
-7.D / 7.E → 7.F if warranted. Log every attempt in `EXPERIMENTS.md`, adopted **or** rejected.
+**Sequencing:** 7.0 eval (keystone) → 7.★ learned foundation → then 7.A–7.E enter as **feature
+families** into that model, in leverage order (7.A team-context & 7.B trajectory first, then 7.C
+injury / 7.E market), 7.F only if warranted. Log every attempt in `EXPERIMENTS.md`, adopted **or**
+rejected. **Note (2026-07): experiments need the NBA data cache, which this remote environment
+cannot pull (`stats.nba.com` is blocked by egress policy). Runs happen locally or off a committed
+data snapshot — see EXPERIMENTS.md "Active experiments".**
 
 **Agent personas (user asked whether they'd add value):** recommendation — **one clear win, one
 optional.**
