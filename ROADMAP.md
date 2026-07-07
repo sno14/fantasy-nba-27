@@ -333,7 +333,14 @@ eval-only (opt-in `--recency`); the shipped board uses the plain `learned` found
       parked. Only worth revisiting **coupled to 7.A** — a usage change from a role shift should
       propagate to rates. Low standalone priority.
 
-**Sequencing:** 7.0 eval (keystone) → 7.★ learned foundation → then 7.A–7.E enter as **feature
+**Sequencing (superseded 2026-07 — see [`docs/breakthrough-plan.md`](docs/breakthrough-plan.md)):**
+after EXP-006…010, the plan is re-phased: **EXP-011 ceiling diagnostics** (the mover buckets
+select on realized outcomes, so part of the tail bias is irreducible — size the floor first) →
+untried in-repo levers (recency de-confound, loss-side changes, **team-constrained minutes
+allocation**) → exogenous data (7.C injury, dated transactions, ADP) → the **in-season as-of-date
+engine** (largest headroom) → distributional board. Original sequencing kept below for history.
+
+**Sequencing (original):** 7.0 eval (keystone) → 7.★ learned foundation → then 7.A–7.E enter as **feature
 families** into that model, in leverage order (7.A team-context & 7.B trajectory first, then 7.C
 injury / 7.E market), 7.F only if warranted. Log every attempt in `EXPERIMENTS.md`, adopted **or**
 rejected. **Note (2026-07): experiments need the NBA data cache, which this remote environment
