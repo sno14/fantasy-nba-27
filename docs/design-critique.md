@@ -286,3 +286,69 @@ current plan under-specifies, now added to Step 10's feature block:
   a team-game-logs pull — added to the Step 0/10 data list).
 - **EXP-025 reserved:** rotation-survival hurdle model (label survivorship, §2.6).
 - **Ledger + README pointers updated.**
+
+---
+
+## 9. Addendum (2026-07) — the fantasy-domain lens (specialist pass)
+
+Everything above optimizes **projection accuracy**. Leagues are won by **decisions** —
+draft picks, waiver claims, streaming, lineup setting — and the mapping from an accurate
+projection to a good decision has its own missing layer. None of this changes the model;
+all of it changes what the model's output must be transformed *into*. Folded into the plan
+as **Phase 2.5 / Step D1** plus amendments to Steps 10–12 and 15.
+
+**9.1 Value is relative to replacement, not absolute.** A 55-fpts/g center and a 55-fpts/g
+guard are not equally valuable: value = points **above the replacement player available at
+that roster slot in your league size** (VOR). Ranking by raw `fpts_total` is the single
+biggest gap between "accurate projection" and "good draft pick." Needs the league's roster
+structure (slots, teams) → `config/league.yaml` + a `VOR` column on every board.
+Points-league positional scarcity is weaker than category leagues', but the C/G slot ends
+of the pool still diverge from raw ranking — measure it, don't assume it away.
+
+**9.2 League settings change optimal strategy more than model accuracy does.**
+Daily-vs-weekly lineups, games-played caps, H2H-vs-season-points, FAAB-vs-priority
+waivers, IR slots — each flips strategy: daily lineups + no cap ⇒ **streaming and weekly
+game-counts dominate the last roster spots**; games caps ⇒ per-game value only; H2H ⇒
+variance is an *asset* when you're the underdog and ceiling wins playoff weeks. The system
+currently has no representation of any of this. One config file + a value layer fixes the
+representation; strategy stays human.
+
+**9.3 The NBA schedule is alpha, and we don't ingest it.** Weekly game counts (a 4-game
+week is +33% production over a 3-game week at identical talent), back-to-back density
+(rest-risk), and **fantasy-playoff-week schedule density** (your league final is played in
+specific NBA weeks — a stud with 2 games in week 23 loses you the final). One static pull,
+many uses: streaming values, weekly projections, ROS totals (already flagged in Step 10),
+playoff-week columns.
+
+**9.4 Fantasy playoffs collide with the NBA's worst modelling regime.** H2H playoffs run
+~March–April: tanking teams shut down veterans, contenders rest stars, 10-day contracts
+absorb minutes. A player's *playoff-weeks value* can diverge hard from his ROS value.
+In-season this is partly forecastable (team standings proximity to elimination → rest
+risk); preseason it's a risk flag (aging stars on likely-bad teams). Cheap, honest
+addition: a `playoff_weeks_risk` flag + playoff-weeks game counts; optional manual
+`config/team_priors.yaml` (Vegas win totals, entered once preseason) as the team-quality
+prior — better than last season's record, no scraping required.
+
+**9.5 The draft is a sequential game, not a ranking read-out.** Draft-day value = "best
+VOR *relative to what will still be available at my next pick*" — which needs ADP + its
+spread, not just our board. The EXP-017 disagreement report is the right core; the draft
+sheet should add expected-availability ("likely gone by pick N" from ADP ± σ). A full
+draft simulator is **not** worth building (see §7 scope discipline) — the availability
+heuristic captures most of it.
+
+**9.6 Streaming needs a short horizon, not ROS.** The waiver decision for the last roster
+spot is "who scores most **this week**" (schedule-weighted), not rest-of-season. The
+as-of-date engine already produces per-game lines — add a 7/14-day schedule-weighted
+output next to ROS. Also: transaction-cost awareness is the user's job (FAAB budgeting
+strategy), but the tool should print value-per-FAAB-dollar context (ROS Δ vs current
+roster's worst player), not just raw adds.
+
+**9.7 Small traps worth flags, not models.** Two-way/10-day contracts (hot streamer who
+can be sent down — roster-status flag from the transactions feed, Step 8); platform
+position *eligibility* ≠ NBA position (ESPN/Yahoo eligibility drives lineup legality —
+only needed if we ever optimize lineups; parked); the repo's default scoring must equal
+the real league's before draft day (§2.4 re-run under final config).
+
+**What this section deliberately does not add:** opponent modelling of league-mates,
+auction values, dynasty/keeper valuation (config says `keeper: false`), and lineup
+optimization — all parked until the core loop (accurate ROS + VOR + schedule) is live.

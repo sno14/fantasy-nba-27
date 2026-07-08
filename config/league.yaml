@@ -1,0 +1,31 @@
+# League configuration — the decision layer's input (implementation-plan Step D1,
+# design-critique §9). Scoring weights stay in scoring.yaml; this file is the league's
+# *structure*: it drives replacement-level (VOR), schedule/playoff-week values, and
+# streaming horizons. Placeholders below are a common ESPN 10-team points setup —
+# REPLACE with your league's real settings before draft day.
+
+name: my-league
+platform: espn            # espn | yahoo | other (informational for now)
+teams: 10
+format: h2h_points        # h2h_points | roto_points | season_points
+lineup_frequency: daily   # daily | weekly — daily leagues reward streaming + game counts
+
+# Roster slots (drives replacement level per slot). Keys are platform slot names;
+# positions map to allocation position groups until platform eligibility exists.
+roster:
+  PG: 1
+  SG: 1
+  SF: 1
+  PF: 1
+  C: 1
+  G: 1
+  F: 1
+  UTIL: 3
+  BENCH: 3
+  IR: 1
+
+games_cap_per_week: null      # integer if your league caps weekly games, else null
+fantasy_playoff_weeks: [21, 22, 23]   # NBA schedule weeks of YOUR league's playoffs
+waivers: faab                 # faab | priority
+faab_budget: 100
+keeper: false                 # dynasty/keeper valuation is out of scope while false

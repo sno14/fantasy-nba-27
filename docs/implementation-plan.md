@@ -95,6 +95,7 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | 7 | 2 | Injury/availability data | EXP-015 | ☐ | ☐ |
 | 8 | 2 | Dated transactions + preseason rosters | EXP-016 | ☐ | ☐ |
 | 9 | 2 | ADP / market benchmark | EXP-017 | ☐ | ☐ |
+| D1 | 2.5 | Decision layer: league config, VOR, schedule | — (product) | ◐ league.yaml | ☐ |
 | 10 | 3 | As-of-date projection function | EXP-018 | ☐ | ☐ |
 | 11 | 3 | In-season eval + lead-time metric | EXP-019 | ☐ | ☐ |
 | 12 | 3 | Nightly update pipeline + status overrides | — | ☐ | ☐ |
@@ -737,6 +738,53 @@ ROADMAP 7.E ADP checkbox ticked.
 
 ---
 
+# PHASE 2.5 — the decision layer (Step D1, from the specialist review)
+
+*Source: `docs/design-critique.md` §9. Accuracy work optimizes the projection; leagues are
+won by decisions. This step turns boards into decisions-ready values. It is a **product
+step, not an experiment** — no mover gate; each piece ships with a sanity report instead.
+Calendar-critical: everything here must exist **before draft day**.*
+
+## Step D1 — league config, replacement value, schedule
+
+**D1.1 League config — `config/league.yaml`** (skeleton committed; fill with the real
+league's settings): teams, roster slots, lineup frequency (daily/weekly), format
+(h2h/season points), games cap, fantasy-playoff weeks, waiver system + FAAB budget,
+keeper flag. Scoring stays in `config/scoring.yaml` — **verify it matches the real league
+before draft day** (critique §2.4: every verdict is scoring-conditional).
+
+**D1.2 Replacement value — new `src/fantasy_nba/models/value.py`:**
+```python
+def replacement_level(board, league) -> dict[str, float]:
+    """Per roster-slot replacement fpts/g: the level of the best player left after every
+    team fills that slot (greedy fill by board order, league.teams × slots)."""
+
+def add_vor(board, league) -> pd.DataFrame:   # adds `vor` and `vor_rank` columns
+```
+Position source: roster POSITION → the allocation position groups (guard/big) at minimum;
+platform eligibility is parked (§9.7). **Sanity report (no gate):** print top-100 by raw
+total vs by VOR — count rank moves ≥ 10; eyeball that centers/guards move the expected
+direction. If VOR barely reorders a points league, *log that honestly* and keep the column
+informational.
+
+**D1.3 Schedule ingestion — `scripts/pull_schedule.py`:** one static pull per season
+(nba_api schedule endpoint or data.nba.com JSON) → `data/raw/schedule.parquet`
+(`game_date, home, away`). Derived per team: games per NBA week, back-to-back counts,
+**fantasy-playoff-weeks game counts** (weeks from `league.yaml`). Feeds: D1.4, Step 10's
+schedule-aware ROS, Step 11's streaming values.
+
+**D1.4 Board columns:** `playoff_wk_games` (games in the league's playoff weeks),
+`playoff_weeks_risk` flag (aging star × likely-bad team — team prior from optional manual
+`config/team_priors.yaml`, e.g. Vegas win totals entered once preseason), and the
+ADP-availability column on the draft sheet ("likely gone by pick N" via ADP ± σ from the
+Step-9 pull).
+
+**Done when:** league.yaml filled; `add_vor` + schedule pull run end-to-end; draft sheet
+prints rank / VOR / ADP-availability / playoff-week columns; sanity reports eyeballed and
+noted in the ledger as a dated D1 note (no EXP number — product, not hypothesis).
+
+---
+
 # PHASE 3 — the in-season as-of-date engine (Steps 10–13)
 
 ## Step 10 — EXP-018: `project_asof` — the as-of-date foundation
@@ -784,7 +832,11 @@ season-only panel — the small-data constraint materially relaxes).
     (a) team blowout-share as a context feature, (b) option to exclude |margin| ≥ 25 games
     from recency/EWMA windows.
   - **Schedule-aware ROS:** remaining totals use the player's team's **actual remaining
-    schedule count** as of T (never `82 − games_so_far`), plus back-to-back density.
+    schedule count** as of T (never `82 − games_so_far`), plus back-to-back density —
+    from the Step D1 schedule pull.
+  - **Late-season rest/tank risk (critique §9.4):** in-season, team proximity to
+    elimination / seed-lock is a rest-risk feature for veterans in the fantasy-playoff
+    weeks; preseason it's only a flag (D1.4).
 - *Labels:* ROS realized from `game_logs > T` of the same season: `y_ros_mpg`,
   `y_ros_rate_<s>`, `y_ros_gp`; rows require ≥ 5 ROS games to be labeled (tail cutpoints
   with < 5 remaining drop out).
@@ -829,6 +881,13 @@ checkbox flips from parked to done-pending-Step-11.
 **Gate:** this step *defines* the metrics and baselines them — adopted as diagnostics
 (like EXP-006). The standing target for later tuning: median lead time ≥ naive baseline,
 early-riser recall reported every run.
+
+**Amendment (specialist review, critique §9.6):** the daily output must include a
+**short-horizon board** next to ROS — next-7/14-day schedule-weighted totals (per-game
+line × that team's games in the window, from the D1 schedule) — this, not ROS, is the
+streaming/last-roster-spot decision number. Plus value-vs-droppable context: ROS Δ against
+the current roster's worst player (roster read from `league.yaml` manually or entered ad
+hoc).
 
 **Done when:** all three metrics print from one command
 (`python scripts/eval_asof.py --seasons … --cutpoints 30 60 90`); EXP-019 logged with the
@@ -906,7 +965,8 @@ note; `--ranges` output columns unchanged (downstream compatibility).
    Marcel models stay selectable (the permanent "did we lose signal?" fallback).
 2. **Explorer:** `scripts/explore.py` gains (a) model choices for the adopted variants,
    (b) an ROS tab reading the latest `data/processed/ros_board/` snapshot with the
-   disagreement tables (DARKO, ADP), (c) range columns on the board tab.
+   disagreement tables (DARKO, ADP), (c) range columns on the board tab, (d) the D1
+   decision columns (VOR, playoff-week games, short-horizon totals) on both tabs.
 3. **Final documentation sweep (the whole-repo staleness pass):**
    - [ ] `README.md`: quick start reflects the new defaults, nightly run, all scripts.
    - [ ] `ROADMAP.md`: Stages 4–7 checkboxes reconciled; anything superseded says so and by
@@ -943,6 +1003,7 @@ floor-adjusted on movers, updating nightly, benchmarked against the market — t
 | 015a | GP Spearman +0.05 vs current | 015b: coverage ∈ [78,88]% AND safe-Spearman ties/wins |
 | 016 | unconditional for backtests (correctness); re-affirm Step-6 verdicts on honest rosters |
 | 017 | benchmark-only until 2 seasons of ADP archives |
+| D1 | product step — no gate; ships with sanity reports (VOR reorder count, schedule spot-checks) |
 | 022 | direct beats composed on riser bias ≥25% reducible-gap (rule-8), or bucketed covariance large+positive → adopt correction/blend |
 | 023 | standard mover gate; watch age ≤ 24 cohort; rule-11 hygiene on the lag group |
 | 024 | standard mover gate AND aggregate MAE not worse (consistency fix adoptable on a tie) |
