@@ -48,6 +48,8 @@ scripts/
   project.py       generate the projection / draft board (+ risk ranges, --rank-by)
   backtest.py      no-leakage backtest on a top-N draft pool
   eval_movers.py   mover-segmented Stage-7 eval (--variants, --floor, --oracles, --actual-pool, --ci, --seed)
+  eval_quantiles.py  EXP-013c quantile-head eval: pinball loss vs baselines + per-bucket coverage
+  tune_learned.py  EXP-013d nested walk-forward LGBM tuner (grid on folds <= 2021-22 only)
   darko_report.py  DARKO overlay: minutes/rank disagreement report (pull_darko.py fetches)
   explore.py       local interactive Streamlit explorer
 data/              raw/ and processed/ caches (gitignored)

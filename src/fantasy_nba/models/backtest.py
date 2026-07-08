@@ -75,6 +75,11 @@ VARIANT_SPECS: dict[str, dict] = {
     "learned_w_mover": {"weight_mode": "mover", "weight_alpha": 1.0},
     "learned_w_mover_a05": {"weight_mode": "mover", "weight_alpha": 0.5},
     "learned_w_rel": {"weight_mode": "relevance"},
+    # EXP-013d (Step 5d) — scripts/tune_learned.py grid winner (nested: tuned on folds
+    # ≤ 2021-22 only), confirmed once on the standard window per rule 10b:
+    "learned_tuned": {"params": {**DEFAULT_LGBM_PARAMS, "num_leaves": 63,
+                                 "min_child_samples": 30, "learning_rate": 0.05,
+                                 "n_estimators": 79}},
 }
 
 
@@ -132,7 +137,12 @@ def project_models(
             if not isinstance(variants, dict) else variants
         )
         for name, spec in specs.items():
-            kw = {**spec, **seed_params}
+            kw = dict(spec)
+            if seed is not None:
+                # Seed must override random_state *inside* whatever params the spec carries
+                # (e.g. a tuned-params variant) — never clobber the spec's params wholesale.
+                kw["params"] = {**DEFAULT_LGBM_PARAMS, **spec.get("params", {}),
+                                "random_state": seed}
             if kw.get("use_recency") or kw.get("use_trade_split"):
                 if game_logs is None:
                     raise ValueError(f"Variant {name!r} needs game_logs.")

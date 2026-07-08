@@ -87,7 +87,7 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | 2 | 0 | Selection-floor simulation | EXP-011a | ☑ | ☑ |
 | 3 | 0 | Per-bucket oracle decomposition + Phase-0 verdict | EXP-011b | ☑ | ☑ (Decision Row 1) |
 | 4 | 1 | Recency de-confound (skip-last + post-trade) | EXP-012 | ☑ | ☑ (parked) |
-| 5 | 1 | Objective-side changes (Δ-targets, weights, quantiles, tuning) | EXP-013a/b/c/d | ☑ a/b/c · ☐ d | ☐ |
+| 5 | 1 | Objective-side changes (Δ-targets, weights, quantiles, tuning) | EXP-013a/b/c/d | ☑ | ☑ (all rejected) |
 | 6 | 1 | Team-constrained minutes allocation | EXP-014 | ◐ feature layer | ☐ |
 | R1 | 1.5 | Composition-covariance check (direct vs composed) | EXP-022 | ☐ | ☐ |
 | R2 | 1.5 | Per-season lags + era context | EXP-023 | ☐ | ☐ |
@@ -443,8 +443,10 @@ the combination once; adopt the best single-or-combo by riser bias.
 > registry variants `learned_delta`, `learned_w_mover`, `learned_w_mover_a05`,
 > `learned_w_rel`; (c) — `src/fantasy_nba/models/quantiles.py` complete
 > (`fit_fpts_quantiles`, `predict_quantiles` with monotone enforcement, `pinball_loss`,
-> `project_fpts_quantiles` wrapper). All tested. **Remaining (local):** the runs, the (c)
-> baselines script glue, and (d) — the tuner script is *not* built yet.
+> `project_fpts_quantiles` wrapper). All tested. **As completed (2026-07-08, local):** runs
+> done — all four sub-experiments rejected (EXP-013); (c)'s glue is
+> `scripts/eval_quantiles.py`, (d)'s tuner is `scripts/tune_learned.py` (nested; refuses
+> tuning folds > 2021-22). Defaults stand; `learned_tuned` registered documented-rejected.
 
 **Done when:** all four sub-A/Bs logged; any adopted mode/params become the default in
 `project_models` (+ floor recompute).

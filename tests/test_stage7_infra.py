@@ -370,6 +370,28 @@ def test_project_models_variants_and_seed_threading():
     with pytest.raises(KeyError):
         project_models("2022-23", ss, bio, PTS_ONLY, variants=["nope"])
     assert "learned_recency_s5" in VARIANT_SPECS  # registry carries the Step-4 matrix
+    # A params-carrying variant keeps its params under the seed override (the Step-5d
+    # confirm path): seed must set random_state *inside* the spec's params, not clobber
+    # them wholesale back to the defaults.
+    import fantasy_nba.models.backtest as bt
+
+    captured = {}
+    real = bt.project_learned
+
+    def spy(*a, **kw):
+        if "params" in kw:
+            captured.update(kw["params"])
+        return real(*a, **kw)
+
+    orig = bt.project_learned
+    bt.project_learned = spy
+    try:
+        tuned = {"learned_tuned": {"params": {**bt.DEFAULT_LGBM_PARAMS, "n_estimators": 5}}}
+        bt.project_models("2022-23", ss, bio, PTS_ONLY, variants=tuned, seed=1)
+    finally:
+        bt.project_learned = orig
+    assert captured["n_estimators"] == 5      # the spec's tuned value survived
+    assert captured["random_state"] == 1      # ...with the seed threaded inside it
 
 
 def test_run_mover_eval_three_tables_oracles_and_pools():

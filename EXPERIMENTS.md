@@ -417,6 +417,58 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   feature work; the open lever is sleeper *recall* (EXP-011b), which is exogenous-data
   (Steps 7–9) or in-season (Step 10) territory.
 
+### EXP-013 — objective-side changes (Δ-targets, sample weights, quantile heads, tuning)  ·  Status: **rejected** (a, b, d) / **rejected as Step-14 input, with a replacement note** (c)
+- **Date:** 2026-07-08  ·  **Commit:** uncommitted  ·  **Step:** implementation-plan Step 5
+- **Hypothesis:** every prior experiment changed features under the same squared-error level
+  objective; changing the objective (shrink toward "league-average change" instead of the
+  pool-average player, re-weight movers, learn quantiles, tune the never-tuned params) is a
+  different lever class.
+- **Method:** mover eval, top-150, 2022-23…2025-26, **all sub-verdicts on seed {0,1,2} means**
+  (rule 8). Controls: `learned` (bias riser **−3.177**, big riser **−6.907**, stable −0.134).
+- **(a) Δ-targets (`learned_delta`) — rejected.** Riser −2.957 / big riser −6.746: nominal
+  improvements (+0.22 / +0.16) are *inside* its own seed spread (0.25 / 0.39) — noise.
+  Aggregate MAE a tie. The tree-regularization-geometry hypothesis produced nothing measurable.
+- **(b) Sample weights — rejected.** `learned_w_mover` riser −2.770 / big riser −6.590 *looks*
+  better but overshoots the EXP-011a floor (−3.103) by going bias-positive everywhere (stable
+  +0.167) and pays a large, consistent aggregate cost: level MAE worse in **all 4 seasons**
+  (+0.2…+0.35) — bias traded for variance, not signal. `_a05` same pattern, milder.
+  `learned_w_rel` worse on both riser buckets *and* MAE. No candidate merited a CI.
+- **(c) Quantile heads (`eval_quantiles.py`) — rejected as the Step-14 range source.** The
+  direct fpts quantile heads **lose pinball** to the constant-σ normal baseline overall
+  (seed-mean ≈1.78 vs ≈1.69) and decisively in the riser subset (≈2.35 vs ≈1.81; **0/4 riser
+  seasons, 1/4 overall**), consistent across seeds (spread ~0.03 ≪ deficits). Coverage is
+  badly outcome-dependent: big-riser cov_q90 = **0.29** vs 0.90 nominal (the heads can't see
+  breakouts any better than the point model — same features, same ceiling). Baselines carried
+  a deliberate in-sample σ advantage; the margins dwarf it. **Replacement note for Step 14:**
+  `resid_quant` (empirical residual quantiles around the point estimate) beat `normal_sigma`
+  overall on all 3 seeds (≈1.68 vs ≈1.69, and much better skew handling at q90) — the cheap
+  upgrade to `SD_PG = 9` is an *empirical residual CDF*, not learned quantile heads.
+- **(d) Hyperparameter tuning (`scripts/tune_learned.py`, built this step) — rejected;
+  defaults stand.** Nested per rule 10b: 27-combo grid × 5 folds ≤ 2021-22, `n_estimators` by
+  early stopping on each fold's last training season. Tuning-fold winner
+  `{num_leaves 63, min_child_samples 30, lr 0.05, n_estimators 79}` (fold MAE 4.781 vs
+  defaults 4.976) **did not transfer**: on the standard window (seeds {0,1,2}) pooled MAE
+  ties (4.44 vs 4.44) and riser bias is clearly worse (riser −3.817 vs −3.177, big riser
+  −7.555 vs −6.907; ~5× seed spread). The clustered CI shows a uniform ≈−0.7 bias shift in
+  *every* bucket — deeper trees on this panel are just more mean-reverting, not smarter.
+  Kept as registry variant `learned_tuned` (documented-rejected); the tuner script stays for
+  re-tuning whenever the panel grows (Step 10's ~45k-row cutpoint panel is the natural
+  re-arm point).
+- **Verdict:** all four sub-experiments reject; `learned` with `DEFAULT_LGBM_PARAMS` remains
+  the default. **Phase 1's cheap A/Bs are exhausted, exactly as Decision Row 1 predicted** —
+  objective-side changes cannot manufacture headroom the floor says isn't there.
+- **Skeptic pass:** (leakage) none — (a)/(b) touch training labels only; (c) trains prior-only;
+  (d) grid never saw the verdict seasons (the script *refuses* tuning folds > 2021-22).
+  (selection) pools unchanged. (season concentration) rejections are uniform, not
+  season-driven; (d)'s MAE split 2/2.
+- **Ledger note:** do **not** re-tune on the season-level panel expecting a transfer — the
+  surface is flat (4.78–4.99 across 27 combos) and the tuning-fold ranking didn't survive the
+  window switch. Re-arm (d) only on a structurally larger panel (Step 10). For ranges,
+  Step 14's input is the empirical residual CDF (see (c) note), pending EXP-021 itself.
+  Fixed en route: `project_models` seed override used to clobber a variant's own `params`
+  (latent bug — any params-carrying variant silently tested defaults under `--seed`); now the
+  seed threads *inside* spec params (unit-tested).
+
 _Next experiments — numbering reserved by [`docs/implementation-plan.md`](docs/implementation-plan.md)
 (the execution spec; run in its Step order): **EXP-011** ceiling diagnostics (selection floor +
 per-bucket oracles) · **EXP-012** recency de-confound (skip-last / post-trade split) · **EXP-013**
