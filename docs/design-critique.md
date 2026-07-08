@@ -328,6 +328,11 @@ risk); preseason it's a risk flag (aging stars on likely-bad teams). Cheap, hone
 addition: a `playoff_weeks_risk` flag + playoff-weeks game counts; optional manual
 `config/team_priors.yaml` (Vegas win totals, entered once preseason) as the team-quality
 prior — better than last season's record, no scraping required.
+*Update (user decision, 2026-07): the league will end ~2–3 weeks before the NBA regular
+season — deliberately amputating the worst of this regime from the decision horizon.
+Right call. Consequences wired in plan D1.3b: ROS cuts at `league_end_date`; playoff
+weeks derive from the offset; the rest/tank problem survives only as a training-label
+concern (EXP-012), not a deployment one.*
 
 **9.5 The draft is a sequential game, not a ranking read-out.** Draft-day value = "best
 VOR *relative to what will still be available at my next pick*" — which needs ADP + its

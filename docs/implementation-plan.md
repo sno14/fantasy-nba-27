@@ -773,6 +773,16 @@ informational.
 **fantasy-playoff-weeks game counts** (weeks from `league.yaml`). Feeds: D1.4, Step 10's
 schedule-aware ROS, Step 11's streaming values.
 
+**D1.3b The league horizon (user decision 2026-07):** the league ends
+`league_end_offset_weeks` (~2–3, TBD) before the NBA regular-season finale. Derive
+`league_end_date` from the schedule + offset, and thread it everywhere a horizon appears:
+**ROS projections/totals cut at `league_end_date`, never the NBA finale** (a star's
+remaining value excludes weeks the league doesn't play); fantasy playoff weeks =
+the last league weeks, derived, replacing the yaml placeholder. Payoff: the worst
+rest/tank regime falls out of the *decision* horizon by design — it remains a
+*training-label* issue only (EXP-012's territory), since historical seasons still
+contain those weeks.
+
 **D1.4 Board columns:** `playoff_wk_games` (games in the league's playoff weeks),
 `playoff_weeks_risk` flag (aging star × likely-bad team — team prior from optional manual
 `config/team_priors.yaml`, e.g. Vegas win totals entered once preseason), and the
@@ -888,6 +898,14 @@ line × that team's games in the window, from the D1 schedule) — this, not ROS
 streaming/last-roster-spot decision number. Plus value-vs-droppable context: ROS Δ against
 the current roster's worst player (roster read from `league.yaml` manually or entered ad
 hoc).
+
+**Amendment (league horizon, D1.3b):** since the league ends before the NBA season,
+(a) deployed ROS numbers cut at `league_end_date`; (b) optionally add a **league-horizon
+eval view** — score cutpoint projections against actuals *through the league end date
+analogue* (e.g. "through NBA week 22") rather than full-season actuals. Run it once as a
+sensitivity: if verdicts don't move, keep full-season actuals for comparability with the
+existing ledger and note that; if they do move (plausible — truncation drops the
+rest-noise weeks from the *labels* too), report both views going forward.
 
 **Done when:** all three metrics print from one command
 (`python scripts/eval_asof.py --seasons … --cutpoints 30 60 90`); EXP-019 logged with the

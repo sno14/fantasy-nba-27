@@ -1,14 +1,21 @@
 # League configuration — the decision layer's input (implementation-plan Step D1,
 # design-critique §9). Scoring weights stay in scoring.yaml; this file is the league's
-# *structure*: it drives replacement-level (VOR), schedule/playoff-week values, and
-# streaming horizons. Placeholders below are a common ESPN 10-team points setup —
-# REPLACE with your league's real settings before draft day.
+# *structure*: it drives replacement-level (VOR), schedule/playoff-week values, streaming
+# horizons, and the ROS cutoff.
+#
+# Settings below reflect the user's league direction (2026-07): weekly H2H matchups in a
+# points format, daily lineup setting, league ending ~2-3 weeks before the NBA regular
+# season to dodge late-season rest/tank noise. Scoring numbers are NOT final — scoring.yaml
+# holds ESPN-style placeholders until the league locks them (re-run the headline eval under
+# the final scoring before draft day; every verdict is scoring-conditional, critique §2.4).
 
 name: my-league
 platform: espn            # espn | yahoo | other (informational for now)
-teams: 10
-format: h2h_points        # h2h_points | roto_points | season_points
-lineup_frequency: daily   # daily | weekly — daily leagues reward streaming + game counts
+teams: 10                 # TBD — update when the league settles
+format: h2h_points        # weekly H2H matchups, points scoring (decided 2026-07)
+lineup_frequency: daily   # daily lineup setting within weekly matchups (decided 2026-07)
+                          # => weekly game counts drive matchups; streaming drives the
+                          #    last roster spots — both D1 outputs matter.
 
 # Roster slots (drives replacement level per slot). Keys are platform slot names;
 # positions map to allocation position groups until platform eligibility exists.
@@ -24,8 +31,17 @@ roster:
   BENCH: 3
   IR: 1
 
-games_cap_per_week: null      # integer if your league caps weekly games, else null
-fantasy_playoff_weeks: [21, 22, 23]   # NBA schedule weeks of YOUR league's playoffs
-waivers: faab                 # faab | priority
+games_cap_per_week: null      # integer if the league caps weekly games, else null
+
+# League season ends BEFORE the NBA regular season (decided 2026-07, exact gap TBD).
+# Consequences (wired in Step D1 / Step 11): ROS projections and totals cut at
+# league_end, not the NBA finale; fantasy playoff weeks are derived from the schedule
+# minus this offset; the late-season rest/tank regime largely falls OUT of the
+# decision horizon (it remains a training-label issue — EXP-012's concern — since
+# historical data still contains those weeks).
+league_end_offset_weeks: 3    # ~2-3 weeks before NBA regular-season end; not concrete
+fantasy_playoff_weeks: [19, 20, 21]   # placeholder — derive from schedule + offset once set
+
+waivers: faab                 # faab | priority — TBD
 faab_budget: 100
 keeper: false                 # dynasty/keeper valuation is out of scope while false
