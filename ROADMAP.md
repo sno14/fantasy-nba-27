@@ -205,6 +205,15 @@ level accuracy that doesn't fall apart on players whose level changed.
 - [x] First run doubles as measuring the *current* model's mover bias — baseline the disease (EXP-006). ✔
 - [x] Wire into `models/backtest.py` (no-leakage; shared `project_models` path). Across-season
       walk-forward done; within-season folds come with the in-season eval above.
+- [x] **Predicted-Δ calibration + actual-pool recall view** (impl-plan Step 1): a selection-free
+      calibration table and a second view scored on the *realized* top-150 (recall metric) — the
+      model-pool view understates riser bias because missed sleepers are invisible.
+- [x] **Ceiling diagnostics (EXP-011):** selection floor (011a) + per-bucket minutes/rate oracle
+      decomposition (011b). **Phase-0 verdict — Decision Row 1:** on the model's own pool the
+      big-riser reducible gap is **+0.19 fpts/g (< 2)** — preseason bias-*chasing* is near-done;
+      the residual headroom is a **sleeper-recall** problem (recall 71%, realized-pool gap −2.7),
+      which box-score preseason features can't crack ⇒ run Steps 4–5 as cheap A/Bs and **pull the
+      in-season engine (Step 10) forward after Step 6.**
 
 #### 7.★ — Foundational refactor: a learned, decompositional panel model
 **Full weighing of alternatives (GBM panel vs DARKO-style state-space vs hierarchical Bayes vs

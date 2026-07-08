@@ -306,6 +306,78 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   within-season recency (EXP-008b) and team-context/vacated-minutes (EXP-009). Requires a Playwright
   browser (`python -m playwright install chromium`).
 
+### EXP-011a — selection floor of the mover buckets  ·  Status: **adopted (diagnostic)**
+- **Date:** 2026-07-08  ·  **Commit:** uncommitted  ·  **Step:** implementation-plan Step 2
+- **Hypothesis:** because the mover buckets are defined on *realized* YoY Δ, they select on the
+  outcome — so a **perfect conditional-mean forecaster** would itself show a large signed bias at
+  the tails. Part of the ~±8 fpts/g tail bias (EXP-006/007) is therefore irreducible, and every
+  later gate must be judged against this floor, not against zero.
+- **Method:** `models/floor_sim.selection_floor` — debiased `learned` projections treated as the
+  true conditional mean, empirical residuals resampled (1000 draws, preserves skew/fat tails, no
+  normality assumption), synthetic outcomes re-bucketed; `--floor` at sigma ∈ {0.75, 1.0, 1.25}.
+  `learned` model, pool = its own top-150, 2022-23…2025-26 pooled. Pure-noise identity test in
+  `tests/test_stage7_infra.py` confirms an unbiased forecaster's measured tail bias ≈ its floor.
+- **Result (model pool, learned, @ sigma 1.0):**
+  floor_bias per bucket = big faller **+6.807**, faller **+2.166**, stable **−0.524**,
+  riser **−3.103**, big riser **−7.081**.
+  Reducible gap (measured `learned` bias − floor) = big faller **+0.690**, faller **+0.600**,
+  stable **+0.414**, riser **−0.013**, big riser **+0.192**. Sigma band (big riser): gap = −1.59
+  @0.75, +0.19 @1.0, +1.72 @1.25 — **< 2 fpts/g across the entire band.**
+- **Verdict:** adopted as the standing diagnostic. On the model's own pool the measured ~−6.9
+  big-riser bias is **~97% selection floor** — the four failed feature experiments
+  (EXP-008/009/008b/009b) were chasing ≈0.2 fpts/g of forecastable riser bias. See EXP-011b for
+  the Phase-0 decision (recall view materially qualifies this on the *realized* pool).
+- **Ledger note / caveat:** the floor assumes the current model's residual spread ≈ irreducible
+  noise; a better model shrinks residuals and the floor with them — hence the sigma band and the
+  rule-8 requirement to **recompute the floor whenever a new default model is adopted**. The floor
+  is pool-conditional: it must be recomputed on any pool it is applied to (see EXP-011b's actual
+  pool, where floors are very different).
+
+### EXP-011b — per-bucket oracle decomposition + the Phase-0 verdict  ·  Status: **adopted (diagnostic) → Decision Row 1**
+- **Date:** 2026-07-08  ·  **Commit:** uncommitted  ·  **Step:** implementation-plan Step 3 (closes Phase 0)
+- **Hypothesis:** split the *reducible* mover gap into minutes-driven vs rate-driven to steer
+  Phases 1–3 (minutes-heavy ⇒ Step 6 allocation is the headline bet; rate-heavy ⇒ add rate-focused
+  Step 5 work).
+- **Method:** `eval_movers.oracle_variant` — from the real `learned` board (pool stays `learned`'s
+  own top-150 — pooling on oracle ranks would re-select on the outcome), swap in **actual minutes**
+  (rates held, re-scored via `score_frame` — bonuses are non-linear) or **actual rates** (minutes
+  held); `--oracles`. Shares vs the EXP-011a floor: `minutes_share = (bias_learned −
+  bias_oracle_minutes)/(bias_learned − floor_bias)`, `rate_share` analogously. **Plus the
+  design-critique §3.2 recall view** (`run_mover_eval(pool="actual")`, `--actual-pool`): the same
+  tables on the **realized** top-150, since sleepers the model never ranked are invisible in the
+  model pool and understate riser bias.
+- **Result — model pool (actual-Δ buckets, pooled), signed bias:** learned big riser −6.889 →
+  oracle_minutes **−4.611**, oracle_rates **−2.680**; riser −3.116 → −2.093 / −1.018. Because the
+  reducible gap is ≈0 in the riser buckets, minutes/rate *shares* are undefined/explosive there
+  (denominator ~0) — the decomposition is ill-posed precisely because there is nothing reducible to
+  decompose. Descriptively, both oracles push bias *below* the forecaster floor (they use realized
+  outcomes), and in the tail buckets **rates move it more than minutes** (big-riser Δ: rates 4.21
+  vs minutes 2.28) — the opposite of EXP-001's aggregate "minutes dominate," specific to the tails.
+- **Result — recall view (realized top-150):** model **recall = 71.3%** (misses ~29% of the true
+  top-150). On the realized pool learned's bias is *larger* — riser **−4.066**, big riser
+  **−8.214** — and, against the floor **recomputed on the realized pool** (big-riser floor −5.553),
+  the reducible gap is **negative in every bucket** (big riser **−2.66**, riser **−3.00**): the
+  model under-projects realized risers by ~2.7 fpts/g **beyond** the floor. That headroom lives
+  entirely in the sleepers it never ranked.
+- **Verdict — the Phase-0 decision (Decision Row 1): reducible gap (big riser) on the model pool =
+  +0.19 < 2 ⇒ preseason bias-*chasing* is near-done.** Run Steps 4–5 as cheap one-pass A/Bs, do
+  **no further preseason feature hunting**, and **pull Step 10 (the in-season engine) forward
+  immediately after Step 6.** The recall view *sharpens* rather than overturns this: the residual
+  headroom is a **sleeper-recall** problem (which currently-low-projected players break out), not a
+  calibration problem — and (a) preseason box-score features demonstrably cannot crack it (the
+  EXP-008/009/008b/009b meta-finding, now explained at the mechanism level), (b) the in-season
+  engine addresses it structurally (a breakout surfaces in game logs within weeks). This *reinforces*
+  the "pull Step 10 forward" prescription.
+- **Skeptic pass:** (leakage) oracles use actual outcomes **by design** as a diagnostic, never as a
+  feature; the pool stays the real model's top-150 so selection is not on the oracle. (per-36
+  mirage, critique §2.1) `rate × actual_MPG` assumes bench rates hold at starter minutes, so the
+  minutes oracle *overstates* minutes share — moot here since the gap is ≈0. (season concentration)
+  numbers are 4-season pooled; the model-pool gap is < 2 across the whole sigma band.
+- **Ledger note:** floors are **pool-conditional** — always recompute `floor_table` on whatever pool
+  you apply the reducible-gap test to (the model pool and the realized pool have very different
+  floors). Do **not** re-run coarse preseason own-history/roster features expecting a riser win; the
+  next real levers are exogenous data (Steps 7–9) and the as-of-date engine (Step 10).
+
 _Next experiments — numbering reserved by [`docs/implementation-plan.md`](docs/implementation-plan.md)
 (the execution spec; run in its Step order): **EXP-011** ceiling diagnostics (selection floor +
 per-bucket oracles) · **EXP-012** recency de-confound (skip-last / post-trade split) · **EXP-013**

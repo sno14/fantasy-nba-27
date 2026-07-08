@@ -73,6 +73,23 @@ def test_pool_frame_deltas_buckets_and_joins():
     assert str(m.loc[2, "bucket"]) == "faller"              # 28 - 31 = -3
 
 
+def test_pool_frame_actual_pool_selects_on_realized_total():
+    # Player 4 is a sleeper the model ranked low (rank 9) but who posts a big realized total.
+    proj = pd.DataFrame({"rank": [1, 2, 3, 9], "PLAYER_ID": [1, 2, 3, 4],
+                         "fpts_pg": [40.0, 30.0, 20.0, 12.0]})
+    prior = pd.DataFrame({"PLAYER_ID": [1, 2, 3, 4], "prior_fpts_pg": [33.0, 31.0, 22.0, 5.0]})
+    actual = pd.DataFrame({"PLAYER_ID": [1, 2, 3, 4],
+                           "act_fpts_pg": [42.0, 28.0, 21.0, 30.0],
+                           "act_fpts_total": [100.0, 90.0, 40.0, 95.0]})
+    # top-3 by realized total = players 1 (100), 4 (95), 2 (90); player 3 (40) drops out.
+    m = pool_frame(proj, prior, actual, pool_top_n=3, pool="actual").set_index("PLAYER_ID")
+    assert set(m.index) == {1, 2, 4}
+    assert str(m.loc[4, "bucket"]) == "big riser"           # 30 - 5 = 25, a missed sleeper
+    # the model-pool default is unaffected: top-3 by rank = 1,2,3 (byte-identical behaviour).
+    mm = pool_frame(proj, prior, actual[["PLAYER_ID", "act_fpts_pg"]], pool_top_n=3)
+    assert set(mm["PLAYER_ID"]) == {1, 2, 3}
+
+
 # ------------------------------------------------------------- Step 2: selection floor
 
 def test_selection_floor_matches_unbiased_forecaster_tail_bias():
@@ -375,3 +392,18 @@ def test_run_mover_eval_three_tables_oracles_and_pools():
     # The minutes oracle can't be *worse* than the model it corrects (level MAE, same pool).
     d = directional.set_index("model")
     assert d.loc["oracle_minutes(learned)", "level_MAE"] <= d.loc["learned", "level_MAE"] + 1e-9
+
+
+def test_run_mover_eval_actual_pool_recall_view():
+    seasons = ["2018-19", "2019-20", "2020-21", "2021-22", "2022-23"]
+    ss, bio = _synthetic_league(seasons, n_players=30)
+    per_bucket, directional, per_pred, pools = run_mover_eval(
+        "2022-23", ss, bio, cfg=PTS_ONLY, pool_top_n=20, min_prior_minutes=100.0,
+        return_pools=True, pool="actual",
+    )
+    # Recall of the realized top-N is a real fraction in [0, 1] for every model.
+    assert "recall" in directional.columns
+    r = directional.set_index("model")["recall"]
+    assert r.notna().all() and ((r >= 0.0) & (r <= 1.0)).all()
+    # The three tables still have their headline columns on the realized pool.
+    assert {"model", "bucket", "signed_bias"} <= set(per_bucket.columns)

@@ -73,6 +73,11 @@ def main() -> None:
     parser.add_argument("--recency", action="store_true",
                         help="Back-compat alias for --variants learned_recency learned_rc "
                              "(the EXP-008b/009b pair).")
+    parser.add_argument("--actual-pool", action="store_true",
+                        help="Also print the recall view (critique §3.2): the three tables "
+                             "scored on the realized top-N instead of each model's own pool, "
+                             "plus each model's recall of the realized top-N. Model-pool bias "
+                             "understates riser bias because missed sleepers are invisible.")
     parser.add_argument("--floor", action="store_true",
                         help="Step 2: print the selection-floor table (learned model, pooled) "
                              "at sigma scales 0.75/1.0/1.25, and the derived reducible gap.")
@@ -95,27 +100,32 @@ def main() -> None:
     game_logs = storage.read("player_game_logs") if _needs_game_logs(variants) else None
     cfg = load_scoring(args.scoring)
 
-    per_bucket_frames, dir_frames, pred_frames = [], [], []
-    pools_by_model: dict[str, list[pd.DataFrame]] = {}
-    for season in args.seasons:
-        per_bucket, directional, per_pred, pools = run_mover_eval(
-            season, season_stats, bio, cfg=cfg, pool_top_n=args.top_n,
-            game_logs=game_logs, variants=variants, oracles=args.oracles,
-            seed=args.seed, return_pools=True,
+    def _run_view(pool_kind: str):
+        per_bucket_frames, dir_frames, pred_frames = [], [], []
+        pools_by_model: dict[str, list[pd.DataFrame]] = {}
+        for season in args.seasons:
+            per_bucket, directional, per_pred, pools = run_mover_eval(
+                season, season_stats, bio, cfg=cfg, pool_top_n=args.top_n,
+                game_logs=game_logs, variants=variants, oracles=args.oracles,
+                seed=args.seed, return_pools=True, pool=pool_kind,
+            )
+            for frame in (per_bucket, directional, per_pred):
+                frame.insert(0, "season", season)
+            per_bucket_frames.append(per_bucket)
+            dir_frames.append(directional)
+            pred_frames.append(per_pred)
+            for name, pool in pools.items():
+                pool = pool.copy()
+                pool["season"] = season
+                pools_by_model.setdefault(name, []).append(pool)
+        return (
+            pd.concat(per_bucket_frames, ignore_index=True),
+            pd.concat(dir_frames, ignore_index=True),
+            pd.concat(pred_frames, ignore_index=True),
+            pools_by_model,
         )
-        for frame in (per_bucket, directional, per_pred):
-            frame.insert(0, "season", season)
-        per_bucket_frames.append(per_bucket)
-        dir_frames.append(directional)
-        pred_frames.append(per_pred)
-        for name, pool in pools.items():
-            pool = pool.copy()
-            pool["season"] = season
-            pools_by_model.setdefault(name, []).append(pool)
 
-    per_bucket = pd.concat(per_bucket_frames, ignore_index=True)
-    directional = pd.concat(dir_frames, ignore_index=True)
-    per_pred = pd.concat(pred_frames, ignore_index=True)
+    per_bucket, directional, per_pred, pools_by_model = _run_view("model")
 
     with pd.option_context("display.width", 220, "display.max_columns", None):
         print("\n=== Directional capture (per model, per season) ===")
@@ -152,6 +162,21 @@ def main() -> None:
             print(f"\n=== Paired bootstrap 90% CI (player-clustered): bias delta ({b} − {a}) ===")
             print(ci.round(3).to_string(index=False))
             print("(CI straddling 0 => difference unresolved at this sample size; see plan rules.)")
+
+        if args.actual_pool:
+            ap_bucket, ap_dir, ap_pred, _ = _run_view("actual")
+            print("\n" + "#" * 78)
+            print("# RECALL VIEW — tables scored on the REALIZED top-N (critique §3.2)")
+            print("#" * 78)
+            recall = ap_dir[["model", "recall"]].drop_duplicates("model")
+            print("\n=== Model recall of the realized top-N (fraction pooled) ===")
+            print(recall.round(3).to_string(index=False))
+            print("\n=== Per-bucket signed bias on the realized pool (pooled) ===")
+            ap_pooled = _pooled(ap_bucket, ["level_MAE", "signed_bias", "mean_actual_delta", "mean_proj_delta"])
+            print(ap_pooled.round(3).to_string(index=False))
+            print("\n=== Predicted-Δ calibration on the realized pool (pooled) ===")
+            ap_pooled_pred = _pooled(ap_pred, ["mean_proj_delta", "mean_actual_delta", "calib_gap", "level_MAE"])
+            print(ap_pooled_pred.round(3).to_string(index=False))
 
 
 if __name__ == "__main__":

@@ -47,7 +47,7 @@ scripts/
   pull_data.py     CLI to fetch and cache raw data
   project.py       generate the projection / draft board (+ risk ranges, --rank-by)
   backtest.py      no-leakage backtest on a top-N draft pool
-  eval_movers.py   mover-segmented Stage-7 eval (--variants, --floor, --oracles, --ci, --seed)
+  eval_movers.py   mover-segmented Stage-7 eval (--variants, --floor, --oracles, --actual-pool, --ci, --seed)
   darko_report.py  DARKO overlay: minutes/rank disagreement report (pull_darko.py fetches)
   explore.py       local interactive Streamlit explorer
 data/              raw/ and processed/ caches (gitignored)

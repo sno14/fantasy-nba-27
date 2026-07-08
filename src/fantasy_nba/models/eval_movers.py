@@ -64,16 +64,30 @@ def pool_frame(
     prior: pd.DataFrame,
     actual: pd.DataFrame,
     pool_top_n: int,
+    pool: str = "model",
 ) -> pd.DataFrame:
     """The shared per-model frame behind every Stage-7 metric.
 
-    Top-``pool_top_n`` of ``proj`` by projected total (its ``rank``), inner-joined to
-    ``prior`` (``[PLAYER_ID, prior_fpts_pg]`` — so "mover" is defined) and ``actual``
-    (``[PLAYER_ID, act_fpts_pg]`` — so the outcome exists), with ``actual_delta``,
-    ``proj_delta``, ``err`` and the actual-Δ ``bucket`` derived.
+    ``pool="model"`` (default): top-``pool_top_n`` of ``proj`` by projected total (its
+    ``rank``). ``pool="actual"`` (critique §3.2 recall view): the **realized** top-``pool_top_n``
+    by ``act_fpts_total`` — the sleepers the model never ranked are otherwise invisible, so the
+    model-pool riser bias is *understated*. Either selection is inner-joined to ``prior``
+    (``[PLAYER_ID, prior_fpts_pg]`` — so "mover" is defined) and ``actual``
+    (``[PLAYER_ID, act_fpts_pg, act_fpts_total]`` — so the outcome exists), with
+    ``actual_delta``, ``proj_delta``, ``err`` and the actual-Δ ``bucket`` derived.
     """
-    pool = proj.nsmallest(pool_top_n, "rank")[["PLAYER_ID", "fpts_pg"]]
-    m = pool.merge(prior, on="PLAYER_ID", how="inner").merge(actual, on="PLAYER_ID", how="inner")
+    if pool == "actual":
+        base = (
+            actual.nlargest(pool_top_n, "act_fpts_total")[["PLAYER_ID"]]
+            .merge(proj[["PLAYER_ID", "fpts_pg"]], on="PLAYER_ID", how="inner")
+        )
+    elif pool == "model":
+        base = proj.nsmallest(pool_top_n, "rank")[["PLAYER_ID", "fpts_pg"]]
+    else:
+        raise ValueError(f"pool must be 'model' or 'actual', got {pool!r}")
+    m = base.merge(prior, on="PLAYER_ID", how="inner").merge(
+        actual[["PLAYER_ID", "act_fpts_pg"]], on="PLAYER_ID", how="inner"
+    )
     m["actual_delta"] = m["act_fpts_pg"] - m["prior_fpts_pg"]
     m["proj_delta"] = m["fpts_pg"] - m["prior_fpts_pg"]
     m["err"] = m["fpts_pg"] - m["act_fpts_pg"]
@@ -140,6 +154,7 @@ def run_mover_eval(
     oracles: bool = False,
     seed: int | None = None,
     return_pools: bool = False,
+    pool: str = "model",
 ):
     """Mover-segmented level accuracy for one target season.
 
@@ -156,6 +171,9 @@ def run_mover_eval(
     kwarg dicts) — see ``backtest.VARIANT_SPECS``. ``oracles`` adds the EXP-011b
     minutes/rates oracle rows built from the ``learned`` board. ``seed`` overrides the
     LightGBM ``random_state`` for every learned-family model (the seed-stability protocol).
+    ``pool="actual"`` scores the same three tables on the **realized** top-N (recall view,
+    critique §3.2); ``directional`` then carries a ``recall`` column — the fraction of the
+    realized top-N the model actually ranked into its own top-N.
     """
     cfg = cfg or load_scoring()
     projections = project_models(
@@ -170,8 +188,9 @@ def run_mover_eval(
             )
 
     actual = _actual(season_stats, target_season, cfg, min_minutes=0.0)[
-        ["PLAYER_ID", "act_fpts_pg"]
+        ["PLAYER_ID", "act_fpts_pg", "act_fpts_total"]
     ]
+    actual_top_ids = set(actual.nlargest(pool_top_n, "act_fpts_total")["PLAYER_ID"])
     prior_season = _season_before(target_season)
     prior = _actual(season_stats, prior_season, cfg, min_minutes=min_prior_minutes)[
         ["PLAYER_ID", "act_fpts_pg"]
@@ -182,10 +201,12 @@ def run_mover_eval(
     dir_rows: list[dict] = []
     pools: dict[str, pd.DataFrame] = {}
     for name, proj in projections.items():
-        m = pool_frame(proj, prior, actual, pool_top_n)
+        m = pool_frame(proj, prior, actual, pool_top_n, pool=pool)
         if m.empty:
             continue
         pools[name] = m
+        model_top_ids = set(proj.nsmallest(pool_top_n, "rank")["PLAYER_ID"])
+        recall = len(actual_top_ids & model_top_ids) / len(actual_top_ids)
 
         g = m.groupby("bucket", observed=False)
         per = pd.DataFrame({
@@ -220,6 +241,7 @@ def run_mover_eval(
             "level_bias": m["err"].mean(),
             "delta_corr": m["proj_delta"].corr(m["actual_delta"]),
             "dir_sign_acc": sign_agree,
+            "recall": recall,
         })
 
     per_bucket = pd.concat(bucket_rows, ignore_index=True)
