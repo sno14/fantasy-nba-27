@@ -111,6 +111,28 @@ refinements) are deferred behind it — they chase the same ≈0 preseason gap. 
 (exogenous data) keep their place: they attack GP/availability and backtest correctness,
 which the Phase-0 verdict does not touch.*
 
+**Session addenda (2026-07-09, post-Step-10) — notes for the next session, in priority order:**
+
+1. **Next step = Step 11 (EXP-019).** Run its diagnostics on the **EWMA configuration**
+   (`use_ewma=True` — best pooled config in EXP-018, 3.763 vs naive 3.837); treat it as the
+   recommended `project_asof` configuration until the re-gate says otherwise.
+2. **Lead-time metric cost control (Step 11.3):** a literal implementation needs *daily*
+   re-projection — expensive. Fit the fold's models once (`_fit_asof_models`) and call the
+   cheap `predict_board` per date; evaluate on a **weekly grid**, or better, **event-anchored**:
+   detect confirmed role changes from game logs first, then scan predictions only in a window
+   around each event.
+3. **`fit_half_lives` is the slow step** and is recomputed per fold although the fitted
+   answer was identical in all four folds (**every rate → 40, MPG → 10**). Cheapest fix:
+   freeze those as documented constants (with the fitting function kept for re-checks);
+   otherwise cache per training-window.
+4. **EXP-018 re-gate checklist** (what re-arms the parked naive gate): Step 7 OUT-tonight /
+   live teammate-vacated minutes → asof features; D1 schedule → real `ros_gp_max` +
+   schedule-aware ROS; blowout share / |margin|≥25 exclusion + return-from-absence ramp
+   (`team_game_logs` pulled 17 seasons, **unwired**); EXP-013d tuner re-arm on the ~33k-row
+   cutpoint panel (the ledger's named re-arm point).
+5. **Step 12 note:** `update_daily` should emit the naive-updater line next to the asof board
+   — it's the standing benchmark, and the daily disagreement between them is itself a signal.
+
 ---
 
 ## Step 0 — Docs alignment + data refresh
@@ -877,6 +899,14 @@ vs `project_learned` on the same fold must agree closely (Spearman ≥ 0.98 on t
 level MAE gap ≤ 0.3) — same features, bigger panel; a large gap means a leak or a feature
 mismatch. Debug until it holds.
 
+> **Amendment (measured 2026-07-09):** the literal thresholds above are **below
+> `project_learned`'s own seed-to-seed reproducibility** (two seeds of the identical model:
+> Spearman 0.968–0.973, MAE 0.81–0.89 on this metric) — they are unreachable by construction.
+> The operative criterion is **"within seed noise, and any residual gap explained."** Status:
+> held (preseason-only asof = another-seed-indistinguishable; pooled model ~0.02 below the
+> noise floor, documented as the cost of one model spanning six cutpoint regimes). The check
+> did its job en route: it caught the garbage-time ROS-label bug (`MIN_ROS_MINUTES`).
+
 **Gate (EXP-018):** at cutpoints +30/+60/+90: ROS level MAE on the top-150 pool beats both
 (a) `project_learned` frozen at T₀ and (b) the naive updater
 (`STD per-game line, shrunk: (games_so_far × std + 20 × T₀_proj) / (games_so_far + 20)`).
@@ -1054,7 +1084,7 @@ floor-adjusted on movers, updating nightly, benchmarked against the market — t
 | 023 | standard mover gate; watch age ≤ 24 cohort; rule-11 hygiene on the lag group |
 | 024 | standard mover gate AND aggregate MAE not worse (consistency fix adoptable on a tie) |
 | 025 | (reserved — rotation-survival hurdle; spec when Phase 0 says fallers matter) |
-| 018 | beats frozen-T₀ AND naive-shrinkage updater at ≥2/3 cutpoints, 3/4 seasons |
+| 018 | beats frozen-T₀ AND naive-shrinkage updater at ≥2/3 cutpoints, 3/4 seasons — *ran 2026-07-09: frozen-T₀ beaten 12/12; naive at parity (gate parked; re-gate after Steps 7 + D1)* |
 | 019 | diagnostic — baselines recall + lead time |
 | 020 | standard riser gate + lead-time non-regression |
 | 021 | coverage ∈ [78,88]% AND big-riser coverage improves AND rank Spearman not worse |

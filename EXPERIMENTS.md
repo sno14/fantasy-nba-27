@@ -566,12 +566,11 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   path).
 
 _Next experiments — numbering reserved by [`docs/implementation-plan.md`](docs/implementation-plan.md)
-(the execution spec; run in its Step order): **EXP-011** ceiling diagnostics (selection floor +
-per-bucket oracles) · **EXP-012** recency de-confound (skip-last / post-trade split) · **EXP-013**
-objective-side changes (Δ-targets, sample weights, quantile heads) · **EXP-014** team-constrained
-minutes allocation · **EXP-015** injury data (7.C) · **EXP-016** dated preseason transactions ·
-**EXP-017** ADP/market · **EXP-018/019** in-season as-of-date engine + eval · **EXP-020** external
-in-season benchmarks · **EXP-021** learned distributional ranges · **EXP-022** composition-covariance
-check (direct vs composed) · **EXP-023** per-season lags + era context · **EXP-024** volume/efficiency
-split + pace normalization (Phase 1.5, from [`docs/design-critique.md`](docs/design-critique.md)) ·
-**EXP-025** (reserved) rotation-survival hurdle._
+(the execution spec; run in its Step order, as re-routed by the EXP-011 Decision-Row-1 note in its
+tracker). Done: EXP-011…014 (Phase 0+1), EXP-018 (engine; naive gate parked). **Next: EXP-019**
+(Step 11 — in-season mover eval, early-riser recall, lead-time) · **EXP-015** injury data (7.C;
+also feeds the EXP-018 re-gate) · **EXP-016** dated preseason transactions · **EXP-017** ADP/market ·
+**EXP-020** external in-season benchmarks · **EXP-021** learned distributional ranges (input: the
+EXP-013c empirical-residual-CDF note) · deferred behind Phase 3: **EXP-022/023/024** (Phase 1.5
+decomposition refinements — they chase the ≈0 preseason gap) · **EXP-025** (reserved)
+rotation-survival hurdle._

@@ -123,7 +123,7 @@ def main() -> None:
         # fit once per season fold (half-lives, when used, also fit on the training slice only)
         half_lives = asof.fit_half_lives(train_gl) if args.ewma else None
         if half_lives:
-            print(f"[{season}] fitted half-lives: {half_lives}")
+            print(f"[{season}] fitted half-lives: {half_lives}", flush=True)
         panel = asof.build_asof_panel(train_ss, train_gl, train_bio, half_lives=half_lives,
                                       use_blend=args.blend)
         models = asof._fit_asof_models(panel, params, use_ewma=args.ewma, use_blend=args.blend)
@@ -145,7 +145,7 @@ def main() -> None:
                 rows.append({"season": season, "cutpoint": off, "model": name,
                              "ros_MAE": mae, "n": n})
             print(f"[{season} +{off}d] " + "  ".join(
-                f"{r['model']} {r['ros_MAE']:.3f}" for r in rows[-3:]))
+                f"{r['model']} {r['ros_MAE']:.3f}" for r in rows[-3:]), flush=True)
 
     R = pd.DataFrame(rows)
     print("\n=== ROS level MAE by (season, cutpoint) ===")

@@ -130,6 +130,13 @@ the need for **fast iteration + interpretability**.
 
 ## 4. Recommended foundation (detail)
 
+> **✅ DELIVERED (2026-07-09, Step 10 / EXP-018):** the interface below exists —
+> `models/asof.py: project_asof(T)`, trained on cutpoint snapshots exactly as specified.
+> Measured: beats the frozen preseason board 12/12 (season × cutpoint) — the largest accuracy
+> lever in the program; ties the naive K=20 shrinkage (gate parked until the news/status feed
+> and schedule land — the two inputs this section always said the season-long use requires).
+> Remaining from this spec: the daily news/status feed (Step 7/12), schedule (D1), Steps 11–13.
+
 **A learned, decompositional, as-of-date panel model**, run daily.
 
 - **Interface:** `project(data ≤ T) → ROS per-game line + fantasy value`, for any T. T₀ = draft

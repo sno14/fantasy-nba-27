@@ -93,7 +93,7 @@ project is looking for lives in:
 Each item is one `EXPERIMENTS.md` entry, adopt-or-reject, judged on the (upgraded)
 Stage-7 scoreboard. Phases are ordered by information-per-effort; 0 and 1 need no new data.
 
-### Phase 0 — size the ceiling (EXP-011, days, existing data) ← DO FIRST
+### Phase 0 — size the ceiling (EXP-011, days, existing data) ← ✅ COMPLETE (2026-07-08, EXP-011: riser reducible gap ≈ 0 on the model pool — Decision Row 1; headroom = sleeper recall)
 
 Two cheap diagnostics that tell us what every later experiment can possibly earn:
 
@@ -113,7 +113,7 @@ Two cheap diagnostics that tell us what every later experiment can possibly earn
 point bias entirely and shift weight to Phases 3–4. If minutes-oracle closes most of the
 gap, Phase 1c (allocation) is the headline preseason bet.
 
-### Phase 1 — the untried levers on data we already hold
+### Phase 1 — the untried levers on data we already hold ← ✅ COMPLETE (2026-07-08, EXP-012 parked, EXP-013 all rejected, EXP-014 rejected — exactly as Phase 0 predicted; see EXPERIMENTS.md)
 
 - **EXP-012 — de-confound recency** (named in the 009b ledger note; cheapest test):
   `season_recency_table(skip_last=…)` to trim rest/tanking-contaminated season-end games;
@@ -150,7 +150,7 @@ gap, Phase 1c (allocation) is the headline preseason bet.
   eval-gated use = a market-prior feature — with the explicit check that it doesn't wash
   out our mover edge (the known ensemble failure mode).
 
-### Phase 3 — the in-season as-of-date engine (the actual breakthrough)
+### Phase 3 — the in-season as-of-date engine (the actual breakthrough) ← ◐ ENGINE BUILT + GATED (2026-07-09, EXP-018: beats frozen-T₀ 12/12 — the largest lever measured; naive-parity gate parked pending Phase-2 signals; Steps 11–13 remain)
 
 The system `docs/model-foundation.md` §4 specifies, now built and evaluated:
 

@@ -139,7 +139,7 @@ special-case handling.
       only way to beat the R²≈0.03 box-score ceiling on games-played. **→ now tracked as Stage 7.C**
       (same data serves both a GP point-estimate and a per-player Monte-Carlo injury tail).
 
-### Stage 7 — Catching risers & fallers (the discontinuity frontier)  ← NEXT (the real value)
+### Stage 7 — Catching risers & fallers (the discontinuity frontier)  ← IN PROGRESS (Phases 0–1 complete: preseason riser bias measured ≈ irreducible, EXP-011; in-season engine built + gated, EXP-018; execution order lives in docs/implementation-plan.md)
 
 **The problem statement (user, 2026-07):** we project the stable core well but **miss the risers
 and fallers** — and capitalising on those is the entire edge of a projection system. This stage
@@ -181,7 +181,7 @@ so we use the market as a **benchmark and disagreement-finder**, not a crutch. (
 the session; key ones: darko.app, Bruin/Dartmouth breakout studies, Athlon trade-effect pieces,
 `nbainjuries` / prosportstransactions for injury data.)
 
-#### 7.0 — Draftable-pool accuracy eval, mover-segmented  ← **KEYSTONE (preseason form DONE; in-season parked)**
+#### 7.0 — Draftable-pool accuracy eval, mover-segmented  ← **KEYSTONE (preseason form DONE; in-season engine DONE — its eval metrics are Step 11)**
 Universe: the **top ~100–150** (draftable) pool — players outside it won't be drafted, so we
 don't care about them. Goal (user, 2026-07): get each player's projected **production level**
 right, *especially the movers* — if a player goes 35→40, we want the projection to say ~40 so he's
@@ -218,7 +218,7 @@ level accuracy that doesn't fall apart on players whose level changed.
       which box-score preseason features can't crack ⇒ run Steps 4–5 as cheap A/Bs and **pull the
       in-season engine (Step 10) forward after Step 6.**
 
-#### 7.★ — Foundational refactor: a learned, decompositional panel model
+#### 7.★ — Foundational refactor: a learned, decompositional panel model  ← DONE (EXP-007 adopted; the as-of-date interface below delivered by Step 10 / EXP-018)
 **Full weighing of alternatives (GBM panel vs DARKO-style state-space vs hierarchical Bayes vs
 neural vs Marcel-incremental), the research mapping, and the honest "is it worthwhile" analysis:
 see [`docs/model-foundation.md`](docs/model-foundation.md).** Summary below.
@@ -290,7 +290,7 @@ bolt-on adjustments — the scalable foundation the user asked for.
 (→ `data/processed/learned_2026-27.parquet`, `--ranges` supported). The parked add-on variants are
 eval-only (opt-in `--recency`); the shipped board uses the plain `learned` foundation.
 
-#### 7.A — Opportunity / role-redistribution model  ← highest leverage (first cut done → EXP-009 parked)
+#### 7.A — Opportunity / role-redistribution model  ← measured to its end preseason (EXP-009 parked, EXP-014 rejected); lives on as in-season features (Step 10+)
 - [x] **First cut (EXP-009, `models/context.py`):** team-level vacated/returning minutes + turnover
       share as learned-model features. **Parked** — net wash on the mover buckets, coarse. **Key
       correction to the old plan:** transactions were **not** the missing ingredient for a first pass —
@@ -306,7 +306,7 @@ eval-only (opt-in `--recency`); the shipped board uses the plain `learned` found
       still worthwhile as a backtest-correctness fix regardless of EXP-014's rejection.
 - [x] **Test:** ran with segments per the spec — the answer is no (see EXP-014).
 
-#### 7.B — Young-player trajectory / breakout layer  ← high, targeted
+#### 7.B — Young-player trajectory / breakout layer  ← deprioritized by EXP-011 (the preseason riser bias is ≈ irreducible selection artifact; a breakout layer must be judged on *recall*, or in-season — see key-finding-selection-floor)
 - [ ] For young players (age ≤ 24, ≥2 seasons) add a **trajectory/momentum term** instead of pure
       mean-reversion: extrapolate the improvement slope, gated by a breakout-probability model.
 - [ ] **Features (from research):** age 22–24, prior-season gradual improvement, usage↑ with held
@@ -326,7 +326,7 @@ eval-only (opt-in `--recency`); the shipped board uses the plain `learned` found
 - [ ] **Test:** does injury-featured GP beat the current GP model on next-season GP? Does the
       per-player tail improve range calibration and `safe`-ranking on injury-prone players?
 
-#### 7.D — Within-season recency (game-log granularity)  ← first cut done (EXP-008b, parked)
+#### 7.D — Within-season recency (game-log granularity)  ← preseason use exhausted (EXP-008b + EXP-012 both parked); true game-log granularity now lives in the as-of engine (EXP-018 EWMAs)
 - [x] **Last-N-games form** as learned-model features (`models/recency.py`, EXP-008b): recent MPG /
       production vs the player's own season average. **Result:** best *aggregate* add-on (level MAE
       better 3/4 seasons, directional sign-acc 4/4) but **doesn't crack the riser buckets** — the
