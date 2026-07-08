@@ -198,10 +198,13 @@ level accuracy that doesn't fall apart on players whose level changed.
       (Δ-corr 0.07–0.42, sign acc ~0.52–0.68).
 - [x] Score **per-game level** separately (done); **totals** (GP-capped — availability ceiling) left to
       the ranking backtest. The 35→40 case is a per-game-level case.
-- [ ] **In-season as-of-date eval:** at cutpoints through the season, score the ROS projection vs the
-      actual remainder — *especially early-season*, where the waiver edge lives ("given 10 games, did
-      we call the riser?"). **Parked** — needs game-log-date-granular `project(data ≤ T)`; revisit with
-      EXP-007's as-of-date model (current path projects off season totals only).
+- [x] **In-season as-of-date engine + gate (EXP-018, Step 10):** `models/asof.py` — `project_asof(T)`
+      trained on cutpoint snapshots (T₀−7d…+150d, ~33k rows/fold, walk-forward). **Beats frozen-T₀
+      12/12 (season × cutpoint) by 0.6–1.7 ROS MAE — in-season updating is the largest accuracy lever
+      measured.** vs the naive K=20 blend: parity (best config −0.07 pooled; per-season cell gate met
+      only by 2025-26 → gate parked). Fitted EWMA half-lives: all rates → 40 games, MPG → 10 (EXP-001
+      restated in-season). Re-gate after Step 7 (live OUT-tonight/vacated minutes) + D1 (schedule).
+      Done-pending-Step-11 (the in-season mover eval + lead-time metric itself).
 - [x] First run doubles as measuring the *current* model's mover bias — baseline the disease (EXP-006). ✔
 - [x] Wire into `models/backtest.py` (no-leakage; shared `project_models` path). Across-season
       walk-forward done; within-season folds come with the in-season eval above.

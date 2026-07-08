@@ -96,7 +96,7 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | 8 | 2 | Dated transactions + preseason rosters | EXP-016 | ☐ | ☐ |
 | 9 | 2 | ADP / market benchmark | EXP-017 | ☐ | ☐ |
 | D1 | 2.5 | Decision layer: league config, VOR, schedule | — (product) | ◐ league.yaml | ☐ |
-| 10 | 3 | As-of-date projection function | EXP-018 | ☐ | ☐ |
+| 10 | 3 | As-of-date projection function | EXP-018 | ☑ | ☑ (foundation adopted; naive gate parked) |
 | 11 | 3 | In-season eval + lead-time metric | EXP-019 | ☐ | ☐ |
 | 12 | 3 | Nightly update pipeline + status overrides | — | ☐ | ☐ |
 | 13 | 3 | External in-season benchmarks (DARKO/ADP archives) | EXP-020 | ☐ | ☐ |
@@ -885,6 +885,18 @@ complexity. Adopt on 3/4 seasons at ≥ 2 of 3 cutpoints.
 
 **Done when:** consistency check passes; gate evaluated + logged; ROADMAP 7.0 in-season
 checkbox flips from parked to done-pending-Step-11.
+
+> **As completed (2026-07-09, local):** core + two amendments built and measured
+> (`models/asof.py`, `scripts/eval_asof.py`, `tests/test_asof.py` 6 green;
+> `team_game_logs` dataset added + pulled for the blowout amendment). **Consistency:** the
+> literal 10.2 thresholds are below `project_learned`'s own seed-to-seed noise floor
+> (Spearman 0.968–0.973); preseason-only asof is within that noise (no leak, labels corr
+> 1.0000); the pooled model pays a small documented pooling cost (0.947). **Gate:** frozen-T₀
+> beaten 12/12 cells in every config; naive K=20 blend at parity (EWMA config −0.07 pooled
+> MAE, cell tally 1/1/1/3 → **gate parked, engine adopted as the Phase-3 foundation**).
+> EWMA half-lives fit to: every rate 40 games, MPG 10. Remaining amendments ride their data
+> dependencies: teammate-vacated minutes → Step 7, schedule-aware ROS → D1, blowout/ramp →
+> team logs (pulled, unwired), tuner re-arm (EXP-013d note) → this panel. See EXP-018.
 
 ## Step 11 — EXP-019: the in-season mover eval + lead-time metric
 

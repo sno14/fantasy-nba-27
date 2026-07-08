@@ -101,6 +101,9 @@ def main() -> None:
     parser.add_argument("--scoring", default=None)
     parser.add_argument("--ewma", action="store_true",
                         help="Add the fitted-half-life EWMA form block (Step 10 amendment).")
+    parser.add_argument("--blend", action="store_true",
+                        help="Add the naive-blend features (start from the K=20 shrinkage, "
+                             "learn corrections).")
     args = parser.parse_args()
 
     season_stats = storage.read("player_season_stats")
@@ -121,15 +124,17 @@ def main() -> None:
         half_lives = asof.fit_half_lives(train_gl) if args.ewma else None
         if half_lives:
             print(f"[{season}] fitted half-lives: {half_lives}")
-        panel = asof.build_asof_panel(train_ss, train_gl, train_bio, half_lives=half_lives)
-        models = asof._fit_asof_models(panel, params, use_ewma=args.ewma)
+        panel = asof.build_asof_panel(train_ss, train_gl, train_bio, half_lives=half_lives,
+                                      use_blend=args.blend)
+        models = asof._fit_asof_models(panel, params, use_ewma=args.ewma, use_blend=args.blend)
         t0_board = project_models(season, season_stats, bio, cfg, seed=args.seed)["learned"]
         gl_s = gl[gl["SEASON"] == season]
 
         for off in args.cutpoints:
             T = bounds[season] + pd.Timedelta(days=off)
             actual = ros_actual(gl_s, T)
-            feats = asof.asof_features(gl, season_stats, bio, season, T, half_lives=half_lives)
+            feats = asof.asof_features(gl, season_stats, bio, season, T, half_lives=half_lives,
+                                       use_blend=args.blend)
             boards = {
                 "asof": asof.predict_board(models, feats, cfg, season),
                 "frozen_t0": t0_board,

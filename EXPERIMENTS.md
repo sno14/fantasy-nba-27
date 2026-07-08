@@ -512,6 +512,59 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   target change) or allocate **season totals** for total-based decisions only. The EXP-004
   GP ceiling strikes again — any quantity routed through predicted GP inherits its noise.
 
+### EXP-018 — `project_asof`: the as-of-date ROS engine  ·  Status: **adopted (foundation) / gate parked** (crushes frozen-T₀ 12/12; naive-parity, cell gate not met — re-gate after Step 7 + D1 signals land)
+- **Date:** 2026-07-09  ·  **Commit:** uncommitted  ·  **Step:** implementation-plan Step 10 (pulled forward by Decision Row 1)
+- **Hypothesis:** one model trained on in-season cutpoint snapshots learns the shrinkage
+  ("6 hot games → move how far?") better than (a) never updating and (b) a hand-set K=20
+  per-game blend.
+- **Method:** `models/asof.py` — cutpoint grid (T₀−7d, +30…+150d), season-to-date block
+  (STD gp/mpg/rates, last-10 form, days-since-game, `games_so_far`), ROS labels from game
+  logs > T (≥5 games **and ≥200 min** — the minutes floor fixed a real bug: garbage-time
+  rate labels distorted the fit), walk-forward panel (~33k rows/fold; within-season rows of
+  the eval season never in train), cutpoint-balanced fits, union universe (STD-only rookies
+  enter with NaN preseason features). Amendments built + measured: per-stat **EWMA half-lives**
+  fitted on the training slice (grid {5,10,20,40}) and **naive-blend features** (the K=20
+  blend as explicit columns; "start from naive, learn corrections").
+  Gate harness: `scripts/eval_asof.py` — ROS level MAE, own top-150 pool, +30/+60/+90,
+  2022-23…2025-26, seed 0.
+- **10.2 consistency (T₀ vs `project_learned`):** the plan's literal bar (Spearman ≥ 0.98,
+  MAE ≤ 0.3) is **below `learned`'s own seed-to-seed noise floor** (two seeds of the identical
+  model: Spearman 0.968–0.973, MAE 0.81–0.89). Preseason-only asof = Spearman 0.965 / MAE 0.82
+  — indistinguishable from another seed (**no leak**; shared-player labels corr 1.0000). Full
+  pooled model = 0.947 / 1.14 — a small, documented pooling cost, not a bug.
+- **Result (ROS level MAE, pooled over 12 season×cutpoint cells, seed 0):**
+  | config | asof | frozen_t0 | naive | beats frozen | beats naive (cells) | gate tally |
+  |---|---|---|---|---|---|---|
+  | core | 3.791 | 4.835 | 3.837 | 12/12 | 6/12 | 1/1/1/3 |
+  | +EWMA | **3.763** | 4.835 | 3.837 | 12/12 | 6/12 | 1/1/1/3 |
+  | +EWMA+blend | 3.806 | 4.835 | 3.837 | 12/12 | 7/12 | 2/1/1/3 |
+  **(a) frozen-T₀ is crushed everywhere** — margins 0.6–1.7 MAE/cell; in-season updating is
+  the single largest accuracy lever measured in this program. **(b) the naive K=20 blend is
+  at parity**: best config −0.07 pooled MAE but only 2025-26 clears the per-season cell
+  criterion (adopt needed 3/4). Naive's wins concentrate at +90d (3/4 seasons, every config).
+  Fitted half-lives are themselves a finding: **every rate → 40 games (grid max, "use
+  everything"); MPG → 10 games** — rates are stable, minutes volatile, EXP-001 restated
+  in-season. Fail verdict logged on seed 0 (a pass would have required seeds {0,1,2}; the
+  cell pattern is far from flipping on seed wiggle).
+- **Verdict:** **engine adopted as the Phase-3 foundation** (Steps 11–13 are built on it —
+  in-season eval, nightly pipeline, benchmarks); the *learned-shrinkage-beats-naive* gate is
+  **parked, not passed**. Re-gate when the plan's remaining in-season signals exist: live
+  teammate-vacated minutes (needs Step 7 injuries — "the single biggest waiver signal"),
+  schedule-aware ROS (needs D1), blowout/ramp cleanups (team logs pulled, 17 seasons), and
+  the EXP-013d tuner re-arm on this ~9× panel.
+- **Skeptic pass:** (leakage) labels strictly > T, features strictly ≤ T, panel seasons
+  strictly < eval season, half-lives fitted on training slice only — unit-tested
+  (`tests/test_asof.py`, 6 green). (selection) pool = each comparator's own top-150 by its own
+  ROS ranking. (season concentration) frozen-T₀ win is uniform; the naive-parity result is
+  also uniform (asof wins 2025-26, naive wins +90d cells — not one-season luck).
+- **Ledger note:** do **not** re-run STD/EWMA-style form features expecting to beat the naive
+  blend at +90d — measured three configs, the deficit sits where rest/tank noise lives (late
+  cutpoints) and where the naive blend's directness wins. The next in-season accuracy must
+  come from **new information** (who is OUT tonight, schedule, margins), not from re-weighting
+  the same game logs. Deployment note until then: the asof engine is still the right daily
+  board (it ties naive overall, beats it early-season, and handles rookies/preseason in one
+  path).
+
 _Next experiments — numbering reserved by [`docs/implementation-plan.md`](docs/implementation-plan.md)
 (the execution spec; run in its Step order): **EXP-011** ceiling diagnostics (selection floor +
 per-bucket oracles) · **EXP-012** recency de-confound (skip-last / post-trade split) · **EXP-013**

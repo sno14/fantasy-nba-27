@@ -139,6 +139,20 @@ def test_project_asof_t0_neutrality_schema_and_determinism():
     pd.testing.assert_frame_equal(board, board2)        # deterministic (fixed seed)
 
 
+def test_blend_features_reduce_to_anchors():
+    # T₀ row (games_so_far=0, Marcel present) -> pure Marcel line; rookie row (no Marcel,
+    # games played) -> pure STD line.
+    row = {"games_so_far": [0.0, 10.0], "std_mpg": [0.0, 30.0], "proj_mpg": [24.0, np.nan]}
+    for c in COUNTING:
+        row[f"std_rate_{c}"] = [0.0, 1.0]
+        row[f"rate_{c}"] = [0.5, np.nan]
+    f = asof.add_blend_features(pd.DataFrame(row))
+    assert f.loc[0, "blend_mpg"] == pytest.approx(24.0)            # T₀: pure Marcel MPG
+    assert f.loc[0, "blend_pg_pts"] == pytest.approx(24.0 * 0.5)   # T₀: Marcel per-game line
+    assert f.loc[1, "blend_mpg"] == pytest.approx(30.0)            # rookie: pure STD MPG
+    assert f.loc[1, "blend_pg_pts"] == pytest.approx(30.0 * 1.0)   # rookie: STD per-game line
+
+
 def test_asof_panel_walk_forward_no_leakage():
     # The training panel for a target must contain no rows from the target season itself.
     seasons = ["2018-19", "2019-20", "2020-21", "2021-22"]

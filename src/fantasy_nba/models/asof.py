@@ -88,9 +88,41 @@ EWMA_GRID = (5, 10, 20, 40)  # candidate half-lives, in games
 EWMA_FEATURES = ["ewma_mpg", "ewma_mpg_delta"] + [f"ewma_rate_{s}" for s in COUNTING]
 
 
-def feature_cols(use_ewma: bool = False) -> list[str]:
-    """The as-of model's feature list; EWMA columns join when the amendment is on."""
-    return ASOF_FEATURES + (EWMA_FEATURES if use_ewma else [])
+# --- Naive-blend features (response to the measured EXP-018 core result) -----------------
+# The hand-set shrinkage baseline ("naive": per-game line = (n×STD + K×T₀)/(n+K)) proved
+# strong exactly because it blends the *per-game line* directly, sidestepping the rate×MPG
+# composition. Giving the model that blend as explicit features lets it start from the naive
+# answer and learn corrections — a smooth ratio the trees are bad at building from raw parts.
+# The anchor is the Marcel per-game line (rate_<s> × proj_mpg — already features), so the
+# blend is a deterministic transform of existing columns: no extra fitting, no leakage.
+BLEND_K = 20.0
+BLEND_FEATURES = ["blend_mpg"] + [f"blend_pg_{s}" for s in COUNTING]
+
+
+def feature_cols(use_ewma: bool = False, use_blend: bool = False) -> list[str]:
+    """The as-of model's feature list; amendment blocks join when switched on."""
+    return (ASOF_FEATURES
+            + (EWMA_FEATURES if use_ewma else [])
+            + (BLEND_FEATURES if use_blend else []))
+
+
+def add_blend_features(frame: pd.DataFrame, k: float = BLEND_K) -> pd.DataFrame:
+    """Add ``BLEND_FEATURES`` to a row frame that already carries the preseason and STD
+    blocks. Preseason rows (games_so_far=0) reduce to the pure Marcel line; STD-only rookies
+    (no Marcel anchor) reduce to the pure season-to-date line."""
+    out = frame.copy()
+    n = out["games_so_far"]
+    w = n / (n + k)
+    marcel_mpg = out["proj_mpg"]
+    out["blend_mpg"] = w * out["std_mpg"].where(n > 0, marcel_mpg) + (1 - w) * marcel_mpg.fillna(
+        out["std_mpg"])
+    for canon in COUNTING:
+        std_pg = out["std_mpg"] * out[f"std_rate_{canon}"]
+        marcel_pg = marcel_mpg * out[f"rate_{canon}"]
+        out[f"blend_pg_{canon}"] = (
+            w * std_pg.where(n > 0, marcel_pg) + (1 - w) * marcel_pg.fillna(std_pg)
+        )
+    return out
 
 
 def _with_dates(game_logs: pd.DataFrame) -> pd.DataFrame:
@@ -308,12 +340,13 @@ def build_asof_panel(
     min_ros: int = MIN_ROS_GAMES,
     min_ros_minutes: float = MIN_ROS_MINUTES,
     half_lives: dict | None = None,
+    use_blend: bool = False,
 ) -> pd.DataFrame:
     """Stack (preseason + STD features as-of-T, ROS labels-after-T) over every eligible
     (season, cutpoint). Seasons need ≥ 2 predecessors for the preseason block; the caller
     restricts ``season_stats``/``game_logs`` to prior seasons for a no-leakage backtest fold.
     ``half_lives`` (from :func:`fit_half_lives`, on the same training slice) adds the EWMA
-    form block.
+    form block; ``use_blend`` adds the naive-blend features.
     """
     gl = _with_dates(game_logs)
     bounds = season_date_bounds(gl).set_index("SEASON")["start"]
@@ -327,7 +360,10 @@ def build_asof_panel(
             if labels.empty or (preseason.empty and std.empty):
                 continue
             ew = ewma_features(gl_s, T, half_lives) if half_lives else None
-            row = _row_frame(preseason, std, ew).merge(labels, on="PLAYER_ID", how="inner")
+            feats = _row_frame(preseason, std, ew)
+            if use_blend:
+                feats = add_blend_features(feats)
+            row = feats.merge(labels, on="PLAYER_ID", how="inner")
             if row.empty:
                 continue
             row["season"] = season
@@ -348,10 +384,10 @@ def _cutpoint_weights(panel: pd.DataFrame) -> np.ndarray:
 
 
 def _fit_asof_models(panel: pd.DataFrame, params: dict, balance_cutpoints: bool = True,
-                     use_ewma: bool = False) -> dict:
+                     use_ewma: bool = False, use_blend: bool = False) -> dict:
     from lightgbm import LGBMRegressor
 
-    cols = feature_cols(use_ewma)
+    cols = feature_cols(use_ewma, use_blend)
     models = {}
     for target in ROS_TARGETS:
         sub = panel[panel[target].notna()]
@@ -382,6 +418,7 @@ def project_asof(
     params: dict | None = None,
     target_season: str | None = None,
     use_ewma: bool = False,
+    use_blend: bool = False,
     n_seasons: int = 3,
     weights: tuple[float, ...] = DEFAULT_WEIGHTS,
     reg_minutes: float = DEFAULT_REG_MINUTES,
@@ -409,11 +446,11 @@ def project_asof(
 
     half_lives = fit_half_lives(train_gl) if use_ewma else None
     panel = build_asof_panel(train_ss, train_gl, train_bio, n_seasons, weights, reg_minutes,
-                             half_lives=half_lives)
-    models = _fit_asof_models(panel, params, use_ewma=use_ewma)
+                             half_lives=half_lives, use_blend=use_blend)
+    models = _fit_asof_models(panel, params, use_ewma=use_ewma, use_blend=use_blend)
 
     feats = asof_features(gl, season_stats, bio, season, Tts, n_seasons, weights, reg_minutes,
-                          half_lives=half_lives)
+                          half_lives=half_lives, use_blend=use_blend)
     return predict_board(models, feats, cfg, season)
 
 
@@ -423,15 +460,18 @@ def asof_features(
     n_seasons: int = 3, weights: tuple[float, ...] = DEFAULT_WEIGHTS,
     reg_minutes: float = DEFAULT_REG_MINUTES,
     half_lives: dict | None = None,
+    use_blend: bool = False,
 ) -> pd.DataFrame:
     """The prediction-time feature frame for ``season`` as of ``T`` — preseason block +
-    STD block (+ EWMA form block when ``half_lives`` is given) from game logs ≤ T, with a name
-    carried even for STD-only rookies. ``game_logs`` must already carry the ``_date`` column
-    (call :func:`_with_dates`)."""
+    STD block (+ EWMA form block when ``half_lives`` is given, + naive-blend features when
+    ``use_blend``) from game logs ≤ T, with a name carried even for STD-only rookies.
+    ``game_logs`` must already carry the ``_date`` column (call :func:`_with_dates`)."""
     preseason = _preseason_block(season_stats, bio, season, n_seasons, weights, reg_minutes)
     gl_s = game_logs[(game_logs["SEASON"] == season) & (game_logs["_date"] <= T)]
     ew = ewma_features(gl_s, T, half_lives) if half_lives else None
     feats = _row_frame(preseason, std_features(gl_s, T), ew)
+    if use_blend:
+        feats = add_blend_features(feats)
     if "PLAYER_NAME" not in feats or feats["PLAYER_NAME"].isna().any():
         names = game_logs[game_logs["SEASON"] == season].groupby("PLAYER_ID")["PLAYER_NAME"].last()
         feats["PLAYER_NAME"] = feats["PLAYER_NAME"].fillna(feats["PLAYER_ID"].map(names))

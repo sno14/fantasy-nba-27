@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sed -n '/=== ROS/,$p' /tmp/step10_gate_ewma_blend.txt)",
+      "Bash(python -m pytest tests/ -q)",
+      "Bash(git add *)",
+      "Bash(git commit -q -m ' *)"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
+    ]
+  }
+}
