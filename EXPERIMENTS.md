@@ -378,6 +378,45 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   floors). Do **not** re-run coarse preseason own-history/roster features expecting a riser win; the
   next real levers are exogenous data (Steps 7–9) and the as-of-date engine (Step 10).
 
+### EXP-012 — recency de-confound: skip-last + post-trade split  ·  Status: **parked** (aggregate keeper again; riser bar failed again)
+- **Date:** 2026-07-08  ·  **Commit:** uncommitted  ·  **Step:** implementation-plan Step 4
+- **Hypothesis:** EXP-008b's aggregate win survives while its season-end rest/tanking
+  contamination is removed — trimming the final `skip_last` played games (or splitting on a
+  mid-season trade) should stop the downward bias and finally let recency help the risers.
+- **Method:** `recency.season_recency_table(skip_last=…)` + `trade_split_table`
+  (`TRADE_FEATURES`, ≥5 post-trade games guard). Registry variants `learned_recency{,_s5,_s10,
+  _trade,_s5_trade}` vs controls `learned` and `learned_recency`, mover eval, top-150,
+  2022-23…2025-26. **Rule 8 in full:** all numbers below are means over LightGBM seeds
+  {0,1,2}; the paired player-clustered bootstrap CI ran on s5 − recency.
+- **Result (pooled signed bias, seed-mean · riser / big riser):**
+  | variant | riser | big riser | agg MAE better vs learned |
+  |---|---|---|---|
+  | learned (control) | **−3.177** | **−6.907** | — |
+  | learned_recency | −3.390 | −7.529 | 3/4 |
+  | learned_recency_s5 | −3.396 | −7.749 | 3/4 |
+  | learned_recency_s10 | −3.299 | −7.177 | 3/4 |
+  | learned_recency_trade | −3.364 | −7.602 | 3/4 |
+  | learned_recency_s5_trade | −3.355 | −7.827 | 3/4 |
+  Riser bar: **failed.** No variant beats `learned_recency` beyond the seed spread (max 0.34;
+  best candidate s10's big-riser +0.35 is exactly at it, its riser +0.09 inside it); the s5 CI
+  straddles 0 (big riser [−0.60, +0.02]); and **every recency variant stays worse than plain
+  `learned` on both riser buckets.** Aggregate bar: passed (3/4-season level-MAE win vs
+  `learned` retained by all variants; 2024-25 the consistent miss; s5_trade best 2025-26 4.68).
+- **Verdict:** **parked** — the plan's "clears the aggregate bar but not the riser bar" branch,
+  verbatim. Keep opt-in (`--variants`), no default change, no floor recompute, don't iterate
+  further; Step 10 revisits recency at true game-log granularity (EWMAs, fitted half-lives).
+- **Skeptic pass:** (leakage) none — windows/trade features computed within prior seasons only,
+  unit-tested (`tests/test_stage7_infra.py`); (selection) pool unchanged (model top-150);
+  (season concentration) the aggregate win concentrates in 2025-26 + 2022-23 and *loses*
+  2024-25 in every variant — real but uneven.
+- **Ledger note:** this was **predicted by EXP-011a** — the model-pool riser reducible gap is
+  ≈0 fpts/g, so there was nothing for de-confounding to close; the measured riser deltas are
+  floor-level noise. The rest/tank contamination story (EXP-008b) is real but fixing it does
+  not manufacture headroom that doesn't exist. **Five feature experiments now confirm the same
+  meta-finding** (EXP-008, 009, 008b, 009b, 012): do not attempt further preseason riser-bias
+  feature work; the open lever is sleeper *recall* (EXP-011b), which is exogenous-data
+  (Steps 7–9) or in-season (Step 10) territory.
+
 _Next experiments — numbering reserved by [`docs/implementation-plan.md`](docs/implementation-plan.md)
 (the execution spec; run in its Step order): **EXP-011** ceiling diagnostics (selection floor +
 per-bucket oracles) · **EXP-012** recency de-confound (skip-last / post-trade split) · **EXP-013**

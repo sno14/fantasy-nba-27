@@ -326,10 +326,12 @@ eval-only (opt-in `--recency`); the shipped board uses the plain `learned` found
       production vs the player's own season average. **Result:** best *aggregate* add-on (level MAE
       better 3/4 seasons, directional sign-acc 4/4) but **doesn't crack the riser buckets** — the
       season-end window is confounded by **rest / load-management / tanking**, which biases it *down*.
-- [ ] **Refinement:** trim rest-contaminated final games (or mid-late window), and/or an explicit
-      **post-trade split** (games since last `TEAM_ABBREVIATION` change) — cleaner role-change signal.
-- [ ] **Couple with EXP-009b:** recency says *a role changed*; team-context says *why / where the
-      minutes came from*. The two together are the real riser test — neither alone cracked it.
+- [x] **Refinement (EXP-012, parked):** skip-last {5,10} trims + post-trade split, seeds {0,1,2} +
+      clustered CI. Aggregate MAE win retained (3/4 seasons) but **no variant beats plain `learned`
+      on the riser buckets** — as EXP-011a predicted (model-pool riser reducible gap ≈ 0, nothing to
+      close). Kept opt-in; Step 10 revisits recency at game-log granularity (EWMAs, fitted half-lives).
+- [x] **Couple with EXP-009b (rejected):** recency+context coupling inherits recency's aggregate
+      gain and its riser miss; context is inert on top (see EXP-009b).
 
 #### 7.E — Market / consensus integration  ← medium (also an eval tool)
 - [x] **DARKO consumed as a live overlay** (`scripts/pull_darko.py` + `models/darko.py` +

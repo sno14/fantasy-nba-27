@@ -86,7 +86,7 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | 1 | 0 | Eval refactor + predicted-Δ calibration + bootstrap CI | — | ☑ (+actual-pool recall) | ☑ |
 | 2 | 0 | Selection-floor simulation | EXP-011a | ☑ | ☑ |
 | 3 | 0 | Per-bucket oracle decomposition + Phase-0 verdict | EXP-011b | ☑ | ☑ (Decision Row 1) |
-| 4 | 1 | Recency de-confound (skip-last + post-trade) | EXP-012 | ☑ | ☐ |
+| 4 | 1 | Recency de-confound (skip-last + post-trade) | EXP-012 | ☑ | ☑ (parked) |
 | 5 | 1 | Objective-side changes (Δ-targets, weights, quantiles, tuning) | EXP-013a/b/c/d | ☑ a/b/c · ☐ d | ☐ |
 | 6 | 1 | Team-constrained minutes allocation | EXP-014 | ◐ feature layer | ☐ |
 | R1 | 1.5 | Composition-covariance check (direct vs composed) | EXP-022 | ☐ | ☐ |
