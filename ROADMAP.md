@@ -292,14 +292,16 @@ eval-only (opt-in `--recency`); the shipped board uses the plain `learned` found
       share as learned-model features. **Parked** — net wash on the mover buckets, coarse. **Key
       correction to the old plan:** transactions were **not** the missing ingredient for a first pass —
       vacated minutes are computable from `player_season_stats` team membership alone.
-- [ ] **Refinement (EXP-009b):** the vacated minutes must be **redistributed by position / trajectory**
-      (team-level turnover is too blunt — it doesn't say *who* absorbs the minutes), and use **strict
-      preseason rosters / dated transactions** (prosportstransactions) instead of end-of-season team
-      assignment (which mildly flatters the backtest on mid-season movers).
-- [ ] **Data:** season-stats team membership (have; used in v1) → prosportstransactions for dated,
-      preseason-accurate moves (EXP-009b). Game logs (have) give the redistribution priors.
-- [ ] **Test:** does position-aware vacated-minutes redistribution improve minutes MAE **and** the 7.0
-      mover buckets *for the role-change subpopulation*? (Aggregate metrics hide it — segment.)
+- [x] **Refinement (EXP-014, rejected):** position-aware, team-constrained share-of-minutes model
+      (`models/allocation.py`, historical rosters pulled 2009-10…2025-26). **Fails decisively** —
+      minutes MAE +63%, level MAE worse all 4 seasons, all segments (incl. moved/high-turnover)
+      worse. Mechanism: the share model is ~competitive on season-*total* minutes, but converting
+      share → MPG divides by predicted GP (R²≈0.03, EXP-004) — GP noise propagates into the
+      per-game number. **Do not re-run share-of-minutes → MPG via ÷GP.** Depth-chart features +
+      roster data stay (Step 10 reuses them as in-season features).
+- [ ] **Data (remaining):** prosportstransactions for dated, preseason-accurate moves (EXP-016) —
+      still worthwhile as a backtest-correctness fix regardless of EXP-014's rejection.
+- [x] **Test:** ran with segments per the spec — the answer is no (see EXP-014).
 
 #### 7.B — Young-player trajectory / breakout layer  ← high, targeted
 - [ ] For young players (age ≤ 24, ≥2 seasons) add a **trajectory/momentum term** instead of pure

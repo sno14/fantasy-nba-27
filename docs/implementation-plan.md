@@ -88,10 +88,10 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | 3 | 0 | Per-bucket oracle decomposition + Phase-0 verdict | EXP-011b | ☑ | ☑ (Decision Row 1) |
 | 4 | 1 | Recency de-confound (skip-last + post-trade) | EXP-012 | ☑ | ☑ (parked) |
 | 5 | 1 | Objective-side changes (Δ-targets, weights, quantiles, tuning) | EXP-013a/b/c/d | ☑ | ☑ (all rejected) |
-| 6 | 1 | Team-constrained minutes allocation | EXP-014 | ◐ feature layer | ☐ |
-| R1 | 1.5 | Composition-covariance check (direct vs composed) | EXP-022 | ☐ | ☐ |
-| R2 | 1.5 | Per-season lags + era context | EXP-023 | ☐ | ☐ |
-| R3 | 1.5 | Volume/efficiency split + pace normalization | EXP-024 | ☐ | ☐ |
+| 6 | 1 | Team-constrained minutes allocation | EXP-014 | ☑ | ☑ (rejected) |
+| R1 | 1.5 | Composition-covariance check (direct vs composed) | EXP-022 | ☐ | ☐ deferred* |
+| R2 | 1.5 | Per-season lags + era context | EXP-023 | ☐ | ☐ deferred* |
+| R3 | 1.5 | Volume/efficiency split + pace normalization | EXP-024 | ☐ | ☐ deferred* |
 | 7 | 2 | Injury/availability data | EXP-015 | ☐ | ☐ |
 | 8 | 2 | Dated transactions + preseason rosters | EXP-016 | ☐ | ☐ |
 | 9 | 2 | ADP / market benchmark | EXP-017 | ☐ | ☐ |
@@ -102,6 +102,14 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | 13 | 3 | External in-season benchmarks (DARKO/ADP archives) | EXP-020 | ☐ | ☐ |
 | 14 | 4 | Distributional board (quantile ranges, GP tails, coverage) | EXP-021 | ☐ | ☐ |
 | 15 | 4 | Ship: default model switch, explorer, final doc sweep | — | ☐ | ☐ |
+
+*\*Phase-0 verdict (EXP-011, Decision Row 1, 2026-07-08): the model-pool riser reducible gap
+is +0.19 fpts/g (< 2) — preseason bias-chasing is near-done and the residual headroom is
+sleeper recall. Per the decision row, Steps 4–6 ran as cheap A/Bs (all parked/rejected:
+EXP-012/013/014) and **Step 10 is pulled forward next**; R1–R3 (preseason decomposition
+refinements) are deferred behind it — they chase the same ≈0 preseason gap. Steps 7–9
+(exogenous data) keep their place: they attack GP/availability and backtest correctness,
+which the Phase-0 verdict does not touch.*
 
 ---
 
@@ -528,12 +536,18 @@ roster/position data and depth features stay (Step 10 reuses them as in-season f
 > `src/fantasy_nba/models/allocation.py` (`ALLOC_FEATURES`, `position_group` with loud
 > unmapped-string failure, `allocation_features` depth-chart math, `rookie_reserve`,
 > `normalize_shares`) — implemented and tested (synthetic 2-team league: departed same-pos
-> teammate's vacated share, depth ranks, normalization to 1 − reserve). **Remaining
-> (local):** 6.1 historical-rosters pull, the `y_min_share` LightGBM model, the
-> `minutes_mode="allocation"` wiring in `project_learned`, and the A/B. One known
-> limitation to carry into the run: a departed player's position comes from his *new*
-> roster — players who left the league entirely drop out of the vacated-share sums until
-> the historical-roster pull supplies prior-season positions.
+> teammate's vacated share, depth ranks, normalization to 1 − reserve).
+>
+> **As completed (2026-07-08, local):** 6.1 — `pull_seasons` loops seasons for
+> `team_rosters` (17 seasons cached; every POSITION string maps; the departed-player
+> position limitation above is resolved by `pos_group_asof`'s past-preferred lookup).
+> 6.2 — share-model layer in `allocation.py` (`share_labels`, `build_share_panel`,
+> `fit_share_model`, `predict_shares`, `ALLOC_MODEL_FEATURES`), wired as
+> `project_learned(minutes_mode="allocation")` / variant `learned_alloc`. The Σ-share
+> sanity **did its job**: raw team sums were 1.21 vs the 0.89 target — two calibration
+> flaws found and fixed (the 200-min label filter selected on the outcome; no-prior roster
+> players double-counted the rookie reserve). After fixes: mean 0.946 vs 0.892. The share
+> universe = players with a prior-season row (the learned board's universe by construction).
 
 **Done when:** logged adopt/park/reject; ROADMAP 7.A refinement checkbox ticked; tests
 (synthetic 2-team league: departed star → his same-pos teammate's `same_pos_vacated_share`

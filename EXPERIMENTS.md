@@ -469,6 +469,49 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   (latent bug — any params-carrying variant silently tested defaults under `--seed`); now the
   seed threads *inside* spec params (unit-tested).
 
+### EXP-014 — team-constrained minutes allocation  ·  Status: **rejected** (decisively; the structural bet fails at the share→MPG conversion)
+- **Date:** 2026-07-08  ·  **Commit:** uncommitted  ·  **Step:** implementation-plan Step 6
+- **Hypothesis:** modeling minutes as a **share of team minutes**, normalized within the target
+  roster (240-minute budget + who competes for it, by position), beats the per-player MPG
+  regression — the breakthrough plan's structural bet (§1b).
+- **Method:** 6.1 historical `team_rosters` pull (17 seasons; all POSITION strings map to
+  guard/big). 6.2 `y_min_share` LightGBM on `ALLOC_MODEL_FEATURES` (depth-chart features +
+  role/durability/age + EXP-009 team pair + `pf_per_min`), budget-normalized to
+  `1 − rookie_reserve` (measured 0.108), converted `share_norm × mean_team_total_min /
+  pred_gp`, clip [0, 42]; wired as `learned_alloc` (swaps only the minutes layer). A/B vs
+  `learned`, top-150, 2022-23…2025-26, seeds {0,1,2}, segment split + clustered CI.
+- **Σ-share sanity (it did its job):** raw pre-norm team sums 1.21 vs the 0.89 target →
+  found+fixed two real calibration flaws: (1) the 200-min label filter **selected on the
+  outcome** (taught the model fringe players get real minutes) → share labels take
+  `min_minutes=0`; (2) no-prior roster players in the modeled set **double-counted the rookie
+  reserve** → the share universe = players with a prior-season row (the learned board's
+  universe by construction). Post-fix: mean 0.946 vs 0.892 — acceptable.
+- **Result (pooled, seed-mean; learned → learned_alloc):** fails everything, far beyond noise.
+  Minutes MAE **2.81 → 4.59** (+63%); level MAE **4.43 → 5.78** (worse all 4 seasons); every
+  bucket's signed bias shifted ≈ **−2.4** (clustered CI excludes 0 in *all five* buckets;
+  pool minutes bias +0.8 → −0.8). Segments — the case it was built for — all worse: moved
+  5.32 → 5.69, high-turnover 4.46 → 6.19, rest 3.92 → 5.50 level MAE.
+- **Mechanism (the diagnostic that stops a re-run):** the share model itself is nearly
+  competitive at **season-total minutes** (pool total-MIN MAE 496 vs 447, −11%) — the damage
+  is the **share→MPG conversion**: `MPG = share × team_total / pred_gp` divides by predicted
+  GP, which is near-unpredictable (EXP-004, R²≈0.03), so GP noise propagates
+  *into* the per-game number the eval (and drafting) cares about. The regression predicts MPG
+  — the stable quantity — directly. Compounding it, proportional normalization taxes every
+  player for the fringe overshoot (stars included), hence the −0.8 MPG pool bias.
+- **Verdict:** **rejected.** `minutes_mode="regression"` stays the default. Roster/position
+  data, `pos_group_asof`, and the depth-chart features **stay** — Step 10 reuses them as
+  in-season features (live teammate-vacated minutes), where allocation thinking belongs.
+- **Skeptic pass:** (leakage) roster map = `context.target_team_map` (end-of-season teams) —
+  the same *flattering* approximation EXP-009 carried, and it still lost badly, which
+  strengthens the rejection; positions are static attributes (past-preferred lookup).
+  (selection) pool = each model's own top-150, unchanged. (season concentration) worse in
+  all 4 seasons.
+- **Ledger note:** do **not** re-run share-of-team-minutes → per-game via ÷GP. If allocation
+  is ever revisited, it must predict **MPG directly with roster-relative features** (the
+  depth-chart features as inputs to the existing regression — a *feature* experiment, not a
+  target change) or allocate **season totals** for total-based decisions only. The EXP-004
+  GP ceiling strikes again — any quantity routed through predicted GP inherits its noise.
+
 _Next experiments — numbering reserved by [`docs/implementation-plan.md`](docs/implementation-plan.md)
 (the execution spec; run in its Step order): **EXP-011** ceiling diagnostics (selection floor +
 per-bucket oracles) · **EXP-012** recency de-confound (skip-last / post-trade split) · **EXP-013**
