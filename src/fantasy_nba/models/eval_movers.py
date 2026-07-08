@@ -155,6 +155,7 @@ def run_mover_eval(
     seed: int | None = None,
     return_pools: bool = False,
     pool: str = "model",
+    rosters: pd.DataFrame | None = None,
 ):
     """Mover-segmented level accuracy for one target season.
 
@@ -178,7 +179,7 @@ def run_mover_eval(
     cfg = cfg or load_scoring()
     projections = project_models(
         target_season, season_stats, bio, cfg,
-        game_logs=game_logs, variants=variants, seed=seed,
+        game_logs=game_logs, variants=variants, seed=seed, rosters=rosters,
     )
     if oracles:
         lines = _actual_lines(season_stats, target_season)

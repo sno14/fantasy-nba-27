@@ -1,4 +1,4 @@
-"""Team-constrained minutes allocation — feature layer (EXP-014 / implementation-plan Step 6).
+"""Team-constrained minutes allocation (EXP-014 / implementation-plan Step 6).
 
 The structural bet of the breakthrough plan (§1b): minutes are a **team-constrained
 allocation** — 240 per game, divided over a specific roster by position and pecking order —
@@ -6,16 +6,25 @@ not a per-player time series. Every prior minutes treatment (v2m's aging trend, 
 per-player context covariates) ignores both the 240-minute budget and *who specifically*
 competes for the vacated minutes.
 
-This module implements the **feature and normalization layer** of that model, fully
-unit-testable without data. The LightGBM share model itself (target ``y_min_share`` = player
-season MIN / team season MIN) and its wiring into ``project_learned(minutes_mode=
-"allocation")`` are built in Step 6 proper, because they need the historical-rosters pull
-(positions per player-season) that only runs locally — see the step spec for the target
-definition, the A/B design, and the adopt gate.
+Layers in this module:
+
+* **Feature / normalization layer** (unit-testable without data): ``position_group``,
+  ``allocation_features`` (depth-chart math), ``rookie_reserve``, ``normalize_shares``.
+* **Share model layer** (Step 6.2, needs the historical rosters pull): target
+  ``y_min_share`` = player season MIN / his primary team's season total MIN
+  (season-length-robust by construction); ``build_share_panel`` / ``fit_share_model`` /
+  ``predict_shares``. Wired into ``project_learned(minutes_mode="allocation")``, which swaps
+  **only** the minutes layer — rates and GP stay on the regression path.
 
 Position groups are deliberately coarse (guard vs big): roster POSITION strings are hybrid
 and inconsistent ("G-F", "F-C"), and finer buckets go sparse. Unmapped strings raise loudly
-rather than silently polluting the depth chart.
+rather than silently polluting the depth chart. Positions are looked up as-of the target
+season (most recent roster season ≤ target), falling back to the earliest later roster for
+players first seen afterwards — a static-attribute lookup, not an outcome.
+
+Known honesty caveat (carried from the step spec): the backtest team map is
+``context.target_team_map`` (end-of-season teams) until EXP-016 supplies true preseason
+rosters, so mid-season movers flatter the features slightly — same caveat as EXP-009.
 """
 
 from __future__ import annotations
@@ -24,6 +33,7 @@ import numpy as np
 import pandas as pd
 
 from ._core import _season_start
+from .context import season_before, target_team_map, team_context_features
 
 ALLOC_FEATURES = [
     "own_prev_share",             # own share of prior team's minutes (role he's coming from)
@@ -151,3 +161,173 @@ def normalize_shares(pred: pd.DataFrame, reserve: float) -> pd.DataFrame:
     team_sum = out.groupby("team")["share_pred"].transform("sum").replace(0, np.nan)
     out["share_norm"] = (out["share_pred"] * (1.0 - reserve) / team_sum).fillna(0.0)
     return out
+
+
+# ------------------------------------------------------------------ share model (Step 6.2)
+
+# The full share-model feature set: depth-chart features + role size / durability / age +
+# the EXP-009 team-level pair (kept per the step spec) + foul rate (critique §5.3 — a
+# stable mechanical minutes cap; foul-prone players cannot hold heavy minutes).
+ALLOC_MODEL_FEATURES = ALLOC_FEATURES + [
+    "prev_mpg", "prev_gp", "target_age",
+    "team_vacated_min_norm", "team_turnover_share",
+    "pf_per_min",
+]
+
+
+def position_table(team_rosters: pd.DataFrame) -> pd.DataFrame:
+    """``[PLAYER_ID, SEASON, pos_group]`` from the historical rosters pull (Step 6.1).
+
+    Blank/NaN POSITION rows are dropped (rare administrative rows); any *non-blank* unmapped
+    string still raises via ``position_group``.
+    """
+    t = team_rosters[["PLAYER_ID", "SEASON", "POSITION"]].copy()
+    pos = t["POSITION"].astype(str).str.strip().str.upper()
+    t = t[~pos.isin(["", "NAN", "NONE"])]
+    t["pos_group"] = t["POSITION"].map(position_group)
+    return t[["PLAYER_ID", "SEASON", "pos_group"]].drop_duplicates(["PLAYER_ID", "SEASON"])
+
+
+def pos_group_asof(pos_table: pd.DataFrame, season: str) -> pd.Series:
+    """PLAYER_ID → pos_group as of ``season``: most recent roster season ≤ ``season``,
+    falling back to the earliest later roster (positions are near-static; using a later
+    roster for a player's static attribute is noted, not hidden)."""
+    y = _season_start(season)
+    pt = pos_table.assign(_y=pos_table["SEASON"].map(_season_start)).sort_values("_y")
+    past = pt[pt["_y"] <= y].groupby("PLAYER_ID")["pos_group"].last()
+    later = pt[pt["_y"] > y].groupby("PLAYER_ID")["pos_group"].first()
+    return past.combine_first(later)
+
+
+def share_labels(season_stats: pd.DataFrame, season: str, min_minutes: float = 0.0) -> pd.DataFrame:
+    """``[PLAYER_ID, y_min_share]`` for ``season``: the player's total season minutes over his
+    primary team's season total minutes (``_primary_team_minutes`` convention).
+
+    Default ``min_minutes=0``: unlike the rate targets, a tiny-minutes share is a perfectly
+    valid label, and filtering small labels *selects on the outcome* — it taught the model
+    that fringe players get real minutes (measured: pre-norm team sums 1.21 vs 0.89 with the
+    200-min filter, 1.05 without)."""
+    s = season_stats[season_stats["SEASON"] == season]
+    team_total = s.groupby("TEAM_ABBREVIATION")["MIN"].sum()
+    p = _prev_team_minutes(season_stats, season).rename(
+        columns={"prev_team": "team", "prev_min": "min"}
+    )
+    p = p[p["min"] >= min_minutes].copy()
+    p["y_min_share"] = p["min"] / p["team"].map(team_total)
+    return p[["PLAYER_ID", "y_min_share"]]
+
+
+def _prev_player_stats(season_stats: pd.DataFrame, prev_season: str) -> pd.DataFrame:
+    """Per player for ``prev_season``: MPG, GP, PF per minute (the non-depth-chart share
+    features), plus age for the target-age derivation."""
+    s = season_stats[season_stats["SEASON"] == prev_season]
+    g = s.groupby("PLAYER_ID", as_index=False).agg(
+        prev_min=("MIN", "sum"), prev_gp_raw=("GP", "sum"), prev_pf=("PF", "sum"),
+        prev_age=("AGE", "max"),
+    )
+    g["prev_mpg"] = g["prev_min"] / g["prev_gp_raw"].replace(0, np.nan)
+    g["prev_gp"] = g["prev_gp_raw"]
+    g["pf_per_min"] = g["prev_pf"] / g["prev_min"].replace(0, np.nan)
+    g["target_age"] = g["prev_age"] + 1.0
+    return g[["PLAYER_ID", "prev_mpg", "prev_gp", "pf_per_min", "target_age"]]
+
+
+def share_features_for(
+    season_stats: pd.DataFrame,
+    team_map: pd.DataFrame,
+    pos_table: pd.DataFrame,
+    target_season: str,
+) -> pd.DataFrame:
+    """The full share-model feature frame for one target season.
+
+    ``season_stats`` needs only seasons ≤ the season before ``target_season`` (the features
+    read ``season_before(target_season)``); ``team_map`` is ``[PLAYER_ID, team]`` — the
+    target-season assignment (a preseason roster fact). Players without a known position
+    drop out (callers fall back to the regression minutes for them). Returns
+    ``[PLAYER_ID, team] + ALLOC_MODEL_FEATURES``.
+    """
+    prev_season = season_before(target_season)
+    pos = pos_group_asof(pos_table, target_season)
+    roster_map = team_map[["PLAYER_ID", "team"]].copy()
+    roster_map["pos_group"] = roster_map["PLAYER_ID"].map(pos)
+    roster_map = roster_map.dropna(subset=["pos_group"]).astype({"pos_group": int})
+    # The modeled universe = players with a prior-season row — exactly the learned board's
+    # universe (Marcel aggregates can't project rookies either). Everyone else IS the
+    # ``rookie_reserve`` headroom; keeping them here would double-count it (measured: the
+    # pre-norm team sums only center on 1 − reserve once this filter is in).
+    prev_ids = set(season_stats.loc[season_stats["SEASON"] == prev_season, "PLAYER_ID"])
+    roster_map = roster_map[roster_map["PLAYER_ID"].isin(prev_ids)]
+
+    feats = allocation_features(season_stats, roster_map, prev_season)
+    ctx = team_context_features(season_stats, roster_map[["PLAYER_ID", "team"]], prev_season)
+    prev = _prev_player_stats(season_stats, prev_season)
+
+    out = roster_map[["PLAYER_ID", "team"]].merge(
+        feats, on="PLAYER_ID", how="inner"
+    ).merge(
+        ctx[["PLAYER_ID", "team_vacated_min_norm", "team_turnover_share"]],
+        on="PLAYER_ID", how="left",
+    ).merge(prev, on="PLAYER_ID", how="left")
+    # Neutral fills: no prior season -> rookie-ish newcomer (features say "bottom of stack").
+    fills = {"team_vacated_min_norm": 0.0, "team_turnover_share": 0.0,
+             "prev_mpg": 0.0, "prev_gp": 0.0, "pf_per_min": 0.0}
+    for col, v in fills.items():
+        out[col] = out[col].fillna(v)
+    out["target_age"] = out["target_age"].fillna(out["target_age"].median())
+    return out
+
+
+def build_share_panel(
+    season_stats: pd.DataFrame,
+    pos_table: pd.DataFrame,
+    min_prior_seasons: int = 2,
+    min_label_minutes: float = 0.0,
+) -> pd.DataFrame:
+    """Stack (share features as-of-S, ``y_min_share`` in S) over every eligible season S —
+    the same eligibility rule as ``learned.build_panel``. The team map per training season
+    is ``context.target_team_map`` (end-of-season approximation; see module docstring)."""
+    seasons = sorted(season_stats["SEASON"].unique(), key=_season_start)
+    frames = []
+    for s in seasons:
+        prior = season_stats[season_stats["SEASON"].map(_season_start) < _season_start(s)]
+        if prior["SEASON"].nunique() < min_prior_seasons:
+            continue
+        team_map = target_team_map(season_stats, s)
+        feats = share_features_for(season_stats, team_map, pos_table, s)
+        labels = share_labels(season_stats, s, min_minutes=min_label_minutes)
+        merged = feats.merge(labels, on="PLAYER_ID", how="inner")
+        if not merged.empty:
+            merged["label_season"] = s
+            frames.append(merged)
+    if not frames:
+        raise ValueError("Empty share panel — need at least a few seasons of history.")
+    return pd.concat(frames, ignore_index=True)
+
+
+def fit_share_model(panel: pd.DataFrame, params: dict):
+    """One LightGBM regressor on the raw share target (the step amendment says try raw
+    first; switch to logit only if raw mis-calibrates — judged by the Σ-share sanity)."""
+    from lightgbm import LGBMRegressor
+
+    model = LGBMRegressor(**params)
+    model.fit(panel[ALLOC_MODEL_FEATURES], panel["y_min_share"])
+    return model
+
+
+def predict_shares(model, feats: pd.DataFrame, reserve: float) -> pd.DataFrame:
+    """Predict + budget-normalize shares for one target season's feature frame.
+
+    Returns ``[PLAYER_ID, team, share_pred, share_norm]`` — ``share_pred`` is the raw model
+    output (clipped ≥ 0; the Σ-share sanity reads it), ``share_norm`` sums to ``1 − reserve``
+    per team.
+    """
+    out = feats[["PLAYER_ID", "team"]].copy()
+    out["share_pred"] = np.clip(model.predict(feats[ALLOC_MODEL_FEATURES]), 0.0, None)
+    return normalize_shares(out, reserve)
+
+
+def mean_team_total_minutes(season_stats: pd.DataFrame) -> float:
+    """Average team-season total minutes over the given (training) seasons — the scale that
+    converts a normalized share into projected season minutes."""
+    per_team = season_stats.groupby(["SEASON", "TEAM_ABBREVIATION"])["MIN"].sum()
+    return float(per_team.mean())

@@ -44,6 +44,10 @@ def _needs_game_logs(variant_names: list[str]) -> bool:
     )
 
 
+def _needs_rosters(variant_names: list[str]) -> bool:
+    return any(VARIANT_SPECS[v].get("minutes_mode") == "allocation" for v in variant_names)
+
+
 def _pooled(per_bucket: pd.DataFrame, value_cols: list[str]) -> pd.DataFrame:
     """n-weighted mean of per-bucket metrics across seasons, ordered faller -> riser."""
     pooled = (
@@ -98,6 +102,7 @@ def main() -> None:
     season_stats = storage.read("player_season_stats")
     bio = storage.read("player_bio")
     game_logs = storage.read("player_game_logs") if _needs_game_logs(variants) else None
+    rosters = storage.read("team_rosters") if _needs_rosters(variants) else None
     cfg = load_scoring(args.scoring)
 
     def _run_view(pool_kind: str):
@@ -107,7 +112,7 @@ def main() -> None:
             per_bucket, directional, per_pred, pools = run_mover_eval(
                 season, season_stats, bio, cfg=cfg, pool_top_n=args.top_n,
                 game_logs=game_logs, variants=variants, oracles=args.oracles,
-                seed=args.seed, return_pools=True, pool=pool_kind,
+                seed=args.seed, return_pools=True, pool=pool_kind, rosters=rosters,
             )
             for frame in (per_bucket, directional, per_pred):
                 frame.insert(0, "season", season)

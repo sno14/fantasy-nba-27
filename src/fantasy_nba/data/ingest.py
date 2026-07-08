@@ -4,7 +4,8 @@ Pulls the raw ingredients the projection pipeline needs:
 
 * **player_season_stats** — per-season Base totals + Advanced metrics (usage, pace, minutes)
 * **player_game_logs**    — one row per player per game (for game-by-game work later)
-* **team_rosters**        — current roster per team (depth-chart / minutes context)
+* **team_rosters**        — roster per team per season (positions for the depth-chart /
+  allocation features; historical seasons supported — implementation-plan Step 6.1)
 
 stats.nba.com is rate-limited and occasionally flaky, so every call goes through a small
 retry+delay wrapper. Data is cached to Parquet via :mod:`fantasy_nba.data.storage`; pass
@@ -165,8 +166,9 @@ def pull_seasons(
 ) -> dict[str, pd.DataFrame]:
     """Fetch the requested datasets across seasons, concatenate, and cache to Parquet.
 
-    Rosters are current-only (not seasonal history), so ``team_rosters`` ignores the
-    ``seasons`` list beyond using the most recent one for the API call.
+    Every dataset (including ``team_rosters`` — the endpoint accepts historical seasons;
+    Step 6.1) is fetched per season and concatenated. A rosters pull is 30 requests per
+    season, so a full-history refresh takes a few minutes under the throttle.
 
     Returns a mapping of dataset name -> combined DataFrame.
     """
@@ -181,15 +183,11 @@ def pull_seasons(
             results[name] = storage.read(name)
             continue
 
-        if name == "team_rosters":
-            print(f"[{name}] fetching current rosters …")
-            combined = _DATASETS[name](seasons[-1])
-        else:
-            frames = []
-            for season in seasons:
-                print(f"[{name}] fetching {season} …")
-                frames.append(_DATASETS[name](season))
-            combined = pd.concat(frames, ignore_index=True)
+        frames = []
+        for season in seasons:
+            print(f"[{name}] fetching {season} …")
+            frames.append(_DATASETS[name](season))
+        combined = pd.concat(frames, ignore_index=True)
 
         path = storage.write(combined, name)
         print(f"[{name}] cached {len(combined):,} rows -> {path}")

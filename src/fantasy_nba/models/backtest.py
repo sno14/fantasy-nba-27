@@ -80,6 +80,8 @@ VARIANT_SPECS: dict[str, dict] = {
     "learned_tuned": {"params": {**DEFAULT_LGBM_PARAMS, "num_leaves": 63,
                                  "min_child_samples": 30, "learning_rate": 0.05,
                                  "n_estimators": 79}},
+    # EXP-014 (Step 6) — team-constrained minutes allocation (needs rosters):
+    "learned_alloc": {"minutes_mode": "allocation"},
 }
 
 
@@ -91,6 +93,7 @@ def project_models(
     game_logs: pd.DataFrame | None = None,
     variants: list[str] | dict[str, dict] | None = None,
     seed: int | None = None,
+    rosters: pd.DataFrame | None = None,
 ) -> dict[str, pd.DataFrame]:
     """Project ``target_season`` with every model using **only** prior-season data.
 
@@ -100,8 +103,10 @@ def project_models(
 
     ``variants`` adds learned-model configurations beyond the four defaults: a list of
     ``VARIANT_SPECS`` names, or a dict of custom ``{name: project_learned-kwargs}``.
-    Variants using recency/trade features need ``game_logs``; ``use_context`` variants get
-    their ``target_team_map`` derived here automatically. ``seed`` overrides LightGBM's
+    Variants using recency/trade features need ``game_logs``; ``use_context`` and
+    ``minutes_mode='allocation'`` variants get their ``target_team_map`` derived here
+    automatically (allocation additionally needs ``rosters`` — the historical
+    ``team_rosters`` frame, for positions). ``seed`` overrides LightGBM's
     ``random_state`` for the whole learned family — the seed-stability protocol
     (implementation-plan §0 rules) runs the eval at seeds {0, 1, 2} and averages.
     """
@@ -147,9 +152,13 @@ def project_models(
                 if game_logs is None:
                     raise ValueError(f"Variant {name!r} needs game_logs.")
                 kw["game_logs"] = game_logs
-            if kw.get("use_context"):
+            if kw.get("use_context") or kw.get("minutes_mode") == "allocation":
                 # Target-season team assignment (a preseason roster fact, not an outcome).
                 kw["target_team_map"] = target_team_map(season_stats, target_season)
+            if kw.get("minutes_mode") == "allocation":
+                if rosters is None:
+                    raise ValueError(f"Variant {name!r} needs rosters (team_rosters frame).")
+                kw["rosters"] = rosters
             models[name] = project_learned(train_ss, train_bio, target_season, cfg=cfg, **kw)
     return models
 

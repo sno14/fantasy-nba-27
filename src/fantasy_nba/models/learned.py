@@ -321,6 +321,8 @@ def project_learned(
     target_mode: str = "level",
     weight_mode: str | None = None,
     weight_alpha: float = 1.0,
+    minutes_mode: str = "regression",
+    rosters: pd.DataFrame | None = None,
     min_label_minutes: float = 200.0,
     n_seasons: int = 3,
     weights: tuple[float, ...] = DEFAULT_WEIGHTS,
@@ -343,11 +345,21 @@ def project_learned(
     EXP-013 knobs: ``target_mode='delta'`` trains on change-from-own-anchor instead of levels;
     ``weight_mode`` ∈ {``'mover'``, ``'relevance'``} re-weights training rows (see
     :func:`_sample_weight`), scaled by ``weight_alpha``.
+    EXP-014 knob (Step 6): ``minutes_mode='allocation'`` swaps **only the minutes layer** for
+    the team-constrained share model (``models.allocation``) — needs ``rosters`` (the
+    historical ``team_rosters`` frame, for positions) and ``target_team_map`` (the
+    target-season team assignment). Players without a mappable position/team fall back to
+    the regression minutes. Rates and GP are untouched.
     """
     cfg = cfg or load_scoring()
     params = params or DEFAULT_LGBM_PARAMS
     if use_trade_split and not use_recency:
         raise ValueError("use_trade_split requires use_recency (both ride the game-log tables).")
+    if minutes_mode not in ("regression", "allocation"):
+        raise ValueError(f"minutes_mode must be 'regression' or 'allocation', got {minutes_mode!r}")
+    if minutes_mode == "allocation" and (rosters is None or target_team_map is None):
+        raise ValueError("minutes_mode='allocation' needs rosters (team_rosters frame) and "
+                         "target_team_map ([PLAYER_ID, team]).")
     feature_cols = feature_columns(use_trajectory, use_context, use_recency, use_trade_split)
 
     recency_table = trade_table = None
@@ -392,6 +404,23 @@ def project_learned(
 
     pred_mpg = np.clip(_predict_target(models, "y_mpg", X, agg, target_mode), 0.0, 48.0)
     pred_gp = np.clip(_predict_target(models, "y_gp", X, agg, target_mode), 1.0, 82.0)
+
+    if minutes_mode == "allocation":
+        from . import allocation as alloc
+
+        pos_table = alloc.position_table(rosters)
+        share_panel = alloc.build_share_panel(season_stats, pos_table)
+        share_model = alloc.fit_share_model(share_panel, params)
+        # Rookie reserve measured on the training slice only (critique §2.8 — season_stats
+        # is prior-only here in backtests; the caller owns that contract).
+        reserve = alloc.rookie_reserve(season_stats)
+        feats = alloc.share_features_for(season_stats, target_team_map, pos_table, target_season)
+        shares = alloc.predict_shares(share_model, feats, reserve)
+        total_scale = alloc.mean_team_total_minutes(season_stats)
+        min_total = agg["PLAYER_ID"].map(shares.set_index("PLAYER_ID")["share_norm"]) * total_scale
+        mpg_alloc = np.clip(min_total.to_numpy(dtype=float) / pred_gp, 0.0, 42.0)
+        # Players outside the roster/position map keep the regression minutes.
+        pred_mpg = np.where(np.isnan(mpg_alloc), pred_mpg, mpg_alloc)
 
     out = pd.DataFrame(
         {

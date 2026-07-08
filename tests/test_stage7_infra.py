@@ -44,7 +44,7 @@ def _synthetic_league(seasons, n_players=40, seed=0):
                 "FTM": 3 * s * gp, "FTA": 4 * s * gp, "OREB": 1.2 * s * gp,
                 "DREB": 4 * s * gp, "REB": 5.2 * s * gp, "AST": 4 * s * gp,
                 "STL": 1.1 * s * gp, "BLK": 0.6 * s * gp, "TOV": 2 * s * gp,
-                "PTS": 19 * s * gp,
+                "PTS": 19 * s * gp, "PF": 2.2 * gp, "AGE": 22 + si,
                 "USG_PCT": float(np.clip(0.12 + 0.10 * s, 0.05, 0.40)),
                 "TS_PCT": float(np.clip(rng.normal(0.55, 0.03), 0.40, 0.70)),
             }
@@ -351,6 +351,52 @@ def test_rookie_reserve_and_share_normalization():
     norm = allocation.normalize_shares(pred, reserve=0.1)
     assert norm["share_norm"].sum() == pytest.approx(0.9)
     assert norm.loc[0, "share_norm"] == pytest.approx(0.5 * 0.9 / 0.8)
+
+
+def test_position_table_and_asof_lookup():
+    rosters = pd.DataFrame({
+        "PLAYER_ID": [1, 1, 2, 3],
+        "SEASON": ["2021-22", "2023-24", "2022-23", "2023-24"],
+        "POSITION": ["G", "G-F", "F-C", ""],
+    })
+    pt = allocation.position_table(rosters)
+    assert 3 not in set(pt["PLAYER_ID"])  # blank POSITION dropped, not raised
+    look = allocation.pos_group_asof(pt, "2022-23")
+    assert look[1] == 0 and look[2] == 1  # most recent roster <= season
+    # Player first seen on a later roster: static-attribute fallback to the future row.
+    early = allocation.pos_group_asof(pt, "2020-21")
+    assert early[2] == 1
+
+
+def test_share_labels_and_model_layer():
+    ss = pd.DataFrame({
+        "SEASON": ["2022-23"] * 3,
+        "PLAYER_ID": [1, 2, 3],
+        "TEAM_ABBREVIATION": ["AAA", "AAA", "BBB"],
+        "MIN": [2000.0, 1000.0, 1500.0],
+    })
+    lab = allocation.share_labels(ss, "2022-23", min_minutes=0.0).set_index("PLAYER_ID")
+    assert lab.loc[1, "y_min_share"] == pytest.approx(2000 / 3000)
+    assert lab.loc[3, "y_min_share"] == pytest.approx(1.0)
+
+
+def test_project_learned_allocation_mode_end_to_end():
+    seasons = ["2018-19", "2019-20", "2020-21", "2021-22", "2022-23"]
+    ss, bio = _synthetic_league(seasons, n_players=30)
+    rosters = pd.DataFrame([
+        {"PLAYER_ID": pid, "SEASON": s, "POSITION": "G" if pid % 2 else "F"}
+        for s in seasons for pid in range(30)
+    ])
+    out = project_models("2022-23", ss, bio, PTS_ONLY,
+                         variants=["learned_alloc"], seed=0, rosters=rosters)
+    alloc_board = out["learned_alloc"]
+    assert {"PLAYER_ID", "mpg", "fpts_pg", "rank"} <= set(alloc_board.columns)
+    assert (alloc_board["mpg"] >= 0).all() and (alloc_board["mpg"] <= 42).all()
+    # Swaps only the minutes layer: same players, same schema as the regression board.
+    assert set(alloc_board["PLAYER_ID"]) == set(out["learned"]["PLAYER_ID"])
+    # Missing rosters must fail loudly.
+    with pytest.raises(ValueError):
+        project_models("2022-23", ss, bio, PTS_ONLY, variants=["learned_alloc"])
 
 
 # ------------------------------------------------------- integration: the full eval path
