@@ -14,7 +14,10 @@ See [ROADMAP.md](ROADMAP.md) for the build plan, current progress, and modeling 
    record: why a learned, decompositional, as-of-date model (historical; kept as-is).
 4. **[docs/breakthrough-plan.md](docs/breakthrough-plan.md)** — the Stage-7 diagnosis: why
    the riser bias resisted every feature experiment, and where the real headroom is.
-5. **[docs/implementation-plan.md](docs/implementation-plan.md)** — **the execution spec**:
+5. **[docs/design-critique.md](docs/design-critique.md)** — standing senior-modelling
+   review: hidden assumptions, leakage risks, correlation issues, better decompositions,
+   and situational handling (injuries, role changes, fouls, blowouts, pace).
+6. **[docs/implementation-plan.md](docs/implementation-plan.md)** — **the execution spec**:
    a strictly linear, step-by-step build plan with file-level specs, commands, and
    adopt/reject gates. Active work happens from this file.
 

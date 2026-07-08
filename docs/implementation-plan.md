@@ -8,6 +8,9 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 **Relationship to the other docs**
 - `docs/breakthrough-plan.md` — the diagnosis and phase rationale. Read once; don't edit
   except to mark phases complete.
+- `docs/design-critique.md` — the standing senior-review of the design (hidden assumptions,
+  leakage risks, statistical issues, better decompositions). Its action items are folded
+  into this plan as rules 10–11, per-step amendments, and Phase 1.5 (Steps R1–R3).
 - `ROADMAP.md` — high-level stage tracking; each step here names the checkbox it closes.
 - `EXPERIMENTS.md` — the append-only results ledger; each experiment step here contains the
   exact entry stub to fill in.
@@ -61,6 +64,19 @@ Do not start a step before the previous step's **Done when** box is fully satisf
    session (2026-07; `tests/test_stage7_infra.py` pins the mechanics — arithmetic,
    no-leakage, monotonicity, determinism). The tracker's **Code** column marks that. A step
    *completes* only when its gate is evaluated on real data and the ledger entry is written.
+10. **Eval-reuse guard + prospective holdout** (design-critique §3.1). All verdicts share
+   the same four eval seasons — a family-wise false-positive risk across ~15 experiments.
+   Therefore: (a) **before the 2026-27 season starts**, freeze the board + per-player
+   predictions to a committed file (`data/processed/frozen_2026-27_preseason.parquet` +
+   a dated ledger note) and score it after the season — the program's only true
+   out-of-sample test; (b) hyperparameter selection is **nested** — tune on folds
+   ≤ 2021-22 only, confirm once on the eval window (Step 5d); (c) adopted-item ledger
+   entries carry "eval-window-conditional until 2026-27 confirms."
+11. **Feature-hygiene protocol** (design-critique §5.1). Every new feature *group* ships
+   with: permutation importance on the validation fold; a correlation sweep (|ρ| > 0.95
+   vs an existing feature ⇒ justify or drop); and a group-level A/B (never judge single
+   features — EXP-008's lesson). Prefer cluster bootstrap (`cluster="PLAYER_ID"`) for
+   pooled multi-season CIs — rows repeat players and are not independent.
 
 ## Progress tracker
 
@@ -73,6 +89,9 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | 4 | 1 | Recency de-confound (skip-last + post-trade) | EXP-012 | ☑ | ☐ |
 | 5 | 1 | Objective-side changes (Δ-targets, weights, quantiles, tuning) | EXP-013a/b/c/d | ☑ a/b/c · ☐ d | ☐ |
 | 6 | 1 | Team-constrained minutes allocation | EXP-014 | ◐ feature layer | ☐ |
+| R1 | 1.5 | Composition-covariance check (direct vs composed) | EXP-022 | ☐ | ☐ |
+| R2 | 1.5 | Per-season lags + era context | EXP-023 | ☐ | ☐ |
+| R3 | 1.5 | Volume/efficiency split + pace normalization | EXP-024 | ☐ | ☐ |
 | 7 | 2 | Injury/availability data | EXP-015 | ☐ | ☐ |
 | 8 | 2 | Dated transactions + preseason rosters | EXP-016 | ☐ | ☐ |
 | 9 | 2 | ADP / market benchmark | EXP-017 | ☐ | ☐ |
@@ -154,9 +173,20 @@ pools, excludes 0 on a shifted pool.
 > in `tests/test_stage7_infra.py`. **Remaining (local):** run on real data, confirm the
 > pooled `learned` bias table still reproduces the EXP-007 ledger numbers, tick ROADMAP.
 
-**Done when:** eval script prints three tables; old numbers unchanged (pure refactor for
-tables 1–2); tests green. *(Closes ROADMAP 7.0 "predicted-Δ calibration" — add the checkbox
-under 7.0 when ticking.)*
+**Amendment (design review 2026-07, critique §3.2–3.3):**
+- **Actual-pool recall view:** the model-pool eval is blind to sleepers the model never
+  ranked top-150 (their miss is invisible, so riser bias is *understated*). Add a second
+  view computing the same three tables on the **realized** top-150 (by actual total), plus
+  one recall line per model: "% of the actual top-150 the model pooled." Print both views,
+  always. (`run_mover_eval(pool="model"|"actual")` or a `--actual-pool` flag.)
+- **Cluster bootstrap** is built: pass `cluster="PLAYER_ID"` to `bootstrap_bias_delta_ci`
+  for pooled multi-season CIs (rule 11).
+- **Bucket-edge sensitivity:** once per adopted model, re-run the headline table with
+  edges shifted ±1 fpt/g; a verdict that flips was never real (critique §2.4).
+
+**Done when:** eval script prints three tables **in both pool views**; old numbers
+unchanged (pure refactor for tables 1–2); tests green. *(Closes ROADMAP 7.0 "predicted-Δ
+calibration" — add the checkbox under 7.0 when ticking.)*
 
 ## Step 2 — EXP-011a: selection-floor simulation
 
@@ -244,6 +274,10 @@ select on the outcome.
 - `minutes_share = (bias_learned − bias_oracle_minutes) / (bias_learned − floor_bias)` per
   bucket (expect large in riser buckets per EXP-001; this makes it exact).
 - `rate_share` analogously. They needn't sum to 1 (interaction term); report the residual.
+- **Caveat on the readout (critique §2.1):** `rate × actual_MPG` assumes per-minute rates
+  hold at a role the player never had (the "per-36 mirage" — bench rates fall somewhat at
+  starter minutes). The minutes oracle therefore **overstates** the minutes-driven share;
+  treat it as an upper bound and say so in the ledger entry.
 
 **Decision rules (the Phase-0 verdict — record in the ledger under EXP-011):**
 | Finding | Consequence |
@@ -376,10 +410,12 @@ walk-forward tuner (new `scripts/tune_learned.py`): grid over
 `num_leaves ∈ {15, 31, 63}`, `min_child_samples ∈ {10, 30, 60}`,
 `learning_rate ∈ {0.03, 0.05, 0.10}`, with `n_estimators` chosen by early stopping
 (validation fold = the **last training season** of each backtest fold — never the eval
-season). Score each combo on the standard 4-season eval (pooled level MAE + riser bias);
-optional extras if the grid winner is unstable: `reg_lambda ∈ {0.5, 1, 5}`, monotone
-constraint on `proj_mpg → y_mpg`. Tune **once, after (a)/(b) settle** — tuning before the
-objective is chosen wastes the grid.
+season). **Nested selection (rule 10b, critique §3.1): the grid is scored only on folds
+targeting seasons ≤ 2021-22; the winning combo is then confirmed *once* on the standard
+4-season eval** — never grid-search directly on the verdict seasons, or every later
+"win" is partly in-sample. Optional extras if the grid winner is unstable:
+`reg_lambda ∈ {0.5, 1, 5}`, monotone constraint on `proj_mpg → y_mpg`. Tune **once, after
+(a)/(b) settle** — tuning before the objective is chosen wastes the grid.
 
 **Run:**
 - (a)/(b): one eval invocation covers the matrix —
@@ -444,8 +480,16 @@ ALLOC_FEATURES = [
     "depth_rank",            # rank of own_prev_share among target-roster same-pos players
     "n_same_pos",            # roster crowding in his position group
     "team_vacated_min_norm", "team_turnover_share",  # the EXP-009 team-level pair, kept
+    "pf_per_min",            # foul rate (critique §5.3): a stable, mechanical minutes cap —
+                             # foul-prone players cannot hold heavy minutes. PF is in the
+                             # Base pull; lag it like the other rates.
 ]
 ```
+*Amendments (design review 2026-07):* (a) consider training the share model on
+`logit(share)` (bounded target; back-transform + clip) — try raw first, logit if raw
+mis-calibrates; (b) **`rookie_reserve` must be computed on the training slice only** in
+backtest folds (critique §2.8) — the helper takes whatever frame it's handed, so the
+caller owns this.
 *Normalization (the constraint):* per target team,
 `share_norm_i = share_pred_i × (1 − rookie_reserve) / Σ_j share_pred_j` over modeled players
 `j` on the roster, where `rookie_reserve` = league-average share of team minutes taken by
@@ -494,6 +538,105 @@ correct; normalization sums to 1 − reserve per team).
 
 ---
 
+# PHASE 1.5 — decomposition refinements (Steps R1–R3, from the design review)
+
+*Source: `docs/design-critique.md` §§2, 4, 5. All three run on data already held. Ordered
+cheapest-first; R1's answer partially reprioritizes R2/R3 (a large covariance term says
+"fix the composition before adding features").*
+
+## Step R1 — EXP-022: composition-covariance check (direct vs composed)
+
+**The hypothesis (critique §4.1):** `E[rate×MPG] = E[rate]·E[MPG] + cov(rate, MPG)`, and
+the residual covariance is *positive* (one latent role shock lifts minutes and rates
+together) — so composing the two conditional means **structurally under-projects risers**.
+Part of the stubborn riser bias may be arithmetic, not missing features.
+
+**Build (small):**
+1. A **direct per-game-fpts L2 model** — reuse the quantile plumbing
+   (`quantiles.panel_fpts_label` as the target, `BASE_FEATURES`, default params; ~20 lines,
+   registry name `learned_direct`).
+2. A panel diagnostic: per season, compute `cov(resid_mpg, resid_fpts_rate)` where the
+   residuals come from the fitted y_mpg model and a per-game-fpts-per-minute rate model;
+   report by actual-Δ bucket.
+
+**Run:** standard eval, `learned` vs `learned_direct`; the covariance table.
+
+**Read-out / gate:** if `learned_direct` beats `learned` on riser/big-riser signed bias by
+≥ 25% of the reducible gap (rule-8 guarded) **or** the bucketed covariance is large and
+positive → adopt a correction: either (a) additive covariance term
+`stat_pg += cov_hat(features)` (a small model on the residual product), or (b) a
+blend `α·direct + (1−α)·composed` tuned on training folds. If neither shows → the
+composition is fine; log and move on (that's a real result too — it kills §4.1 as an
+explanation).
+
+**Ledger stub:** EXP-022 with the covariance-by-bucket table and the A/B.
+
+## Step R2 — EXP-023: per-season lags + era context
+
+**The hypothesis (critique §2.5 + §2.2):** the GBM can't learn recency weighting it never
+sees (only the pre-blended 5/4/3 aggregate is fed), and has no era awareness across a
+2009→2026 panel. Lags + era context let the trees learn age- and era-conditional weighting.
+EXP-008's failed *slopes* are not evidence against lags — a slope is a lossy transform; raw
+lags let the model choose.
+
+**Build — feature group `LAG_FEATURES` in `learned.py` (gated `use_lags=True`, registry
+`learned_lags`):**
+- Per season t−1, t−2, t−3: `mpg_lag{k}`, `gp_lag{k}`, `usg_lag{k}`, `ts_lag{k}`,
+  `fpts_pm_lag{k}` (fantasy points per minute under the scoring config — one compact
+  production summary instead of 13 rate lags), plus `min_lag{k}` (sample size for that
+  lag). Missing lags → NaN (LightGBM handles natively; do *not* zero-fill — 0 is a real
+  MPG). 18 columns.
+- Era context: `season_year` (integer), `league_mean_fpts_pm` and `league_pace_proxy`
+  (league-average of the season's per-minute fpts and possessions-proxy) computed **per
+  training season** from that season's stats — all as-of-known facts.
+- **Era-relative targets (second half of the experiment, separate flag
+  `era_relative=True`):** train rate targets as `rate / league_mean_rate(season)`;
+  multiply back by the *most recent training season's* league mean at inference (the
+  honest preseason estimate of the target season's context).
+
+**Run:** `learned` vs `learned_lags` vs `learned_lags`+`era_relative`, rule-8 guarded,
+rule-11 hygiene (permutation importances; expect `*_lag1` to dominate and aggregates to
+cede importance — that's the point, not a bug).
+
+**Gate:** standard — ≥ 25% reducible riser-gap closure, stable within ±0.5, ranking
+Spearman within noise. Special attention to the **age ≤ 24 cohort** (segment it): lags ×
+age interactions are where "young player still improving" lives (ROADMAP 7.B's targeted
+fix, done properly).
+
+**Ledger stub:** EXP-023; log the importance shift aggregates→lags.
+
+## Step R3 — EXP-024: volume/efficiency split + pace normalization
+
+**The hypothesis (critique §4.1–4.2):** 13 independent raw-rate targets confound sticky
+volume with noisy efficiency, allow internally inconsistent lines (REB ≠ OREB+DREB, PTS
+free-floating), and bake team pace into "skill." Re-target the rate layer.
+
+**Build — `rate_mode="split"` in `learned.py`:**
+- **Volume targets (per minute, later per 100 poss):** `fga2`, `fga3`, `fta`, `oreb`,
+  `dreb`, `ast`, `stl`, `blk`, `tov`.
+- **Efficiency targets (ratios, heavier shrinkage — their own `reg_minutes`-style priors):**
+  `fg2_pct`, `fg3_pct`, `ft_pct`.
+- **Identities at composition (never modeled):** `fgm = fg2_pct·fga2 + fg3_pct·fga3`;
+  `fg3m = fg3_pct·fga3`; `ftm = ft_pct·fta`; `fga = fga2 + fga3`; `reb = oreb + dreb`;
+  `pts = 2·fg2_pct·fga2 + 3·fg3_pct·fga3 + ft_pct·fta`. Lines are consistent by
+  construction; 13 targets → 12 with the right noise structure.
+- **Pace normalization:** verify `PACE` survives in the cached `player_season_stats`
+  (Advanced merge); if absent, one `leaguedashteamstats` pull per season supplies team
+  pace. Normalize volume features/targets per-100-possessions; compose back with the
+  **target team's prior-season pace** (preseason-known; a real feature for team-switchers).
+
+**Run:** `learned` vs `learned_split` vs `learned_split+pace`; rule-8 guarded. Also check
+internal-consistency violations of the *current* model (how often FGM > FGA etc.) as the
+motivating stat for the ledger.
+
+**Gate:** standard mover gate, **plus** it must not lose on aggregate level MAE (a
+refactor that's mover-neutral but consistency-fixing is still adoptable if MAE ties —
+consistency is a correctness property; say so in the verdict).
+
+**Ledger stub:** EXP-024.
+
+---
+
 # PHASE 2 — new exogenous data (Steps 7–9)
 
 *Order note: Steps 7–8 share one scraper. Build it once in Step 7.*
@@ -508,6 +651,12 @@ one page/sec, retry×3 (reuse the `_with_retry` pattern from `ingest.py`). Pull 
 once; afterwards incremental by date. Name-join via the existing normalizer
 (`darko.normalize_name`) — report unmatched-% like `darko.join_board` does; require ≥ 95%
 on players in our season stats, else extend the alias map before proceeding.
+
+**Name-join hardening (applies to Steps 7, 8, 9 — critique §2.7):** names are not
+identities — the league has real collisions (Jalen Williams and Jaylin Williams shared the
+OKC roster). Every external join must: (a) join on **name + team** whenever the source has
+a team column; (b) **hard-fail on duplicate normalized keys within a source** rather than
+silently keeping one row; (c) keep the alias map append-only and dated.
 
 **7.2 Build — `src/fantasy_nba/models/injuries.py`:**
 ```python
@@ -620,6 +769,22 @@ season-only panel — the small-data constraint materially relaxes).
   `post_trade_games` (within current season), `games_so_far` — the shrinkage handle the
   model interacts everything with. Preseason cutpoint rows get STD = 0/NaN-filled-neutral
   and `games_so_far = 0`, so **one model serves T₀ and every later date**.
+- **Amendments (design review 2026-07, critique §5.2/5.4/5.5):**
+  - **Per-stat EWMAs with fitted half-lives** replace/augment the hard last-10 window:
+    steals stabilize in a handful of games, 3P% barely stabilizes in a season — one window
+    for all stats is wrong. Fit half-lives per stat on the cutpoint panel (grid
+    {5, 10, 20, 40 games}).
+  - **Live teammate-vacated minutes:** minutes/usage of currently-OUT teammates (injury
+    feed), same-position-weighted — the single biggest waiver signal.
+  - **Return-from-absence ramp:** games since return from a ≥5-game absence + a
+    minutes-restriction flag (recent MPG ≪ pre-absence MPG) — so rust isn't read as
+    decline.
+  - **Blowout handling:** pull **team game logs** (`LeagueGameLog`, team mode — margins
+    aren't derivable from player logs; add to the Step-0 data list) → per-game margin;
+    (a) team blowout-share as a context feature, (b) option to exclude |margin| ≥ 25 games
+    from recency/EWMA windows.
+  - **Schedule-aware ROS:** remaining totals use the player's team's **actual remaining
+    schedule count** as of T (never `82 − games_so_far`), plus back-to-back density.
 - *Labels:* ROS realized from `game_logs > T` of the same season: `y_ros_mpg`,
   `y_ros_rate_<s>`, `y_ros_gp`; rows require ≥ 5 ROS games to be labeled (tail cutpoints
   with < 5 remaining drop out).
@@ -778,6 +943,10 @@ floor-adjusted on movers, updating nightly, benchmarked against the market — t
 | 015a | GP Spearman +0.05 vs current | 015b: coverage ∈ [78,88]% AND safe-Spearman ties/wins |
 | 016 | unconditional for backtests (correctness); re-affirm Step-6 verdicts on honest rosters |
 | 017 | benchmark-only until 2 seasons of ADP archives |
+| 022 | direct beats composed on riser bias ≥25% reducible-gap (rule-8), or bucketed covariance large+positive → adopt correction/blend |
+| 023 | standard mover gate; watch age ≤ 24 cohort; rule-11 hygiene on the lag group |
+| 024 | standard mover gate AND aggregate MAE not worse (consistency fix adoptable on a tie) |
+| 025 | (reserved — rotation-survival hurdle; spec when Phase 0 says fallers matter) |
 | 018 | beats frozen-T₀ AND naive-shrinkage updater at ≥2/3 cutpoints, 3/4 seasons |
 | 019 | diagnostic — baselines recall + lead time |
 | 020 | standard riser gate + lead-time non-regression |
@@ -792,6 +961,7 @@ floor-adjusted on movers, updating nightly, benchmarked against the market — t
 | `EXPERIMENTS.md` | results ledger, append-only | forward plans beyond the "next" line |
 | `docs/model-foundation.md` | architecture decision record (historical) | current run orders (superseded → here) |
 | `docs/breakthrough-plan.md` | diagnosis + phase rationale | step-level specs (live here) |
+| `docs/design-critique.md` | standing review: assumptions, leakage, statistics, decompositions | run order (its actions are folded here) |
 | `docs/implementation-plan.md` | step specs, gates, tracker | results (those go to the ledger) |
 
 When any two disagree, the more specific doc wins and the less specific one gets a pointer,

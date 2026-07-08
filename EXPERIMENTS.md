@@ -312,4 +312,7 @@ per-bucket oracles) · **EXP-012** recency de-confound (skip-last / post-trade s
 objective-side changes (Δ-targets, sample weights, quantile heads) · **EXP-014** team-constrained
 minutes allocation · **EXP-015** injury data (7.C) · **EXP-016** dated preseason transactions ·
 **EXP-017** ADP/market · **EXP-018/019** in-season as-of-date engine + eval · **EXP-020** external
-in-season benchmarks · **EXP-021** learned distributional ranges._
+in-season benchmarks · **EXP-021** learned distributional ranges · **EXP-022** composition-covariance
+check (direct vs composed) · **EXP-023** per-season lags + era context · **EXP-024** volume/efficiency
+split + pace normalization (Phase 1.5, from [`docs/design-critique.md`](docs/design-critique.md)) ·
+**EXP-025** (reserved) rotation-survival hurdle._
