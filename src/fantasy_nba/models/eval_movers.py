@@ -237,6 +237,7 @@ def bootstrap_bias_delta_ci(
     seed: int = 0,
     alpha: float = 0.10,
     on: tuple[str, ...] = ("PLAYER_ID",),
+    cluster: str | None = None,
 ) -> pd.DataFrame:
     """Paired bootstrap CI for the per-bucket signed-bias difference between two models.
 
@@ -246,11 +247,17 @@ def bootstrap_bias_delta_ci(
     and bootstraps ``mean(err_b) − mean(err_a)`` within each bucket. Returns one row per
     bucket: n, observed ``bias_delta``, ``ci_lo``/``ci_hi`` (the (1−alpha) interval).
     A CI straddling 0 means the difference is not resolved at these sample sizes.
+
+    ``cluster`` (design-critique §3.3): panel rows are not independent — the same player
+    repeats across seasons with autocorrelated residuals. For pooled multi-season frames
+    pass ``cluster="PLAYER_ID"`` to resample whole clusters instead of rows (row bootstrap
+    understates the interval width when rows share a cluster).
     """
     a = pool_a[list(on) + ["err", "actual_delta"]].rename(columns={"err": "err_a"})
     b = pool_b[list(on) + ["err"]].rename(columns={"err": "err_b"})
     m = a.merge(b, on=list(on), how="inner")
     m["bucket"] = _bucket(m["actual_delta"])
+    m["_diff"] = m["err_b"] - m["err_a"]
 
     rng = np.random.default_rng(seed)
     rows = []
@@ -261,11 +268,20 @@ def bootstrap_bias_delta_ci(
             rows.append({"bucket": label, "n": 0, "bias_delta": np.nan,
                          "ci_lo": np.nan, "ci_hi": np.nan})
             continue
-        diff = (sub["err_b"] - sub["err_a"]).to_numpy(dtype=float)
-        idx = rng.integers(0, n, size=(n_boot, n))
-        boots = diff[idx].mean(axis=1)
+        if cluster is None:
+            diff = sub["_diff"].to_numpy(dtype=float)
+            idx = rng.integers(0, n, size=(n_boot, n))
+            boots = diff[idx].mean(axis=1)
+        else:
+            # Cluster bootstrap: resample clusters; each draw's mean is the size-weighted
+            # mean over the drawn clusters (Σ sums / Σ counts).
+            g = sub.groupby(cluster)["_diff"].agg(["sum", "count"])
+            sums, counts = g["sum"].to_numpy(float), g["count"].to_numpy(float)
+            k = len(g)
+            idx = rng.integers(0, k, size=(n_boot, k))
+            boots = sums[idx].sum(axis=1) / counts[idx].sum(axis=1)
         rows.append({
-            "bucket": label, "n": n, "bias_delta": float(diff.mean()),
+            "bucket": label, "n": n, "bias_delta": float(sub["_diff"].mean()),
             "ci_lo": float(np.quantile(boots, alpha / 2)),
             "ci_hi": float(np.quantile(boots, 1 - alpha / 2)),
         })

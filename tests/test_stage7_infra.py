@@ -265,6 +265,32 @@ def test_bootstrap_ci_zero_for_identical_pools_and_detects_shift():
     assert ci.loc["stable", "ci_hi"] < 0  # resolved: CI excludes 0
 
 
+def test_cluster_bootstrap_widens_ci_for_repeated_players():
+    # Two "seasons" of the same 40 players with strongly player-correlated diffs: the row
+    # bootstrap treats 80 rows as independent; clustering by player must not, so its CI
+    # is at least as wide. Point estimate is identical either way.
+    rng = np.random.default_rng(1)
+    player_effect = rng.normal(0, 2.0, 40)
+    rows = []
+    for season in ("s1", "s2"):
+        for pid in range(40):
+            rows.append({"PLAYER_ID": pid, "season": season,
+                         "err": player_effect[pid] + rng.normal(0, 0.1),
+                         "actual_delta": 0.0})  # all stable bucket
+    pool_a = pd.DataFrame(rows)
+    pool_b = pool_a.copy()
+    pool_b["err"] = 0.0  # diff == -err_a, perfectly player-clustered
+
+    kw = dict(on=("PLAYER_ID", "season"), n_boot=800, seed=0)
+    row_ci = bootstrap_bias_delta_ci(pool_a, pool_b, **kw).set_index("bucket")
+    clu_ci = bootstrap_bias_delta_ci(pool_a, pool_b, cluster="PLAYER_ID", **kw).set_index("bucket")
+
+    assert clu_ci.loc["stable", "bias_delta"] == pytest.approx(row_ci.loc["stable", "bias_delta"])
+    row_w = row_ci.loc["stable", "ci_hi"] - row_ci.loc["stable", "ci_lo"]
+    clu_w = clu_ci.loc["stable", "ci_hi"] - clu_ci.loc["stable", "ci_lo"]
+    assert clu_w >= row_w * 1.2  # clustering must widen the interval here
+
+
 # ------------------------------------------------------------- Step 6: allocation features
 
 def test_allocation_features_depth_chart_math():

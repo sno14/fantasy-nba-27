@@ -26,6 +26,11 @@ special-case handling.
 
 - **Scoring:** points league first, but scoring is a swappable **config** (`config/scoring.yaml`)
   so category/9-cat works later. Default weights are DraftKings-style placeholders — user to adjust.
+- **League format (user, 2026-07):** weekly **H2H points** matchups with **daily lineup setting**;
+  scoring numbers TBD (placeholders stand until locked — re-run the headline eval under the final
+  scoring before draft day). The league **ends ~2–3 weeks before the NBA regular season** (exact gap
+  TBD) to dodge late-season rest/tank noise — so ROS horizons, totals, and playoff-week logic key
+  off `league_end`, not the NBA finale (`config/league.yaml`; implementation-plan Step D1).
 - **Granularity:** season-long per-game first; game-by-game (opponent/rest-aware) later.
 - **Data:** `nba_api` primary, Basketball Reference supplement, college/draft data for rookies. ~10-15 seasons.
 - **Stack:** Python (pandas, scikit-learn, LightGBM/XGBoost, Parquet storage).

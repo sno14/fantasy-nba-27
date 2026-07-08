@@ -147,8 +147,9 @@ def main() -> None:
                 pd.concat(pools_by_model[a], ignore_index=True),
                 pd.concat(pools_by_model[b], ignore_index=True),
                 on=("PLAYER_ID", "season"),
+                cluster="PLAYER_ID",  # rows repeat players across seasons (rule 11)
             )
-            print(f"\n=== Paired bootstrap 90% CI: per-bucket bias delta ({b} − {a}) ===")
+            print(f"\n=== Paired bootstrap 90% CI (player-clustered): bias delta ({b} − {a}) ===")
             print(ci.round(3).to_string(index=False))
             print("(CI straddling 0 => difference unresolved at this sample size; see plan rules.)")
 
