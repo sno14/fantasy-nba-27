@@ -101,6 +101,24 @@ def fetch_player_game_logs(season: str) -> pd.DataFrame:
     return df
 
 
+def fetch_team_game_logs(season: str) -> pd.DataFrame:
+    """One row per team per game (Step 10 amendment: game margins for blowout handling —
+    margins are not derivable from the player logs)."""
+    from nba_api.stats.endpoints import leaguegamelog
+
+    def _logs() -> pd.DataFrame:
+        return leaguegamelog.LeagueGameLog(
+            season=season,
+            season_type_all_star=SEASON_TYPE,
+            player_or_team_abbreviation="T",
+            timeout=REQUEST_TIMEOUT,
+        ).get_data_frames()[0]
+
+    df = _with_retry(_logs, f"team_game_logs {season}")
+    df.insert(0, "SEASON", season)
+    return df
+
+
 def fetch_team_rosters(season: str) -> pd.DataFrame:
     """Current roster for every team in a season, stacked into one DataFrame."""
     from nba_api.stats.endpoints import commonteamroster
@@ -154,6 +172,7 @@ def fetch_player_bio(season: str) -> pd.DataFrame:
 _DATASETS = {
     "player_season_stats": fetch_player_season_stats,
     "player_game_logs": fetch_player_game_logs,
+    "team_game_logs": fetch_team_game_logs,
     "team_rosters": fetch_team_rosters,
     "player_bio": fetch_player_bio,
 }
