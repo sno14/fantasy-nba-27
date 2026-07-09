@@ -93,7 +93,7 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | R1 | 1.5 | Composition-covariance check (direct vs composed) | EXP-022 | ☐ | ☐ deferred* |
 | R2 | 1.5 | Per-season lags + era context | EXP-023 | ☐ | ☐ deferred* |
 | R3 | 1.5 | Volume/efficiency split + pace normalization | EXP-024 | ☐ | ☐ deferred* |
-| 7 | 2 | Injury/availability data | EXP-015 | ☐ | ☐ |
+| 7 | 2 | Injury/availability data | EXP-015 | ☑ | ☑ (split: GP rejected · MC tails adopted) |
 | 8 | 2 | Dated transactions + preseason rosters + vacated usage | EXP-016/016b | ☐ | ☐ |
 | 9 | 2 | Market benchmark (expert consensus + ADP-for-availability) | EXP-017(+b) | ☐ | ☐ |
 | 9b | 2 | Breakout archetype layer, recall-gated | EXP-026 | ☐ | ☐ |

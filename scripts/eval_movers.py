@@ -48,6 +48,10 @@ def _needs_rosters(variant_names: list[str]) -> bool:
     return any(VARIANT_SPECS[v].get("minutes_mode") == "allocation" for v in variant_names)
 
 
+def _needs_injuries(variant_names: list[str]) -> bool:
+    return any(VARIANT_SPECS[v].get("use_injuries") for v in variant_names)
+
+
 def _pooled(per_bucket: pd.DataFrame, value_cols: list[str]) -> pd.DataFrame:
     """n-weighted mean of per-bucket metrics across seasons, ordered faller -> riser."""
     pooled = (

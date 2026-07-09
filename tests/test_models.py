@@ -4,7 +4,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from fantasy_nba.models import aging, context, darko, durability, learned, minutes, recency, uncertainty
+from fantasy_nba.models import (
+    aging, context, darko, durability, injuries, learned, minutes, recency, rosters, uncertainty,
+)
 from fantasy_nba.models._core import COUNTING
 
 
@@ -128,6 +130,40 @@ def test_safe_rank_demotes_the_injury_prone_peer():
     assert set(uncertainty.rank_board(r, method="median")["rank"]) == {1, 2}
 
 
+def test_chronic_profile_pool_fattens_left_tail():
+    # Chronic pool rows carry a much fatter left tail; with the (age × chronic) profile the
+    # chronic player's p10 must drop vs an identical durable peer (EXP-015 / 7.3b wiring).
+    durable_gp = [82, 80, 78, 76, 74, 72, 70, 68, 66, 64] * 6
+    chronic_gp = [70, 62, 55, 48, 40, 34, 28, 22, 16, 10] * 6
+    pool = pd.DataFrame({
+        "GP": durable_gp + chronic_gp,
+        "AGE": [27] * 120,
+        "CHRONIC": [0] * 60 + [1] * 60,
+    })
+    proj = _proj([40.0, 40.0], [65, 65])
+    proj["inj_chronic_flag"] = [0, 1]
+    r = uncertainty.simulate_ranges(proj, pool, seed=2)
+    assert r.loc[1, "fpts_p10"] < r.loc[0, "fpts_p10"]
+
+    # Without the flag column on proj, the pool's CHRONIC column is ignored — byte-identical
+    # to running on a pool that never had it (same seed, same rng path).
+    plain_proj = _proj([40.0, 40.0], [65, 65])
+    r_plain = uncertainty.simulate_ranges(plain_proj, pool, seed=2)
+    r_nochronic = uncertainty.simulate_ranges(plain_proj, pool.drop(columns="CHRONIC"), seed=2)
+    assert (r_plain["fpts_p10"] == r_nochronic["fpts_p10"]).all()
+
+    # Small chronic bucket (< 30 rows) falls back to the age-only pool: the chronic penalty
+    # (vs the fat 60-row chronic pool above) must essentially vanish.
+    small = pd.DataFrame({
+        "GP": durable_gp + [70, 68, 66],
+        "AGE": [27] * 63,
+        "CHRONIC": [0] * 60 + [1] * 3,
+    })
+    r_small = uncertainty.simulate_ranges(proj, small, seed=2)
+    assert r_small.loc[1, "fpts_p10"] > r.loc[1, "fpts_p10"] + 100  # penalty gone
+    assert abs(r_small.loc[1, "fpts_p10"] - r_small.loc[0, "fpts_p10"]) < 120  # ~= durable peer
+
+
 def _synthetic_league(seasons, n_players=40, seed=0):
     """Tiny multi-season panel with all COUNTING source columns + bio ages (no network)."""
     rng = np.random.default_rng(seed)
@@ -192,6 +228,72 @@ def test_trajectory_features_slope_sign_and_learned_traj_runs():
     fast = {**learned.DEFAULT_LGBM_PARAMS, "n_estimators": 25}
     out = learned.project_learned(ss, bio, "2023-24", params=fast, use_trajectory=True)
     assert out["gp"].between(1, 82).all() and out["mpg"].between(0, 48).all()
+
+
+def test_project_learned_use_injuries_runs_and_only_moves_gp():
+    seasons = ["2019-20", "2020-21", "2021-22", "2022-23"]
+    ss, bio = _synthetic_league(seasons)
+    fast = {**learned.DEFAULT_LGBM_PARAMS, "n_estimators": 25}
+    # Player 3 misses chunks of every season (3 spells/season -> chronic).
+    rows = []
+    for yr in (2019, 2020, 2021, 2022):
+        for m0, m1 in ((11, 12), (1, 2), (3, 4)):
+            y = yr if m0 >= 10 else yr + 1
+            rows.append({"date": pd.Timestamp(f"{y}-{m0:02d}-01"), "direction": "out",
+                         "notes": "sore knee", "PLAYER_ID": 3})
+            rows.append({"date": pd.Timestamp(f"{y}-{m1:02d}-01"), "direction": "in",
+                         "notes": "activated", "PLAYER_ID": 3})
+    spells = injuries.injury_spells(pd.DataFrame(rows))
+
+    base = learned.project_learned(ss, bio, "2023-24", params=fast)
+    with_inj = learned.project_learned(ss, bio, "2023-24", params=fast,
+                                       use_injuries=True, injury_table=spells)
+    assert with_inj["gp"].between(1, 82).all() and with_inj["mpg"].between(0, 48).all()
+    # Injury features feed the y_gp model only: per-game stat lines must be untouched.
+    m = base.merge(with_inj, on="PLAYER_ID", suffixes=("_a", "_b"))
+    assert np.allclose(m["mpg_a"], m["mpg_b"])
+    assert np.allclose(m["pts_a"], m["pts_b"])
+
+
+def test_preseason_roster_map_applies_dated_offseason_moves():
+    # Prior season 2023-24: P1 & P2 on BOS, P3 on MIA (names unique -> resolution is by name).
+    ss = pd.DataFrame({
+        "PLAYER_ID": [1, 2, 3],
+        "PLAYER_NAME": ["Alpha One", "Beta Two", "Gamma Three"],
+        "SEASON": ["2023-24"] * 3,
+        "TEAM_ABBREVIATION": ["BOS", "BOS", "MIA"],
+        "MIN": [2000.0, 1500.0, 1800.0],
+    })
+    tx = pd.DataFrame({
+        "date": ["2024-07-06", "2024-07-06", "2024-08-01", "2024-11-01"],
+        "team": ["Celtics", "Heat", "Celtics", "Suns"],
+        "acquired": ["", "• Beta Two", "", "• Gamma Three"],
+        "relinquished": ["• Beta Two", "", "• Alpha One", ""],
+        "notes": ["traded to Heat", "traded from Celtics", "waived", "signed (post-cutoff)"],
+        "category": ["movement"] * 4,
+    })
+    m = rosters.preseason_roster_map(ss, tx, "2024-25").set_index("PLAYER_ID")
+    assert m.loc[2, "team"] == "MIA"     # July trade applied
+    assert 1 not in m.index              # waived, unsigned on Oct 1 -> off the map
+    assert m.loc[3, "team"] == "MIA"     # November signing is after the cutoff -> prior team
+
+    # Era-resolved nicknames: Hornets = New Orleans before 2013, Charlotte after 2014.
+    assert rosters.team_abbreviation("Hornets", pd.Timestamp("2010-01-01")) == "NOH"
+    assert rosters.team_abbreviation("Hornets", pd.Timestamp("2015-01-01")) == "CHA"
+    assert rosters.team_abbreviation("Nets", pd.Timestamp("2011-07-01")) == "NJN"
+    assert rosters.team_abbreviation("SuperSonics", pd.Timestamp("2010-01-01")) is None
+
+    # Validation: P2 opens the season on MIA (agrees), P3 opens on PHX (legit miss).
+    logs = pd.DataFrame({
+        "SEASON": ["2024-25"] * 6,
+        "PLAYER_ID": [2, 2, 2, 3, 3, 3],
+        "GAME_DATE": ["2024-10-23", "2024-10-25", "2024-10-27"] * 2,
+        "MIN": [30.0] * 6,
+        "TEAM_ABBREVIATION": ["MIA"] * 3 + ["PHX"] * 3,
+    })
+    v = rosters.validate_roster_map(m.reset_index(), logs, "2024-25")
+    assert v["n"] == 2 and v["agreement"] == pytest.approx(0.5)
+    assert list(v["misses"]["PLAYER_ID"]) == [3]
 
 
 def test_darko_name_normalization_and_join():
@@ -265,3 +367,97 @@ def test_recency_last_n_window_and_leakage():
 
     # No-leakage: asking for the same season the games are in yields nothing (games are not < target).
     assert recency.recency_features(table, "2022-23").empty
+
+
+def _raw_injuries(rows):
+    """Verbatim-scrape-shaped frame: (date, team, acquired, relinquished, notes)."""
+    return pd.DataFrame(rows, columns=["date", "team", "acquired", "relinquished", "notes"])
+
+
+def test_injury_spell_pairing_on_three_transaction_sequence():
+    # The implementation-plan 7.2 synthetic sequence: out -> in (closed spell), then an
+    # unclosed out (season-ending) that must be capped at UNCLOSED_SPELL_DAYS.
+    raw = _raw_injuries([
+        ("2023-01-01", "Suns", "", "• Test Player", "sprained left ankle (out)"),
+        ("2023-01-15", "Suns", "• Test Player", "", "returned to lineup"),
+        ("2023-03-01", "Suns", "", "• Test Player", "torn ACL (out for season)"),
+    ])
+    events = injuries.explode_events(raw)
+    events["PLAYER_ID"] = 7  # bypass name resolution for the pairing test
+    spells = injuries.injury_spells(events)
+
+    assert len(spells) == 2
+    first, second = spells.iloc[0], spells.iloc[1]
+    assert first["days"] == 14 and str(first["end"].date()) == "2023-01-15"
+    assert second["days"] == injuries.UNCLOSED_SPELL_DAYS  # no acquire row -> capped
+    assert "ankle" in first["notes"]
+
+    # Feature arithmetic as-of the following Oct 1 (preseason contract).
+    feats = injuries.injury_features(spells, "2023-10-01").set_index("PLAYER_ID")
+    assert feats.loc[7, "inj_events_1y"] == 2
+    assert feats.loc[7, "inj_days_1y"] == 14 + injuries.UNCLOSED_SPELL_DAYS
+    # Last spell ended Mar 1 + 120d = Jun 29; Oct 1 is 94 days later.
+    assert feats.loc[7, "inj_recency_days"] == 94
+    assert feats.loc[7, "inj_chronic_flag"] == 0  # 2 spells < CHRONIC_MIN_SPELLS
+    assert feats.loc[7, "inj_bodypart_severe"] == 1  # "torn ACL" matches the severe regex
+
+    # No-leakage: as-of a date before everything -> no rows for the player.
+    assert injuries.injury_features(spells, "2022-10-01").empty
+
+
+def test_injury_features_windows_and_chronic_flag():
+    # Three spells inside 2 years -> chronic; an old spell outside 3y is invisible.
+    events = pd.DataFrame({
+        "date": pd.to_datetime([
+            "2018-01-01", "2018-01-10",   # old spell, > 3y before as_of
+            "2023-11-01", "2023-11-08",
+            "2024-01-01", "2024-01-21",
+            "2024-03-01", "2024-03-06",
+        ]),
+        "direction": ["out", "in"] * 4,
+        "notes": ["sore knee"] * 8,
+        "PLAYER_ID": [1] * 8,
+    })
+    spells = injuries.injury_spells(events)
+    feats = injuries.injury_features(spells, "2024-10-01").set_index("PLAYER_ID")
+    assert feats.loc[1, "inj_events_1y"] == 3
+    assert feats.loc[1, "inj_events_3y"] == 3  # 2018 spell out of window
+    assert feats.loc[1, "inj_days_1y"] == 7 + 20 + 5
+    assert feats.loc[1, "inj_chronic_flag"] == 1
+    assert feats.loc[1, "inj_bodypart_severe"] == 0
+
+
+def test_injury_name_resolution_team_disambiguation_and_hard_fail():
+    # Two players sharing a normalized name on different teams (the Jalen/Jaylin lesson).
+    ss = pd.DataFrame({
+        "PLAYER_ID": [11, 22, 33],
+        "PLAYER_NAME": ["Sam Same", "Sam Same", "Only One"],
+        "SEASON": ["2023-24"] * 3,
+        "TEAM_ABBREVIATION": ["OKC", "PHI", "BOS"],
+    })
+    raw = _raw_injuries([
+        ("2024-01-05", "Thunder", "", "• Sam Same", "sore knee"),   # team resolves -> 11
+        ("2024-01-06", "Celtics", "", "• Only One", "rest"),        # unique name -> 33
+    ])
+    events = injuries.explode_events(raw)
+    resolved, stats = injuries.resolve_players(events, ss)
+    assert stats["match_rate"] == 1.0
+    by_name = resolved.set_index("pst_name")["PLAYER_ID"]
+    assert by_name["Sam Same"] == 11 and by_name["Only One"] == 33
+
+    # A colliding name with no team hit must hard-fail (never silently keep one row).
+    raw_bad = _raw_injuries([("2024-01-05", "Lakers", "", "• Sam Same", "sore knee")])
+    with pytest.raises(ValueError, match="disambiguated"):
+        injuries.resolve_players(injuries.explode_events(raw_bad), ss)
+
+    # Ongoing spell as-of mid-absence: only elapsed days count (no future leakage).
+    ev = pd.DataFrame({
+        "date": pd.to_datetime(["2024-01-01", "2024-03-01"]),
+        "direction": ["out", "in"],
+        "notes": ["fractured foot"] * 2,
+        "PLAYER_ID": [5, 5],
+    })
+    spells = injuries.injury_spells(ev)
+    mid = injuries.injury_features(spells, "2024-02-01").set_index("PLAYER_ID")
+    assert mid.loc[5, "inj_days_1y"] == 31  # Jan 1 -> Feb 1 only
+    assert mid.loc[5, "inj_recency_days"] == 0  # still out

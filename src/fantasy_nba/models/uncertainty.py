@@ -51,6 +51,7 @@ def build_gp_pool(
     max_start_year: int | None = None,
     modern_from: int = MODERN_FROM,
     min_prev_minutes: float = DRAFTABLE_MIN_MINUTES,
+    injury_profile: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """Empirical actual-GP outcomes for *draftable* players, one row per qualifying player-season.
 
@@ -58,6 +59,10 @@ def build_gp_pool(
     (i.e. was rotation-caliber and thus draftable). Restricted to the modern, non-covid era and —
     for no-leakage backtesting — to seasons strictly before ``max_start_year``. Columns: ``GP``,
     ``AGE``.
+
+    ``injury_profile`` (EXP-015 / 7.3b): a ``[SEASON, PLAYER_ID, inj_chronic_flag]`` frame
+    (``injuries.chronic_flag_table``, as-of each season's Oct 1 — no leakage) adds a ``CHRONIC``
+    column so :func:`simulate_ranges` can bucket by (age × chronic) instead of age alone.
     """
     g = season_stats.groupby(["PLAYER_ID", "SEASON"], as_index=False).agg(GP=("GP", "sum"), MIN=("MIN", "sum"))
     ages = bio[["PLAYER_ID", "SEASON", "AGE"]].drop_duplicates(["PLAYER_ID", "SEASON"])
@@ -76,7 +81,13 @@ def build_gp_pool(
         d = g[~g["SEASON"].isin(COVID_SEASONS)]
         if max_start_year is not None:
             d = d[d["yr"] < max_start_year]
-    return d[["GP", "AGE"]].reset_index(drop=True)
+    cols = ["GP", "AGE"]
+    if injury_profile is not None:
+        d = d.merge(injury_profile[["SEASON", "PLAYER_ID", "inj_chronic_flag"]],
+                    on=["SEASON", "PLAYER_ID"], how="left")
+        d["CHRONIC"] = d["inj_chronic_flag"].fillna(0).astype(int)
+        cols.append("CHRONIC")
+    return d[cols].reset_index(drop=True)
 
 
 def _age_bucket(age: np.ndarray) -> np.ndarray:
@@ -97,6 +108,12 @@ def simulate_ranges(
     ``proj`` needs ``fpts_pg``, ``gp`` and ``target_age``. Returns a copy with ``fpts_p10 ..
     fpts_p90`` (per ``quantiles``), ``fpts_median``, and a ``risk`` score (relative width of the
     p10–p90 band). Ranking-neutral: rows and order are preserved.
+
+    When ``gp_pool`` carries a ``CHRONIC`` column (``build_gp_pool(injury_profile=...)``) *and*
+    ``proj`` carries ``inj_chronic_flag`` (EXP-015 / 7.3b), draws bucket by (age × chronic) so
+    chronically-injured players sample a GP pool with their own fatter left tail. A
+    (age × chronic) bucket under 30 rows falls back to its age-only pool (the ``_age_bucket``
+    guard pattern), then to the full pool.
     """
     rng = np.random.default_rng(seed)
     out = proj.copy().reset_index(drop=True)
@@ -108,10 +125,23 @@ def simulate_ranges(
 
     # Bucket the empirical pool by age; scale each player's draws to their own projected GP.
     pool_gp = gp_pool["GP"].to_numpy(dtype=float)
-    pool_buck = _age_bucket(gp_pool["AGE"].to_numpy(dtype=float))
-    buckets = {b: pool_gp[pool_buck == b] for b in (0, 1, 2)}
-    buckets = {b: (v if len(v) >= 30 else pool_gp) for b, v in buckets.items()}  # guard small buckets
-    player_buck = _age_bucket(ages)
+    pool_age_buck = _age_bucket(gp_pool["AGE"].to_numpy(dtype=float))
+    age_pools = {b: pool_gp[pool_age_buck == b] for b in (0, 1, 2)}
+    age_pools = {b: (v if len(v) >= 30 else pool_gp) for b, v in age_pools.items()}  # guard small buckets
+
+    use_chronic = "CHRONIC" in gp_pool.columns and "inj_chronic_flag" in out.columns
+    if use_chronic:
+        pool_chronic = gp_pool["CHRONIC"].to_numpy(dtype=int)
+        player_chronic = out["inj_chronic_flag"].fillna(0).to_numpy(dtype=int)
+        buckets = {}
+        for b in (0, 1, 2):
+            for c in (0, 1):
+                v = pool_gp[(pool_age_buck == b) & (pool_chronic == c)]
+                buckets[b + 3 * c] = v if len(v) >= 30 else age_pools[b]
+        player_buck = _age_bucket(ages) + 3 * player_chronic
+    else:
+        buckets = age_pools
+        player_buck = _age_bucket(ages)
 
     gp_draws = np.empty((n, n_sims))
     for b, pool in buckets.items():

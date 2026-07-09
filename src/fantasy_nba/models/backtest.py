@@ -82,6 +82,8 @@ VARIANT_SPECS: dict[str, dict] = {
                                  "n_estimators": 79}},
     # EXP-014 (Step 6) — team-constrained minutes allocation (needs rosters):
     "learned_alloc": {"minutes_mode": "allocation"},
+    # EXP-015 (Step 7) — injury/availability history into the y_gp model only (needs injuries):
+    "learned_inj": {"use_injuries": True},
 }
 
 
@@ -94,6 +96,7 @@ def project_models(
     variants: list[str] | dict[str, dict] | None = None,
     seed: int | None = None,
     rosters: pd.DataFrame | None = None,
+    injuries: pd.DataFrame | None = None,
 ) -> dict[str, pd.DataFrame]:
     """Project ``target_season`` with every model using **only** prior-season data.
 
@@ -106,7 +109,10 @@ def project_models(
     Variants using recency/trade features need ``game_logs``; ``use_context`` and
     ``minutes_mode='allocation'`` variants get their ``target_team_map`` derived here
     automatically (allocation additionally needs ``rosters`` — the historical
-    ``team_rosters`` frame, for positions). ``seed`` overrides LightGBM's
+    ``team_rosters`` frame, for positions); ``use_injuries`` variants need ``injuries``
+    (the resolved spells frame from ``injuries.build_spells`` — it self-restricts to
+    spells before each fold's Oct 1, so passing the full frame stays no-leakage).
+    ``seed`` overrides LightGBM's
     ``random_state`` for the whole learned family — the seed-stability protocol
     (implementation-plan §0 rules) runs the eval at seeds {0, 1, 2} and averages.
     """
@@ -159,6 +165,10 @@ def project_models(
                 if rosters is None:
                     raise ValueError(f"Variant {name!r} needs rosters (team_rosters frame).")
                 kw["rosters"] = rosters
+            if kw.get("use_injuries"):
+                if injuries is None:
+                    raise ValueError(f"Variant {name!r} needs injuries (spells frame).")
+                kw["injury_table"] = injuries
             models[name] = project_learned(train_ss, train_bio, target_season, cfg=cfg, **kw)
     return models
 

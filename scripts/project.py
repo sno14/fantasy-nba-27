@@ -67,7 +67,21 @@ def main() -> None:
     if args.ranges or args.rank_by:
         from fantasy_nba.models.uncertainty import build_gp_pool, rank_board, simulate_ranges
 
-        pool = build_gp_pool(season_stats, bio)
+        injury_profile = None
+        if storage.exists("injuries"):
+            # EXP-015 (7.3b, adopted): (age × chronic) GP pool — chronic players sample their
+            # own fatter left tail. Skipped gracefully when the injuries pull doesn't exist.
+            from fantasy_nba.models import injuries as inj
+            from fantasy_nba.models._core import _season_start
+
+            spells, _ = inj.build_spells(storage.read("injuries"), season_stats)
+            seasons = sorted(season_stats["SEASON"].unique())
+            injury_profile = inj.chronic_flag_table(spells, seasons)
+            flags = inj.injury_features(spells, f"{_season_start(args.target)}-10-01")
+            proj = proj.merge(flags[["PLAYER_ID", "inj_chronic_flag"]], on="PLAYER_ID", how="left")
+            proj["inj_chronic_flag"] = proj["inj_chronic_flag"].fillna(0).astype(int)
+
+        pool = build_gp_pool(season_stats, bio, injury_profile=injury_profile)
         proj = simulate_ranges(proj, pool)
         show = ["rank", "PLAYER_NAME", "target_age", "gp", "mpg", "fpts_pg",
                 "fpts_p10", "fpts_median", "fpts_p90", "risk"]

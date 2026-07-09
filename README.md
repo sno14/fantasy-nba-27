@@ -51,6 +51,9 @@ scripts/
   eval_quantiles.py  EXP-013c quantile-head eval: pinball loss vs baselines + per-bucket coverage
   tune_learned.py  EXP-013d nested walk-forward LGBM tuner (grid on folds <= 2021-22 only)
   eval_asof.py     EXP-018 in-season gate: project_asof vs frozen-T0 vs naive updater (--ewma, --blend)
+  pull_injuries.py prosportstransactions scraper (injuries + transactions; drives the real
+                   Edge/Chrome via Playwright — a browser window opens; incremental by date)
+  eval_gp.py       EXP-015 judgments: GP point estimate (learned_inj) + Monte-Carlo GP tails
   darko_report.py  DARKO overlay: minutes/rank disagreement report (pull_darko.py fetches)
   explore.py       local interactive Streamlit explorer
 data/              raw/ and processed/ caches (gitignored)
@@ -62,6 +65,9 @@ tests/
 ```bash
 # Pull recent seasons of player data (cached to data/raw/)
 python scripts/pull_data.py --seasons 2023-24 2024-25 2025-26
+
+# Pull injury/IL transaction history (prosportstransactions; first run ~1h, then incremental)
+python scripts/pull_injuries.py
 
 # Score a stat line with your league config
 python -c "from fantasy_nba.scoring import load_scoring; print(load_scoring())"

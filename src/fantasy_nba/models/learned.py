@@ -26,6 +26,7 @@ import pandas as pd
 
 from ..scoring import ScoringConfig, load_scoring, score_frame
 from . import context as ctx
+from . import injuries as inj
 from . import recency as rec
 from ._core import COUNTING, DEFAULT_REG_MINUTES, DEFAULT_WEIGHTS, _season_start, weighted_aggregates
 
@@ -46,6 +47,11 @@ TRAJ_FEATURES = [
 ]
 
 FEATURES = BASE_FEATURES  # back-compat default (Marcel-equivalent); see feature_columns().
+
+# Injury/availability features (EXP-015, Step 7) feed the **y_gp model only** — availability
+# history is a games-played signal; leaking it into rates/MPG would just add noise columns.
+# They're therefore not part of feature_columns(); _fit_models appends them per-target.
+GP_EXTRA_FEATURES = inj.INJURY_FEATURES
 
 # Team-context / vacated-minutes features (EXP-009) live in models.context.CONTEXT_FEATURES.
 
@@ -171,12 +177,14 @@ def _features_for(
     reg_minutes: float,
     context_feats: pd.DataFrame | None = None,
     recency_feats: pd.DataFrame | None = None,
+    injury_feats: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
-    """Marcel aggregates (+ trajectory / team-context / recency features) for ``target_season``.
+    """Marcel aggregates (+ trajectory / team-context / recency / injury features) for ``target_season``.
 
-    ``prior`` is prior-only (drives the Marcel aggregates and trajectory). Team-context and recency
-    features are computed by the caller (they need, respectively, the target-season team map and the
-    precomputed game-log table) and passed in as ``[PLAYER_ID, *feats]`` frames to merge here.
+    ``prior`` is prior-only (drives the Marcel aggregates and trajectory). Team-context, recency
+    and injury features are computed by the caller (they need, respectively, the target-season team
+    map, the precomputed game-log table, and the spells table with an as-of date) and passed in as
+    ``[PLAYER_ID, *feats]`` frames to merge here.
     """
     feats = weighted_aggregates(
         prior, prior_bio, target_season, n_seasons=n_seasons, weights=weights, reg_minutes=reg_minutes
@@ -197,6 +205,12 @@ def _features_for(
         for col in recency_feats.columns:
             if col != "PLAYER_ID":
                 feats[col] = feats[col].fillna(0.0)
+    if injury_feats is not None:
+        feats = feats.merge(injury_feats, on="PLAYER_ID", how="left")
+        # No spell history = healthy: counts/flags 0, recency at its cap (max distance).
+        for col in inj.INJURY_FEATURES:
+            fill = inj.RECENCY_CAP_DAYS if col == "inj_recency_days" else 0
+            feats[col] = pd.to_numeric(feats[col], errors="coerce").fillna(fill)
     return feats
 
 
@@ -207,6 +221,7 @@ def build_panel(
     use_context: bool = False,
     recency_table: pd.DataFrame | None = None,
     trade_table: pd.DataFrame | None = None,
+    injury_table: pd.DataFrame | None = None,
     min_prior_seasons: int = 2,
     min_label_minutes: float = 200.0,
     n_seasons: int = 3,
@@ -221,6 +236,8 @@ def build_panel(
     joined to the realized outcomes in S. The team-context features additionally read S's *team
     assignment* (a preseason roster fact, not an outcome) — ``season_stats`` contains S here, so
     ``context_for_season`` can slice it; ``recency_features`` self-restricts to seasons ``< S``.
+    ``injury_table`` (the resolved spells frame, EXP-015) adds the availability features as-of
+    Oct 1 of each S — ``injury_features`` self-restricts to spells strictly before that date.
     """
     seasons = sorted(season_stats["SEASON"].unique(), key=_season_start)
     frames = []
@@ -234,9 +251,13 @@ def build_panel(
             rec.recency_features(recency_table, s, trade_table)
             if recency_table is not None else None
         )
+        injury_feats = (
+            inj.injury_features(injury_table, f"{_season_start(s)}-10-01")
+            if injury_table is not None else None
+        )
         feats = _features_for(
             prior, prior_bio, s, use_trajectory, n_seasons, weights, reg_minutes,
-            context_feats, recency_feats,
+            context_feats, recency_feats, injury_feats,
         )
         labels = _labels(season_stats, s, min_label_minutes)
         merged = feats.merge(labels, on="PLAYER_ID", how="inner")
@@ -277,19 +298,23 @@ def _fit_models(
     target_mode: str = "level",
     weight_mode: str | None = None,
     weight_alpha: float = 1.0,
+    gp_extra_cols: list[str] | None = None,
 ) -> dict:
+    """One LightGBM per target. ``gp_extra_cols`` (EXP-015 injury features) extend the
+    feature set of the **y_gp model only** — the other targets never see them."""
     if target_mode not in ("level", "delta"):
         raise ValueError(f"target_mode must be 'level' or 'delta', got {target_mode!r}")
     from lightgbm import LGBMRegressor
 
-    X = panel[feature_cols]
     models = {}
     for target in TARGETS:
+        cols = feature_cols + (gp_extra_cols or []) if target == "y_gp" else feature_cols
         label = panel[target]
         if target_mode == "delta" and target in DELTA_ANCHORS:
             label = label - panel[DELTA_ANCHORS[target]]  # train on change from own anchor
         model = LGBMRegressor(**params)
-        model.fit(X, label, sample_weight=_sample_weight(panel, target, weight_mode, weight_alpha))
+        model.fit(panel[cols], label,
+                  sample_weight=_sample_weight(panel, target, weight_mode, weight_alpha))
         models[target] = model
     return models
 
@@ -318,6 +343,8 @@ def project_learned(
     game_logs: pd.DataFrame | None = None,
     recency_skip_last: int = 0,
     use_trade_split: bool = False,
+    use_injuries: bool = False,
+    injury_table: pd.DataFrame | None = None,
     target_mode: str = "level",
     weight_mode: str | None = None,
     weight_alpha: float = 1.0,
@@ -342,6 +369,10 @@ def project_learned(
     EXP-012 knobs (need ``use_recency``): ``recency_skip_last`` trims each prior season's final
     played games from the recency window (rest/tanking de-confound); ``use_trade_split`` adds the
     post-trade ``TRADE_FEATURES`` (game logs must carry ``TEAM_ABBREVIATION``).
+    EXP-015 knob (Step 7): ``use_injuries`` adds the ``INJURY_FEATURES`` (prosportstransactions
+    availability history) to the **y_gp model only** — pass ``injury_table`` (the resolved
+    spells frame from ``injuries.build_spells``; ``injury_features`` self-restricts to spells
+    before Oct 1 of each season, so passing the full frame is safe).
     EXP-013 knobs: ``target_mode='delta'`` trains on change-from-own-anchor instead of levels;
     ``weight_mode`` ∈ {``'mover'``, ``'relevance'``} re-weights training rows (see
     :func:`_sample_weight`), scaled by ``weight_alpha``.
@@ -355,6 +386,8 @@ def project_learned(
     params = params or DEFAULT_LGBM_PARAMS
     if use_trade_split and not use_recency:
         raise ValueError("use_trade_split requires use_recency (both ride the game-log tables).")
+    if use_injuries and injury_table is None:
+        raise ValueError("use_injuries needs injury_table (the spells frame from injuries.build_spells).")
     if minutes_mode not in ("regression", "allocation"):
         raise ValueError(f"minutes_mode must be 'regression' or 'allocation', got {minutes_mode!r}")
     if minutes_mode == "allocation" and (rosters is None or target_team_map is None):
@@ -373,12 +406,14 @@ def project_learned(
     panel = build_panel(
         season_stats, bio, use_trajectory=use_trajectory, use_context=use_context,
         recency_table=recency_table, trade_table=trade_table,
+        injury_table=injury_table if use_injuries else None,
         min_label_minutes=min_label_minutes,
         n_seasons=n_seasons, weights=weights, reg_minutes=reg_minutes,
     )
     models = _fit_models(
         panel, params, feature_cols,
         target_mode=target_mode, weight_mode=weight_mode, weight_alpha=weight_alpha,
+        gp_extra_cols=GP_EXTRA_FEATURES if use_injuries else None,
     )
 
     context_feats = None
@@ -395,15 +430,20 @@ def project_learned(
     recency_feats = (
         rec.recency_features(recency_table, target_season, trade_table) if use_recency else None
     )
+    injury_feats = (
+        inj.injury_features(injury_table, f"{_season_start(target_season)}-10-01")
+        if use_injuries else None
+    )
 
     agg = _features_for(
         season_stats, bio, target_season, use_trajectory, n_seasons, weights, reg_minutes,
-        context_feats, recency_feats,
+        context_feats, recency_feats, injury_feats,
     )
     X = agg[feature_cols]
+    X_gp = agg[feature_cols + GP_EXTRA_FEATURES] if use_injuries else X
 
     pred_mpg = np.clip(_predict_target(models, "y_mpg", X, agg, target_mode), 0.0, 48.0)
-    pred_gp = np.clip(_predict_target(models, "y_gp", X, agg, target_mode), 1.0, 82.0)
+    pred_gp = np.clip(_predict_target(models, "y_gp", X_gp, agg, target_mode), 1.0, 82.0)
 
     if minutes_mode == "allocation":
         from . import allocation as alloc

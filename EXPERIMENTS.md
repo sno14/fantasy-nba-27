@@ -565,12 +565,66 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   board (it ties naive overall, beats it early-season, and handles rookies/preseason in one
   path).
 
+### EXP-015 — injury / availability history (prosportstransactions)  ·  Status: **split — (a) GP point estimate rejected · (b) Monte-Carlo chronic tails adopted**
+- **Date:** 2026-07-09  ·  **Commit:** this commit  ·  **Step:** implementation-plan Step 7
+- **Hypothesis:** 17 seasons of injury/IL transactions — the first exogenous availability
+  data — (a) finally beat the box-score-only GP model (EXP-004 ceiling: prior-GP→GP Spearman
+  0.21, fit R²≈0.03), and (b) give chronically-injured players their own fatter Monte-Carlo
+  GP tail instead of an age-bucket pool.
+- **Data:** `scripts/pull_injuries.py` — general PST scraper (categories injury+il →
+  `injuries.parquet` 47,015 verbatim rows 2009-07…2026-06; category movement →
+  `transactions.parquet` for Step 8). Cloudflare blocks requests/curl-impersonation *and
+  headless* browsers; the machine's real **Edge driven headed via Playwright** passes
+  (~5 s challenge, then plain pagination at 1 page/s). Incremental by date after the first pull.
+- **Name-join (hardening per plan 7.1):** `injuries.resolve_players` — normalized name
+  (+ alternates + parenthesized given names), team+season disambiguation, career-span
+  fallback, dated `ALIASES` (2 entries) + documented `AMBIGUOUS_DROPS` (2 collisions, 20
+  events, both fringe); any **new** collision hard-fails. Match rate **99.0%** of 46,828
+  events (gate ≥95%); the 103 unmatched names are pre-2009-10 careers (Foyle, Bender,
+  Atkins…) legitimately absent from our stats window.
+- **Spells:** relinquish→acquire pairing (`injuries.injury_spells`, unit-tested on the plan's
+  synthetic 3-transaction sequence + ongoing-spell no-leakage) → 17,977 spells / 1,652
+  players (median 6 d; unclosed capped 120 d; an acquire >365 d out can't close a spell).
+  `INJURY_FEATURES` as-of Oct 1 per season: events/days 1y/3y, recency (cap 1500), chronic
+  (≥3 spells in 2y), severe-bodypart regex.
+- **(a) GP point estimate — `learned_inj` (INJURY_FEATURES into y_gp only) vs `learned`,
+  control-pool top-150, 4 seasons, seeds {0,1,2}:** pooled GP Spearman ctrl → inj:
+  0.204→0.224 (s0), 0.236→0.220 (s1), 0.217→0.194 (s2) — **mean Δ −0.006 vs the +0.05 gate**,
+  seed spread 0.043 swamps it; pooled GP MAE **worse +0.20**; player-clustered paired 90% CI
+  Δspearman **(−0.029, +0.067) straddles 0**. The exogenous data does *not* rescue the GP
+  point estimate — availability stays ~unpredictable at season horizon (EXP-004 stands).
+  **Rejected** — `learned_inj` stays registered for re-tests; default board unchanged.
+- **(b) Monte-Carlo tails — `build_gp_pool(injury_profile=…)` buckets the empirical GP pool
+  by (age × chronic), guard <30 rows → age-only; board carries `inj_chronic_flag`:** pooled
+  p10–p90 coverage base → inj: 0.820→0.817 (s0), 0.799→0.791 (s1), 0.807→0.815 (s2) — **all
+  within the [0.78, 0.88] gate**; `safe`-rank Spearman **improves in all 3 seeds**
+  (0.506→0.514, 0.495→0.502, 0.501→0.505; mean +0.006 — a tie-or-better, within noise).
+  **Named chronic-vs-durable cases (seed 0):** Joel Embiid 2024-25 p10 1481→**1189** while
+  equal-median durable Paolo Banchero holds 1788; Giannis 2024-25 p10 1991→**1855** vs
+  Sabonis 2062; Zion 2025-26 p10 1284→**1173** vs Banchero 1322. **Adopted** — wired into
+  `scripts/project.py --ranges` (auto when `injuries.parquet` exists); adopted for the
+  *calibration structure* (chronic stars finally carry their own downside), not for a
+  ranking-accuracy claim.
+- **Skeptic pass:** (leakage) features/flags built from spells **strictly before Oct 1** of
+  each panel/target season (unit-tested, incl. ongoing-spell clipping); pool seasons < target
+  via `max_start_year`; the scrape itself is dated rows. (selection) (a) control-model pool
+  for both arms — identical players; (b) same `learned` board top-100 both arms. (season
+  concentration) (a) sign flips by seed/season — noise, and rejected anyway; (b) coverage and
+  safe-Spearman moves are uniform across seasons (2025-26 coverage is low ~0.75 in **both**
+  arms — a base-model issue, pooled stays in band). Eval-window-conditional until 2026-27
+  confirms (rule 10).
+- **Ledger note:** the injury feed's real value is **forward-looking** (Step 12 OUT-tonight
+  overrides + the EXP-018 re-gate's live vacated-minutes) and the **chronic tail**; do not
+  re-try season-horizon GP point regression from history alone. 2020-21's Oct-1 as-of predates
+  that covid offseason (bubble ended Oct 2020) — irrelevant here (eval seasons 2022-23+), but
+  any consumer touching 2020-21 must pass a later as-of. Judgment harness: `scripts/eval_gp.py`.
+
 _Next experiments — numbering reserved by [`docs/implementation-plan.md`](docs/implementation-plan.md)
 (the execution spec; run in its Step order, as re-routed by the dated notes in its tracker — latest:
 the **2026-07-09 draft-focus re-route + gap-closer addendum**). Done: EXP-011…014 (Phase 0+1),
-EXP-018 (engine; naive gate parked). **Draft-facing, calendar-critical, in order: EXP-015** injuries
-(Step 7; shared scraper with Step 8, feeds the EXP-018 re-gate) → **EXP-016/016b** dated transactions
-+ vacated-usage features (Step 8) → **EXP-017(+b)** market: expert consensus (Hashtag/BBM) for value,
+EXP-018 (engine; naive gate parked), **EXP-015** injuries (Step 7, split verdict above — scraper +
+spells now serve Step 8 and the Step-12 live feed). **Draft-facing, calendar-critical, in order:
+EXP-016/016b** dated transactions + vacated-usage features (Step 8) → **EXP-017(+b)** market: expert consensus (Hashtag/BBM) for value,
 platform ADP for the availability column only; market-gap as a feature if historical archives are
 recoverable (Step 9) → **EXP-026** breakout archetype layer, recall-gated (Step 9b) → **EXP-027**
 coach changes + preseason-October logs (Step 9c) → **EXP-028** rookie model, draft slot × landing

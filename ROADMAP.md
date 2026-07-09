@@ -332,16 +332,21 @@ eval-only (opt-in `--recency`); the shipped board uses the plain `learned` found
       cost line. (EXP-000 warns population aging curves alone don't help young players — this is
       the targeted fix, judged on the metric that can actually move.)
 
-#### 7.C — External availability / injury data  ← attacks the GP ceiling directly
-- [ ] The only lever that can beat EXP-004's R²≈0.03 box-score GP ceiling. Ingest historical
-      injury data (`nbainjuries` pkg / prosportstransactions; NBA official injury reports from
-      2021-22). Build injury-history features (chronic vs acute, games-missed trend, injury type —
-      Achilles/ACL/back/knee — age×injury interaction).
-- [ ] **Two uses:** (a) a GP point-estimate model that finally beats box-score-only; (b) a
-      **per-player** Monte-Carlo GP tail (Stage 6 currently uses an age-bucket pool, not player
-      history) — sharpen the floor for chronically-injured stars.
-- [ ] **Test:** does injury-featured GP beat the current GP model on next-season GP? Does the
-      per-player tail improve range calibration and `safe`-ranking on injury-prone players?
+#### 7.C — External availability / injury data  ← DONE (EXP-015, 2026-07-09: split verdict)
+- [x] Ingested: prosportstransactions injury+IL history 2009→today (`scripts/pull_injuries.py`,
+      47k rows; Cloudflare needs the real Edge driven headed via Playwright). Name-join hardened
+      (99.0% of events matched; dated aliases; new collisions hard-fail). Spell pairing +
+      `INJURY_FEATURES` (chronic/recency/severity, as-of Oct 1) in `models/injuries.py`.
+- [x] **Two uses, judged separately (EXP-015):** (a) GP point-estimate — **rejected**: pooled GP
+      Spearman Δ −0.006 vs the +0.05 gate, CI straddles 0; EXP-004's season-horizon GP ceiling
+      stands even with exogenous history. (b) **per-player Monte-Carlo tail — adopted**: the GP
+      pool buckets by (age × chronic), coverage stays in [78,88]% all seeds, `safe`-rank ties or
+      improves all seeds, and chronic stars finally carry their own downside (Embiid 2024-25 p10
+      1481→1189 while equal-median durable Banchero holds 1788). Wired into
+      `scripts/project.py --ranges` automatically when the injuries pull exists.
+- [x] **Standing value:** the feed is the Step-12 OUT-tonight / live vacated-minutes channel and
+      the EXP-018 re-gate dependency; do not re-try season-horizon GP point regression from
+      history alone (ledger note).
 
 #### 7.D — Within-season recency (game-log granularity)  ← preseason use exhausted (EXP-008b + EXP-012 both parked); true game-log granularity now lives in the as-of engine (EXP-018 EWMAs)
 - [x] **Last-N-games form** as learned-model features (`models/recency.py`, EXP-008b): recent MPG /
