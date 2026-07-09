@@ -25,7 +25,7 @@ def main() -> None:
         "--datasets",
         nargs="+",
         default=["player_season_stats", "player_game_logs"],
-        choices=sorted(ingest._DATASETS),
+        choices=sorted(ingest._DATASETS) + sorted(ingest._STATIC_DATASETS),
         help="Which datasets to pull.",
     )
     parser.add_argument(

@@ -111,11 +111,15 @@ special-case handling.
 - [ ] Pace adjustment — deferred (low measured leverage).
 
 ### Stage 4 — Special cases  ← re-scoped 2026-07-09 into the Stage-7 execution plan
-- [ ] Rookie model — now **EXP-028 (implementation-plan Step 9d)**: draft slot × landing spot
-      (reuses the Step-8.4 vacated-usage features; gate = beat the draft-pick-order baseline).
-      College/international stat translation stays a later refinement. **Stopgap ships first:**
-      D1.5 seeds rookies from the expert-consensus pull, flagged `market_priced`, so the draft
-      sheet has no invisible players even before the model exists.
+- [x] Rookie model — **EXP-028 rejected at the gate (2026-07-10):** draft slot × landing spot
+      (LGBM y_mpg × y_fpts_pm on 15 cohorts, vacated-usage landing features via the honest
+      map) does **not** beat pick-order — pooled Spearman delta −0.02…0.00 across seeds
+      (gate +0.05), MAE slightly worse, and on season *totals* pick-order wins outright.
+      The real finding the spec anticipated: **the D1.5 market seed suffices** (informational:
+      the archived market itself only split 1-1 with pick-order on 2022-23/2023-24).
+      Harness stays (`models/rookies.py`, `scripts/eval_rookies.py`, `draft_history`
+      dataset) — re-arm when college-stat translation or accumulated market archives give
+      it new inputs. College/international translation stays the later refinement.
 - [ ] Role-change / traded-player adjustment — largely absorbed by Stage 7: preseason =
       the Step-8/8.4 dated-transactions + vacated-usage features; in-season = the as-of
       engine's post-trade features (EXP-018) + Step-7 live availability. Keep this box until

@@ -98,7 +98,7 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | 9 | 2 | Market benchmark (expert consensus + ADP-for-availability) | EXP-017(+b) | ☑ | ☑ (017 adopted live · 017b waived — archives <4 seasons; re-pull Sept, re-arm 2027) |
 | 9b | 2 | Breakout archetype layer, recall-gated | EXP-026 | ☑ | ☑ (both wirings rejected; breakout_p column ships) |
 | 9c | 2 | Coach changes + preseason-October logs (+ win totals) | EXP-027 | ☑ | ☑ (a coach rejected · b `learned_ps` adopted-Oct, big-riser capture +9pp · c waived) |
-| 9d | 2 | Rookie model (draft slot × landing spot) | EXP-028 | ☐ | ☐ |
+| 9d | 2 | Rookie model (draft slot × landing spot) | EXP-028 | ☑ | ☑ (rejected — pick-order unbeaten; D1.5 market seed stands alone) |
 | D1 | 2.5 | Decision layer: league config, VOR, schedule, rookie seed | — (product) | ◐ league.yaml (D1.1 ✅ confirmed 2026-07-10: ESPN default points, 10 teams, weekly H2H — scoring.yaml already matched) | ☐ |
 | D2 | 2.5 | Analyst pass + dual-board freeze | EXP-029 | ☐ | ☐ |
 | 10 | 3 | As-of-date projection function | EXP-018 | ☑ | ☑ (foundation adopted; naive gate parked) |
@@ -965,6 +965,17 @@ ledger the numbers (a pick-order tie is a real finding — it means the market s
 **Done when:** EXP-028 logged; rookie rows appear on the draft sheet under whichever source
 won; ROADMAP Stage-4 rookie checkbox updated; tests (synthetic rookie panel: pick-order
 monotonicity, no-leakage on the first-season definition).
+
+> **As completed (2026-07-10, local):** **rejected** — the model does not beat pick-order
+> (pooled Spearman delta −0.02…0.00 over seeds vs the +0.05 gate; CI [−0.10, +0.05]; MAE
+> slightly worse; on *totals* pick-order wins outright 0.62 vs 0.57). Landing-spot features
+> verified real (96% non-zero) — the signal just doesn't generalize at ~60 rookies/cohort.
+> The winning source is therefore the **D1.5 market seed** (build it in D1); informationally
+> the archived market split 1-1 with pick-order (2022-23 +0.74 vs +0.64; 2023-24 +0.62 vs
+> +0.69), so the sheet should show pick number alongside the market rank. Harness kept for
+> re-arm: `models/rookies.py`, `scripts/eval_rookies.py`, the `draft_history` dataset
+> (note: the 2026 draft class is not on the endpoint yet — re-pull before October; D1.5
+> covers rookie visibility regardless). Full numbers in EXP-028.
 
 ---
 

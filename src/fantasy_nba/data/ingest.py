@@ -165,6 +165,22 @@ def fetch_team_rosters(season: str) -> pd.DataFrame:
     return out
 
 
+def fetch_draft_history() -> pd.DataFrame:
+    """Full NBA draft history, one static pull (Step 9d / EXP-028).
+
+    One row per drafted player: ``PERSON_ID, SEASON (draft year), ROUND_NUMBER,
+    OVERALL_PICK, TEAM_ID, ORGANIZATION, …``. Season-independent — ``pull_seasons``
+    special-cases it (fetched once, not per season). Undrafted players simply have no row;
+    the rookie model maps them to the ``overall_pick = 61`` sentinel.
+    """
+    from nba_api.stats.endpoints import drafthistory
+
+    def _draft() -> pd.DataFrame:
+        return drafthistory.DraftHistory(timeout=REQUEST_TIMEOUT).get_data_frames()[0]
+
+    return _with_retry(_draft, "draft_history")
+
+
 def fetch_player_bio(season: str) -> pd.DataFrame:
     """Per-player bio for a season: age, height, weight, draft info.
 
@@ -197,6 +213,11 @@ _DATASETS = {
     "player_bio": fetch_player_bio,
 }
 
+# Season-independent datasets: fetched once per pull, not per season.
+_STATIC_DATASETS = {
+    "draft_history": fetch_draft_history,
+}
+
 
 def pull_seasons(
     seasons: Sequence[str],
@@ -211,15 +232,24 @@ def pull_seasons(
 
     Returns a mapping of dataset name -> combined DataFrame.
     """
-    unknown = set(datasets) - set(_DATASETS)
+    unknown = set(datasets) - set(_DATASETS) - set(_STATIC_DATASETS)
     if unknown:
-        raise ValueError(f"Unknown datasets: {sorted(unknown)}. Valid: {sorted(_DATASETS)}")
+        raise ValueError(f"Unknown datasets: {sorted(unknown)}. "
+                         f"Valid: {sorted(_DATASETS) + sorted(_STATIC_DATASETS)}")
 
     results: dict[str, pd.DataFrame] = {}
     for name in datasets:
         if not refresh and storage.exists(name):
             print(f"[{name}] cache hit — skipping fetch")
             results[name] = storage.read(name)
+            continue
+
+        if name in _STATIC_DATASETS:
+            print(f"[{name}] fetching (season-independent) …")
+            combined = _STATIC_DATASETS[name]()
+            path = storage.write(combined, name)
+            print(f"[{name}] cached {len(combined):,} rows -> {path}")
+            results[name] = combined
             continue
 
         frames = []

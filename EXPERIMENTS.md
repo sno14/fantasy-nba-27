@@ -843,6 +843,42 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   **after preseason play, days before the draft** — wire the D1 sheet and the dual freeze to
   `learned_ps`, and re-pull `preseason_game_logs` in mid-October 2026.
 
+### EXP-028 — rookie model: draft slot × landing spot  ·  Status: **rejected (pick-order unbeaten; the D1.5 market seed stands alone)**
+- **Date:** 2026-07-10  ·  **Commit:** this commit  ·  **Step:** implementation-plan Step 9d
+- **Hypothesis:** rookie fantasy value ≈ draft slot + landing-spot opportunity — a small
+  walk-forward model (two targets only: `y_mpg`, `y_fpts_pm`; GP never modeled, EXP-004
+  applies doubly) beats ranking rookies purely by pick.
+- **Build:** `draft_history` dataset (nba_api drafthistory, one static pull, 8,374 rows —
+  season-independent ingest path added; **the 2026 class is not on the endpoint yet — re-pull
+  before October**). `models/rookies.py`: cohorts = first cached stats row (15 cohorts,
+  1,463 rookies, 835 with ≥200-min labels); features = pick(+log) / undrafted-61 sentinel /
+  rookie age / years-since-draft (stash) / intl flag / `n_same_pos` + the EXP-016b
+  vacancy line, obtained by **injecting rookies into the honest Oct-1 map** so
+  `context.vacated_features` serves them directly (96% non-zero — verified, not silently
+  empty; Wemby's row sanity-checked). Baseline = pick order valued at the walk-forward
+  pick-bucket empirical mean (the fairest version of "everyone can rank by pick").
+  Judgment: `scripts/eval_rookies.py`, 4 eval cohorts × seeds {0,1,2}, paired bootstrap CI.
+- **Result (pooled, n-weighted; labeled rookies n=213):** Spearman vs realized fpts/g:
+  model 0.306/0.311/0.326 vs pick-order 0.331 — delta **−0.025/−0.020/−0.004** (gate:
+  ≥ +0.05); CI **[−0.100, +0.051]**; MAE 5.52 vs 5.41 (worse). On season *totals*
+  pick-order wins outright (0.623 vs 0.570-0.584). Season detail: the model wins 2022-23
+  (+0.08/+0.06/+0.04) and 2025-26 (+0.10/+0.10/+0.13) but collapses on 2023-24
+  (−0.30 — the Wemby/Chet cohort, where pick order was nearly perfect at the top).
+- **Market comparison (informational, vintage-verified archives):** 2022-23 n=33 — market
+  +0.738 / pick +0.641 / model +0.623; 2023-24 n=30 — market +0.615 / pick +0.685 / model
+  +0.462. The market itself only splits 1-1 with pick-order on rookies.
+- **Verdict:** **rejected** — the spec's anticipated "real finding": pick-order is the
+  operative rookie prior, so **D1.5 seeds rookies from the consensus pull (market rank) with
+  the pick number shown alongside**; no model column ships. Harness + dataset stay for
+  re-arm (college-stat translation, or 2-3 more archived market seasons).
+- **Skeptic pass:** (leakage) features are static draft facts + rookie-season bio age/roster
+  position + S−1 stats through the honest map; the one approximation — rookie team = his
+  rookie-season primary team — is a preseason fact for the overwhelming majority (draft-night
+  signings) and is documented in the module. (selection) eval universe = rookies with ≥200
+  min, applied identically to model and baseline (a no-show has no rank to score either way).
+  (season concentration) the rejection is *not* season-concentrated: the model loses pooled
+  with two season wins and one big loss — the instability is itself the finding at n≈50/cohort.
+
 _Next experiments — numbering reserved by [`docs/implementation-plan.md`](docs/implementation-plan.md)
 (the execution spec; run in its Step order, as re-routed by the dated notes in its tracker — latest:
 the **2026-07-09 draft-focus re-route + gap-closer addendum**). Done: EXP-011…014 (Phase 0+1),
@@ -852,9 +888,10 @@ backtest-correctness fix) + **EXP-016b** vacated usage (parked; feeds EXP-026/02
 **EXP-017** market benchmark (adopted live; 017b waived — 2024-25 preseason archives proved
 unrecoverable, archiving from today, re-arm next offseason), **EXP-026** breakout layer (both
 wirings rejected; breakout_p ships as a draft-sheet column), **EXP-027** coach + October logs
-(split above — `learned_ps` is the adopted October board; re-pull preseason logs mid-Oct).
-**Draft-facing, calendar-critical, in order: EXP-028** rookie model, draft slot × landing
-spot, gate = beat pick-order (Step 9d) → D1 decision layer incl. the D1.5 rookie market-seed
+(split above — `learned_ps` is the adopted October board; re-pull preseason logs mid-Oct),
+**EXP-028** rookie model (rejected above — pick-order unbeaten; D1.5 market seed is the rookie
+source, pick number shown alongside; re-pull `draft_history` before October for the 2026 class).
+**Draft-facing, calendar-critical, in order: D1** decision layer incl. the D1.5 rookie market-seed
 (product; **scoring + league confirmed 2026-07-10: ESPN default points, 10 teams, weekly H2H —
 scoring.yaml already matched, no re-runs**) → **EXP-029** analyst pass + dual-board freeze (Step D2, last
 ~2 weeks before the draft; both freeze boards regenerate with `learned_ps` after preseason tips;

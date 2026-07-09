@@ -56,6 +56,8 @@ scripts/
                    Edge/Chrome via Playwright — a browser window opens; incremental by date)
   eval_gp.py       EXP-015 judgments: GP point estimate (learned_inj) + Monte-Carlo GP tails
   eval_breakout.py EXP-026 judgment: breakout board policy vs learned, recall@150 + above-market
+  eval_rookies.py  EXP-028 judgment (rejected): rookie model vs pick-order, Spearman gate +
+                   archived-market comparison; draft_history dataset feeds it
   pull_market.py   market boards, date-stamped: Hashtag points-league consensus (value) +
                    FantasyPros ADP (availability); --wayback replays archived snapshots
   market_report.py board vs consensus: sleepers/fades (rank_gap + risk) + ADP availability column
@@ -74,7 +76,7 @@ tests/
 ```bash
 # Pull recent seasons of player data (cached to data/raw/)
 # datasets: player_season_stats, player_game_logs, preseason_game_logs, team_game_logs,
-#           team_rosters, player_bio
+#           team_rosters, player_bio, draft_history (season-independent; one static pull)
 python scripts/pull_data.py --seasons 2023-24 2024-25 2025-26
 
 # Pull injury/IL history + player-movement transactions (prosportstransactions;

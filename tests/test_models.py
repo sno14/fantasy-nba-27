@@ -6,7 +6,7 @@ import pytest
 
 from fantasy_nba.models import (
     aging, breakout, coaches, context, darko, durability, injuries, learned, minutes, preseason,
-    recency, rosters, uncertainty,
+    recency, rookies, rosters, uncertainty,
 )
 from fantasy_nba.models._core import COUNTING
 
@@ -712,3 +712,64 @@ def test_project_learned_coach_and_preseason_variants_run():
         learned.project_learned(ss, bio, "2023-24", params=fast, use_coach=True)
     with pytest.raises(ValueError, match="preseason_table"):
         learned.project_learned(ss, bio, "2023-24", params=fast, use_preseason=True)
+
+
+def test_rookie_cohorts_and_pick_helpers():
+    ss = pd.DataFrame({
+        "SEASON": ["2020-21", "2021-22", "2021-22", "2022-23", "2022-23"],
+        "PLAYER_ID": [1, 1, 2, 2, 3],
+    })
+    c = rookies.rookie_cohorts(ss)
+    # P1's first row is the cache's first season -> excluded; P2 debuts 2021-22; P3 2022-23.
+    assert set(map(tuple, c[["SEASON", "PLAYER_ID"]].to_numpy())) == {("2021-22", 2), ("2022-23", 3)}
+
+    assert rookies.pick_bucket(1) == "1-5"
+    assert rookies.pick_bucket(14) == "6-14"
+    assert rookies.pick_bucket(rookies.UNDRAFTED_PICK) == "61-61"
+
+
+def _rookie_panel(seasons, n=30, seed=0):
+    """Synthetic cohorts where value declines in pick (signal for both model and baseline)."""
+    rng = np.random.default_rng(seed)
+    rows = []
+    for s in seasons:
+        for i in range(n):
+            pick = float(i * 2 + 1) if i < 25 else float(rookies.UNDRAFTED_PICK)
+            mpg = max(6.0, 30.0 - 0.4 * pick + rng.normal(0, 2))
+            fpm = max(0.3, 1.0 - 0.008 * pick + rng.normal(0, 0.05))
+            rows.append({
+                "SEASON": s, "PLAYER_ID": hash((s, i)) % 10**8, "PLAYER_NAME": f"r{i}",
+                "overall_pick": pick, "log_pick": np.log(pick),
+                "undrafted": int(pick >= rookies.UNDRAFTED_PICK),
+                "rookie_age": 20.0 + (i % 4), "years_since_draft": 0.0, "intl_flag": i % 5 == 0,
+                "n_same_pos": float(i % 6),
+                **{c: 0.0 for c in rookies.VACATED_FEATURES},
+                "y_mpg": mpg, "y_fpts_pm": fpm, "y_gp": max(10.0, 75.0 - 0.5 * pick),
+                "min": mpg * 60,
+            })
+    return pd.DataFrame(rows)
+
+
+def test_rookie_baseline_is_pick_monotone_and_model_runs():
+    panel = _rookie_panel(["2019-20", "2020-21", "2021-22", "2022-23"])
+    base = rookies.pick_order_baseline(panel, "2022-23")
+    # Bucket-mean value curve: strictly better buckets never value below worse buckets.
+    by_bucket = base.groupby(base["overall_pick"].map(rookies.pick_bucket))["fpts_pg"].first()
+    assert by_bucket["1-5"] >= by_bucket["15-30"] >= by_bucket["61-61"]
+    # Undrafted rookies carry the sentinel and land in the last bucket.
+    assert (base.loc[base["undrafted"] == 1, "overall_pick"] == rookies.UNDRAFTED_PICK).all()
+
+    proj = rookies.project_rookies(panel, "2022-23")
+    assert {"mpg", "fpts_pm", "fpts_pg", "gp", "fpts_total"} <= set(proj.columns)
+    assert proj["mpg"].between(0, 40).all() and (proj["fpts_pm"] >= 0).all()
+    # Walk-forward contract: a target with no prior cohorts must hard-fail.
+    with pytest.raises(ValueError):
+        rookies.project_rookies(panel, "2019-20")
+
+
+def test_rookie_gp_curve_is_empirical_bucket_mean():
+    panel = _rookie_panel(["2019-20", "2020-21"])
+    train = panel[panel["SEASON"] == "2019-20"]
+    curve = rookies.gp_by_pick_bucket(train)
+    top = train[train["overall_pick"] <= 5]["y_gp"].mean()
+    assert curve["1-5"] == pytest.approx(top)
