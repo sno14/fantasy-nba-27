@@ -304,16 +304,26 @@ eval-only (opt-in `--recency`); the shipped board uses the plain `learned` found
       roster data stay (Step 10 reuses them as in-season features).
 - [ ] **Data (remaining):** prosportstransactions for dated, preseason-accurate moves (EXP-016) —
       still worthwhile as a backtest-correctness fix regardless of EXP-014's rejection.
+      **Plus (2026-07-09, EXP-016b):** with the honest map, the sharper preseason opportunity
+      features — vacated **usage** (not just minutes), position-weighted, star-departure flag,
+      arrivals mirror — judged on the recall view. Spec: implementation-plan Step 8.4.
+- [ ] **Cheap exogenous pair (2026-07-09, EXP-027, Step 9c):** hand-curated coach-change table
+      (the effect lives in new-coach × depth/age interactions) + **preseason-October game logs**
+      (`ps_mpg`, `ps_start_share` — the latest-arriving pre-draft role signal; ships to the
+      draft sheet regardless of the A/B verdict) + optional Vegas win-totals rider.
 - [x] **Test:** ran with segments per the spec — the answer is no (see EXP-014).
 
-#### 7.B — Young-player trajectory / breakout layer  ← deprioritized by EXP-011 (the preseason riser bias is ≈ irreducible selection artifact; a breakout layer must be judged on *recall*, or in-season — see key-finding-selection-floor)
-- [ ] For young players (age ≤ 24, ≥2 seasons) add a **trajectory/momentum term** instead of pure
-      mean-reversion: extrapolate the improvement slope, gated by a breakout-probability model.
-- [ ] **Features (from research):** age 22–24, prior-season gradual improvement, usage↑ with held
-      TS%, minutes↑, low established level, draft pedigree.
-- [ ] **Test:** historical breakout recall/precision; does shifting projections for high-P(breakout)
-      players improve 7.0 metrics for the young cohort without hurting the rest? (EXP-000 warns
-      population aging curves alone don't help young players — this is the targeted fix.)
+#### 7.B — Young-player trajectory / breakout layer  ← re-scoped 2026-07-09: a **recall-gated** breakout layer (EXP-026, implementation-plan Step 9b) — per EXP-011, never judged on per-player error (you can't know which of ~20 archetype fits pops; ranking them all above their market price *is* the edge)
+- [ ] Breakout-probability classifier (`models/breakout.py`, P(next-season Δ ≥ +6)) + two
+      wirings: features into the learned model, and a flagged ceiling-stance **board policy**
+      for late-round picks (spec: Step 9b).
+- [ ] **Features (from research):** age 22–24, prior gradual-improvement streak, usage↑ with held
+      TS%, minutes headroom, draft pedigree — plus the Step-8.4 vacated-usage group and the
+      Step-9 market gap (the Maxey triad: archetype × vacated usage × market confirmation).
+- [ ] **Test (the recall family):** realized big-riser recall@150 and **above-market rate** (did
+      we rank the eventual riser above the expert consensus?) with an aggregate-MAE/stable-bias
+      cost line. (EXP-000 warns population aging curves alone don't help young players — this is
+      the targeted fix, judged on the metric that can actually move.)
 
 #### 7.C — External availability / injury data  ← attacks the GP ceiling directly
 - [ ] The only lever that can beat EXP-004's R²≈0.03 box-score GP ceiling. Ingest historical
@@ -345,9 +355,15 @@ eval-only (opt-in `--recency`); the shipped board uses the plain `learned` found
       unbacktested** (no historical DARKO snapshots) and, honestly, **modest value**: DARKO's strength
       is rates (already ours, EXP-001), its minutes is its *weakest* stat (our need), and rookies are
       placeholder-initialized — so it's a risk/disagreement highlighter, not a mover fix.
-- [ ] Pull ADP + ≥1 more public projection (Hashtag / FantasyPros consensus) for a true market benchmark.
-- [ ] **Test (blocked until historical snapshots accumulate):** where we systematically disagree, who's
-      right? Does a blend beat us on 7.0 metrics — and does it wash out our edge on the movers?
+- [ ] Pull the market benchmark — **source hierarchy (user, 2026-07-09):** expert consensus
+      rankings (Hashtag Basketball; Basketball Monster if exportable) are the **value** signal —
+      they import the human-intel layer (camp reports, coach quotes) without scraping news;
+      platform ADP (Yahoo/ESPN) is too noisy for value and is kept **only** for the draft-day
+      availability column. Spec: implementation-plan Step 9.
+- [ ] **Test (EXP-017b):** `market_gap = our rank − consensus rank` as a learned *feature* —
+      runs now if ≥4 seasons of historical preseason rankings/ADP are recoverable, else
+      benchmark-only + archive from today, re-arm next season. Standing question: where we
+      systematically disagree, who's right — and does blending wash out our mover edge?
 
 #### 7.F — Usage-coupled rate/efficiency  ← parked (revisit only via 7.A)
 - [ ] Per-minute rates are already well-predicted (EXP-001); direct rate/efficiency modelling was
