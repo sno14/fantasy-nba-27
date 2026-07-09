@@ -309,11 +309,20 @@ eval-only (opt-in `--recency`); the shipped board uses the plain `learned` found
       share → MPG divides by predicted GP (R²≈0.03, EXP-004) — GP noise propagates into the
       per-game number. **Do not re-run share-of-minutes → MPG via ÷GP.** Depth-chart features +
       roster data stay (Step 10 reuses them as in-season features).
-- [ ] **Data (remaining):** prosportstransactions for dated, preseason-accurate moves (EXP-016) —
-      still worthwhile as a backtest-correctness fix regardless of EXP-014's rejection.
-      **Plus (2026-07-09, EXP-016b):** with the honest map, the sharper preseason opportunity
-      features — vacated **usage** (not just minutes), position-weighted, star-departure flag,
-      arrivals mirror — judged on the recall view. Spec: implementation-plan Step 8.4.
+- [x] **Data (EXP-016, adopted 2026-07-09):** dated transactions pulled (25,771 rows, shared
+      Step-7 scraper) → `rosters.preseason_roster_map`, the honest Oct-1 backtest team map —
+      validated **97–99%** opening-team agreement on the draftable pool vs ~86% for the old
+      end-of-season map (more accurate *and* leakage-free). Wired into `project_models`;
+      EXP-009/EXP-014 verdicts stand a fortiori (dated addenda in the ledger).
+      **EXP-016b (parked 2026-07-09):** the sharper honest-map opportunity features — vacated
+      **usage**, position-weighted, star-departure flag, arrivals mirror (`learned_vac`,
+      `context.vacated_features`). Orthogonal to everything held (max |ρ| 0.08; 7.1% y_mpg
+      gain share) and aggregate level MAE improves in 9/12 season-seed cells (−0.09 mean),
+      but the mover buckets don't move (bias deltas within seed spread, CIs straddle 0) and
+      realized big-riser recall doesn't gain — the EXP-009 profile, sharpened and still short
+      of its gate. Features stay: **EXP-026 (breakout layer) and EXP-028 (rookie model)
+      consume them** — that's where vacated usage was always expected to pay (the Maxey
+      pattern is archetype × vacancy, not a marginal bias fix).
 - [ ] **Cheap exogenous pair (2026-07-09, EXP-027, Step 9c):** hand-curated coach-change table
       (the effect lives in new-coach × depth/age interactions) + **preseason-October game logs**
       (`ps_mpg`, `ps_start_share` — the latest-arriving pre-draft role signal; ships to the

@@ -224,6 +224,13 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   lower than measured. ⇒ **EXP-009b:** strict *preseason* rosters / dated transactions
   (prosportstransactions) + position-aware redistribution + couple to within-season recency (EXP-008b).
   Do not re-run coarse team-level turnover expecting a decisive win.
+- **Addendum (2026-07-09, Step 8.3 / EXP-016):** the honest Oct-1 preseason map now exists
+  (`rosters.preseason_roster_map`; validated 97–99% opening-team agreement on the draftable
+  pool vs ~86% for the end-of-season map used here). The parked verdict **stands a fortiori**:
+  EXP-009 was a net wash *with* the flattering map, and the honest map can only remove signal
+  from the mid-season movers it flattered. `project_models(transactions=…)` now feeds
+  `use_context` variants the honest map automatically; the position-aware successor built on
+  the honest map is EXP-016b (`learned_vac`) — judged separately.
 
 ### EXP-008b — + within-season recency (last-N-games form)  ·  Status: **parked** (best add-on on aggregate; not the riser fix)
 - **Date:** 2026-07-08  ·  **Commit:** uncommitted
@@ -506,6 +513,11 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   strengthens the rejection; positions are static attributes (past-preferred lookup).
   (selection) pool = each model's own top-150, unchanged. (season concentration) worse in
   all 4 seasons.
+- **Addendum (2026-07-09, Step 8.3 / EXP-016):** the rejection **stands a fortiori** under the
+  honest Oct-1 map — EXP-014 lost decisively *with* the flattering end-of-season map (the
+  skeptic pass already noted the flattery strengthened the rejection), and the failure
+  mechanism (÷GP variance in the share→MPG conversion) is map-independent. Not re-run;
+  `project_models(transactions=…)` supplies the honest map if allocation is ever revisited.
 - **Ledger note:** do **not** re-run share-of-team-minutes → per-game via ÷GP. If allocation
   is ever revisited, it must predict **MPG directly with roster-relative features** (the
   depth-chart features as inputs to the existing regression — a *feature* experiment, not a
@@ -619,12 +631,78 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   that covid offseason (bubble ended Oct 2020) — irrelevant here (eval seasons 2022-23+), but
   any consumer touching 2020-21 must pass a later as-of. Judgment harness: `scripts/eval_gp.py`.
 
+### EXP-016 — dated transactions → honest preseason roster maps  ·  Status: **adopted** (unconditional backtest-correctness fix)
+- **Date:** 2026-07-09  ·  **Commit:** this commit  ·  **Step:** implementation-plan Step 8.1–8.3
+- **What:** every backtest team map so far was `context.target_team_map` — the target season's
+  *end-of-season* team, which lets features "know" mid-season trades months early (the EXP-009
+  flattery caveat). Replacement: `rosters.preseason_roster_map` = prior-season primary team +
+  player-movement transactions dated ≤ Oct 1 of the target season (`transactions.parquet`,
+  25,771 rows 2009-07…2026-06 from the shared Step-7 scraper; name resolution reuses the
+  Step-7 hardening; PST nicknames era-resolved — Hornets NOH→CHA 2014, Nets NJN→BKN 2012).
+- **Validation (8.2, gate ≥90% opening-team agreement on the draftable pool):** pool
+  (≥1500 prior-season min) agreement **99.4% / 98.4% / 97.3% / 98.8%** (2022-23…2025-26);
+  all-mapped-players agreement 94–95%. Every pool miss inspected: all are genuine post-cutoff
+  moves (Harden→LAC Oct 30 2023; the KAT/Randle trade Oct 2 2024; Crowder holdout-traded
+  Nov 2022), none are name-join failures. **Bonus finding:** the end-of-season map agrees with
+  opening-day teams only **~85–86%** — the honest map is not just leakage-free, it is the
+  *more accurate* preseason roster estimate by ~12pp.
+- **Adoption:** `project_models(transactions=…)` now derives the honest map for any
+  `use_context` / allocation variant; EXP-016b's feature table is built on it per season.
+  EXP-009 (parked) and EXP-014 (rejected) carry dated addenda: both verdicts stand a fortiori
+  (each failed *with* the flattering map; see their entries).
+- **Skeptic pass:** (leakage) map inputs = prior-season stats + transactions dated ≤ Oct 1 —
+  nothing from inside the target season; identity resolution may read the full stats frame
+  (a name↔id mapping is a static fact, not an outcome). (selection) validation universe =
+  prior-minutes threshold, not an outcome. (season concentration) agreement uniform 97–99%.
+- **Covid caveat:** target 2020-21's Oct-1 cutoff predates that November's offseason — the
+  map degrades to "prior teams" for that one season (documented in `rosters.py`; panel-only,
+  eval seasons unaffected).
+
+### EXP-016b — honest-map vacated-usage features  ·  Status: **parked** (aggregate gain, movers unmoved — the EXP-009 profile, done right and still short)
+- **Date:** 2026-07-09  ·  **Commit:** this commit  ·  **Step:** implementation-plan Step 8.4
+- **Hypothesis:** position-aware vacated **usage** (not just minutes) on the honest Oct-1 map —
+  the preseason opportunity signal behind the Maxey pattern — pulls context-driven risers up
+  the board and into the pool.
+- **Method:** `context.vacated_features` — `VACATED_FEATURES` = vac_min_share_pos /
+  vac_usg_pos / vac_fga_pm / vac_ast_pm / star_departed (USG ≥ .24 & MPG ≥ 30, map-dated) /
+  arrivals_usg_pos (self-excluded) — per season from the honest map + prior stats + as-of
+  positions (`rosters.vacated_feature_table`, 8,563 rows / 15 seasons); variant `learned_vac`.
+  A/B vs `learned`, top-150, 4 seasons, seeds {0,1,2}, model-pool + realized-pool views,
+  player-clustered CI. Spot-checked real cases (POR 2023-24: bigs' vacancy 0.37 of team
+  minutes from Nurkić/Eubanks/Watford departures, Lillard star flag set; WAS: Beal).
+- **Rule-11 hygiene:** orthogonal to every existing feature (max |ρ| = 0.083) — genuinely new
+  information; y_mpg gain share 7.1% (each vacancy feature ≈ a rate feature's weight;
+  `star_departed` unused, 0.1%). Within-group: vac_min_share_pos ↔ vac_usg_pos ρ = 0.97 and
+  vac_fga_pm ↔ vac_ast_pm ρ = 0.92 — a slimmer 3-feature version exists if ever revisited.
+- **Result (learned → learned_vac, pooled):** mover buckets **unmoved** — signed-bias deltas
+  riser +0.003 / big-riser +0.073 mean over seeds, seed spread (0.163) exceeds the win, CI
+  straddles 0 in **all five buckets**. Realized-top-150 big-riser capture 62→61 / 62→62 /
+  65→59 (mean **−2.3 players** — the recall arm needed +2pp). But **aggregate level MAE
+  improves in 9/12 season-seed cells** (pooled −0.004 / −0.125 / −0.151; 2025-26 better all
+  three seeds, up to −0.30) — though that spread too exceeds its mean (rule 8: not adoptable
+  on aggregate either).
+- **Verdict:** **parked.** Neither gate arm (mover gate; big-riser recall +2pp with MAE not
+  worse) is met. The features are real (orthogonal, used by the trees, aggregate-friendly) but
+  preseason mover bias stays irreducible — EXP-011's floor verdict survives its sharpest
+  challenger yet. Kept as `learned_vac` + `vacated_table` plumbing.
+- **Skeptic pass:** (leakage) per-season blocks built from the honest Oct-1 map + prior-season
+  stats only (unit-tested incl. the target-season-missing hard-fail); no outcome touches the
+  map. (selection) pool = each model's own top-150, unchanged; recall judged on the realized
+  pool. (season concentration) the aggregate win concentrates in 2025-26; the mover null is
+  uniform.
+- **Ledger note:** this is where the *feature-into-the-point-estimate* road ends for vacated
+  usage. Its remaining path is **EXP-026** (breakout classifier — vacancy × archetype ×
+  market gap, judged on recall/above-market rate) and **EXP-028** (rookie model: draft slot ×
+  landing-spot vacancy), both of which take `VACATED_FEATURES`/`vacated_feature_table` as
+  inputs. Do not re-A/B vacancy variants against the standard mover gate.
+
 _Next experiments — numbering reserved by [`docs/implementation-plan.md`](docs/implementation-plan.md)
 (the execution spec; run in its Step order, as re-routed by the dated notes in its tracker — latest:
 the **2026-07-09 draft-focus re-route + gap-closer addendum**). Done: EXP-011…014 (Phase 0+1),
 EXP-018 (engine; naive gate parked), **EXP-015** injuries (Step 7, split verdict above — scraper +
-spells now serve Step 8 and the Step-12 live feed). **Draft-facing, calendar-critical, in order:
-EXP-016/016b** dated transactions + vacated-usage features (Step 8) → **EXP-017(+b)** market: expert consensus (Hashtag/BBM) for value,
+spells now serve Step 8 and the Step-12 live feed), **EXP-016** honest preseason maps (adopted;
+backtest-correctness fix) + **EXP-016b** vacated usage (parked; feeds EXP-026/028).
+**Draft-facing, calendar-critical, in order: EXP-017(+b)** market: expert consensus (Hashtag/BBM) for value,
 platform ADP for the availability column only; market-gap as a feature if historical archives are
 recoverable (Step 9) → **EXP-026** breakout archetype layer, recall-gated (Step 9b) → **EXP-027**
 coach changes + preseason-October logs (Step 9c) → **EXP-028** rookie model, draft slot × landing

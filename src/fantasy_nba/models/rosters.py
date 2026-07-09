@@ -104,6 +104,45 @@ def preseason_roster_map(
     return pd.DataFrame(rows, columns=["PLAYER_ID", "team"])
 
 
+def vacated_feature_table(
+    season_stats: pd.DataFrame,
+    transactions: pd.DataFrame,
+    team_rosters: pd.DataFrame,
+    seasons: list[str] | None = None,
+) -> pd.DataFrame:
+    """EXP-016b: ``[SEASON, PLAYER_ID, *VACATED_FEATURES]`` over every season with a predecessor.
+
+    Each season's row block uses the **honest Oct-1 map** (this module) + prior-season stats +
+    as-of positions (``allocation.pos_group_asof``) — leakage-safe per block regardless of the
+    backtest fold, so the table is computed once and sliced per season (the
+    ``season_recency_table`` pattern). ``seasons`` defaults to every cached season after the
+    first; a target season absent from ``season_stats`` (live use) works too — only its prior
+    season's stats and its transactions are read.
+    """
+    from .allocation import pos_group_asof
+    from .context import vacated_features
+
+    from .allocation import position_table
+
+    if seasons is None:
+        all_s = sorted(season_stats["SEASON"].unique(), key=_season_start)
+        seasons = all_s[1:]
+    pos_table = position_table(team_rosters)
+    frames = []
+    for s in seasons:
+        prev = season_before(s)
+        if prev not in set(season_stats["SEASON"]):
+            continue
+        team_map = preseason_roster_map(season_stats, transactions, s)
+        pos_of = pos_group_asof(pos_table, s)
+        f = vacated_features(season_stats, team_map, prev, pos_of)
+        f.insert(0, "SEASON", s)
+        frames.append(f)
+    if not frames:
+        raise ValueError("vacated_feature_table needs at least two consecutive seasons.")
+    return pd.concat(frames, ignore_index=True)
+
+
 def validate_roster_map(
     roster_map: pd.DataFrame,
     game_logs: pd.DataFrame,

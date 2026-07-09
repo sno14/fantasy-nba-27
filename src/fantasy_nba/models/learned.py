@@ -91,16 +91,19 @@ def feature_columns(
     use_context: bool = False,
     use_recency: bool = False,
     use_trade_split: bool = False,
+    use_vacated: bool = False,
 ) -> list[str]:
     """Feature set for the learned model — Marcel-equivalent, optionally + trajectory (EXP-008),
-    + team-context/vacated-minutes (EXP-009), + within-season recency (EXP-008b), and/or
-    + the post-trade split (EXP-012; requires ``use_recency``)."""
+    + team-context/vacated-minutes (EXP-009), + within-season recency (EXP-008b),
+    + the post-trade split (EXP-012; requires ``use_recency``), and/or + the honest-map
+    vacated-usage group (EXP-016b)."""
     return (
         BASE_FEATURES
         + (TRAJ_FEATURES if use_trajectory else [])
         + (ctx.CONTEXT_FEATURES if use_context else [])
         + (rec.RECENCY_FEATURES if use_recency else [])
         + (rec.TRADE_FEATURES if use_trade_split else [])
+        + (ctx.VACATED_FEATURES if use_vacated else [])
     )
 
 
@@ -178,6 +181,7 @@ def _features_for(
     context_feats: pd.DataFrame | None = None,
     recency_feats: pd.DataFrame | None = None,
     injury_feats: pd.DataFrame | None = None,
+    vacated_feats: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """Marcel aggregates (+ trajectory / team-context / recency / injury features) for ``target_season``.
 
@@ -211,6 +215,11 @@ def _features_for(
         for col in inj.INJURY_FEATURES:
             fill = inj.RECENCY_CAP_DAYS if col == "inj_recency_days" else 0
             feats[col] = pd.to_numeric(feats[col], errors="coerce").fillna(fill)
+    if vacated_feats is not None:
+        feats = feats.merge(vacated_feats, on="PLAYER_ID", how="left")
+        # Off the Oct-1 map (unsigned on draft day) = no team vacancy to inherit.
+        for col in ctx.VACATED_FEATURES:
+            feats[col] = feats[col].fillna(0.0)
     return feats
 
 
@@ -222,6 +231,7 @@ def build_panel(
     recency_table: pd.DataFrame | None = None,
     trade_table: pd.DataFrame | None = None,
     injury_table: pd.DataFrame | None = None,
+    vacated_table: pd.DataFrame | None = None,
     min_prior_seasons: int = 2,
     min_label_minutes: float = 200.0,
     n_seasons: int = 3,
@@ -238,6 +248,8 @@ def build_panel(
     ``context_for_season`` can slice it; ``recency_features`` self-restricts to seasons ``< S``.
     ``injury_table`` (the resolved spells frame, EXP-015) adds the availability features as-of
     Oct 1 of each S — ``injury_features`` self-restricts to spells strictly before that date.
+    ``vacated_table`` (``rosters.vacated_feature_table``, EXP-016b) is SEASON-keyed and sliced
+    per S — each block was built from the honest Oct-1 map + prior-season stats only.
     """
     seasons = sorted(season_stats["SEASON"].unique(), key=_season_start)
     frames = []
@@ -255,9 +267,13 @@ def build_panel(
             inj.injury_features(injury_table, f"{_season_start(s)}-10-01")
             if injury_table is not None else None
         )
+        vacated_feats = (
+            vacated_table.loc[vacated_table["SEASON"] == s, ["PLAYER_ID"] + ctx.VACATED_FEATURES]
+            if vacated_table is not None else None
+        )
         feats = _features_for(
             prior, prior_bio, s, use_trajectory, n_seasons, weights, reg_minutes,
-            context_feats, recency_feats, injury_feats,
+            context_feats, recency_feats, injury_feats, vacated_feats,
         )
         labels = _labels(season_stats, s, min_label_minutes)
         merged = feats.merge(labels, on="PLAYER_ID", how="inner")
@@ -345,6 +361,8 @@ def project_learned(
     use_trade_split: bool = False,
     use_injuries: bool = False,
     injury_table: pd.DataFrame | None = None,
+    use_vacated: bool = False,
+    vacated_table: pd.DataFrame | None = None,
     target_mode: str = "level",
     weight_mode: str | None = None,
     weight_alpha: float = 1.0,
@@ -373,6 +391,9 @@ def project_learned(
     availability history) to the **y_gp model only** — pass ``injury_table`` (the resolved
     spells frame from ``injuries.build_spells``; ``injury_features`` self-restricts to spells
     before Oct 1 of each season, so passing the full frame is safe).
+    EXP-016b knob (Step 8.4): ``use_vacated`` adds the honest-map ``VACATED_FEATURES`` —
+    pass ``vacated_table`` (``rosters.vacated_feature_table``, SEASON-keyed; must cover the
+    training seasons *and* the target season).
     EXP-013 knobs: ``target_mode='delta'`` trains on change-from-own-anchor instead of levels;
     ``weight_mode`` ∈ {``'mover'``, ``'relevance'``} re-weights training rows (see
     :func:`_sample_weight`), scaled by ``weight_alpha``.
@@ -388,12 +409,15 @@ def project_learned(
         raise ValueError("use_trade_split requires use_recency (both ride the game-log tables).")
     if use_injuries and injury_table is None:
         raise ValueError("use_injuries needs injury_table (the spells frame from injuries.build_spells).")
+    if use_vacated and vacated_table is None:
+        raise ValueError("use_vacated needs vacated_table (rosters.vacated_feature_table).")
     if minutes_mode not in ("regression", "allocation"):
         raise ValueError(f"minutes_mode must be 'regression' or 'allocation', got {minutes_mode!r}")
     if minutes_mode == "allocation" and (rosters is None or target_team_map is None):
         raise ValueError("minutes_mode='allocation' needs rosters (team_rosters frame) and "
                          "target_team_map ([PLAYER_ID, team]).")
-    feature_cols = feature_columns(use_trajectory, use_context, use_recency, use_trade_split)
+    feature_cols = feature_columns(use_trajectory, use_context, use_recency, use_trade_split,
+                                   use_vacated)
 
     recency_table = trade_table = None
     if use_recency:
@@ -407,6 +431,7 @@ def project_learned(
         season_stats, bio, use_trajectory=use_trajectory, use_context=use_context,
         recency_table=recency_table, trade_table=trade_table,
         injury_table=injury_table if use_injuries else None,
+        vacated_table=vacated_table if use_vacated else None,
         min_label_minutes=min_label_minutes,
         n_seasons=n_seasons, weights=weights, reg_minutes=reg_minutes,
     )
@@ -434,10 +459,18 @@ def project_learned(
         inj.injury_features(injury_table, f"{_season_start(target_season)}-10-01")
         if use_injuries else None
     )
+    vacated_feats = None
+    if use_vacated:
+        vacated_feats = vacated_table.loc[
+            vacated_table["SEASON"] == target_season, ["PLAYER_ID"] + ctx.VACATED_FEATURES
+        ]
+        if vacated_feats.empty:
+            raise ValueError(f"vacated_table has no rows for target season {target_season!r} — "
+                             "build it with the target season included.")
 
     agg = _features_for(
         season_stats, bio, target_season, use_trajectory, n_seasons, weights, reg_minutes,
-        context_feats, recency_feats, injury_feats,
+        context_feats, recency_feats, injury_feats, vacated_feats,
     )
     X = agg[feature_cols]
     X_gp = agg[feature_cols + GP_EXTRA_FEATURES] if use_injuries else X

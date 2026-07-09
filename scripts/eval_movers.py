@@ -52,6 +52,10 @@ def _needs_injuries(variant_names: list[str]) -> bool:
     return any(VARIANT_SPECS[v].get("use_injuries") for v in variant_names)
 
 
+def _needs_vacated(variant_names: list[str]) -> bool:
+    return any(VARIANT_SPECS[v].get("use_vacated") for v in variant_names)
+
+
 def _pooled(per_bucket: pd.DataFrame, value_cols: list[str]) -> pd.DataFrame:
     """n-weighted mean of per-bucket metrics across seasons, ordered faller -> riser."""
     pooled = (
@@ -109,6 +113,24 @@ def main() -> None:
     rosters = storage.read("team_rosters") if _needs_rosters(variants) else None
     cfg = load_scoring(args.scoring)
 
+    injuries = None
+    if _needs_injuries(variants):
+        from fantasy_nba.models import injuries as inj_mod
+
+        injuries, join_stats = inj_mod.build_spells(storage.read("injuries"), season_stats)
+        print(f"[injuries] spells={len(injuries):,} match_rate={join_stats['match_rate']:.3f}")
+
+    vacated_table = transactions = None
+    if _needs_vacated(variants):
+        from fantasy_nba.models import rosters as rosters_mod
+
+        transactions = storage.read("transactions")
+        vacated_table = rosters_mod.vacated_feature_table(
+            season_stats, transactions, storage.read("team_rosters"),
+        )
+        print(f"[vacated] table rows={len(vacated_table):,} over "
+              f"{vacated_table['SEASON'].nunique()} seasons (honest Oct-1 maps)")
+
     def _run_view(pool_kind: str):
         per_bucket_frames, dir_frames, pred_frames = [], [], []
         pools_by_model: dict[str, list[pd.DataFrame]] = {}
@@ -117,6 +139,7 @@ def main() -> None:
                 season, season_stats, bio, cfg=cfg, pool_top_n=args.top_n,
                 game_logs=game_logs, variants=variants, oracles=args.oracles,
                 seed=args.seed, return_pools=True, pool=pool_kind, rosters=rosters,
+                injuries=injuries, vacated_table=vacated_table, transactions=transactions,
             )
             for frame in (per_bucket, directional, per_pred):
                 frame.insert(0, "season", season)

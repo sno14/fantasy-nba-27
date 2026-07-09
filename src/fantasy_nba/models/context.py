@@ -30,6 +30,7 @@ prosportstransactions follow-up, EXP-009b). Documented in EXPERIMENTS.md.
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 
 from ._core import _season_start
@@ -40,6 +41,22 @@ CONTEXT_FEATURES = [
     "team_turnover_share",
     "own_prev_min_share",
 ]
+
+# EXP-016b (Step 8.4): the sharper, position-aware vacancy signal, honest by construction —
+# "departed" means *not on the Oct-1 preseason roster map* (rosters.preseason_roster_map), so
+# a February trade the old end-of-season map would have leaked stays invisible. USG_PCT is a
+# fraction in the cached stats (0.24 == 24%).
+VACATED_FEATURES = [
+    "vac_min_share_pos",   # Σ departed same-pos-group teammates' prior share of team minutes
+    "vac_usg_pos",         # Σ departed same-pos-group teammates' prior USG% × minutes share
+    "vac_fga_pm",          # departed teammates' FGA per team minute (shot vacancy, all positions)
+    "vac_ast_pm",          # departed teammates' AST per team minute (creation vacancy)
+    "star_departed",       # any departure with prior USG% ≥ 24 and MPG ≥ 30 (map-dated ≤ Oct 1)
+    "arrivals_usg_pos",    # mirror: USG% × prior share arriving in his pos group (compression)
+]
+
+STAR_USG = 0.24
+STAR_MPG = 30.0
 
 
 def season_before(season: str) -> str:
@@ -102,6 +119,98 @@ def team_context_features(
     for col in CONTEXT_FEATURES:
         out[col] = out[col].fillna(0.0)
     return out[["PLAYER_ID"] + CONTEXT_FEATURES]
+
+
+def vacated_features(
+    prior_stats: pd.DataFrame,
+    target_team_map: pd.DataFrame,
+    prev_season: str,
+    pos_of: pd.Series,
+) -> pd.DataFrame:
+    """EXP-016b vacated-usage features for the players in ``target_team_map``.
+
+    ``prior_stats`` must contain ``prev_season``; ``target_team_map`` is the **honest Oct-1
+    map** (``rosters.preseason_roster_map`` in backtests — using the end-of-season map here
+    re-introduces exactly the flattery EXP-016 removes); ``pos_of`` maps PLAYER_ID → coarse
+    position group (``allocation.pos_group_asof``). Players with no known position get the
+    position-split features as team-level sums (their own group is unknown, not zero
+    opportunity). Returns ``[PLAYER_ID] + VACATED_FEATURES``.
+    """
+    s = prior_stats[prior_stats["SEASON"] == prev_season]
+    prev = s.groupby("PLAYER_ID", as_index=False).agg(
+        team=("TEAM_ABBREVIATION", "last"), min=("MIN", "sum"),
+        fga=("FGA", "sum"), ast=("AST", "sum"),
+    )
+    # Minutes-weighted USG across a multi-team season.
+    wusg = s.assign(w=s["USG_PCT"] * s["MIN"]).groupby("PLAYER_ID")[["w"]].sum()
+    prev["usg"] = (wusg["w"] / prev.set_index("PLAYER_ID")["min"]).reindex(prev["PLAYER_ID"]).to_numpy()
+    prev["usg"] = prev["usg"].fillna(0.0)
+
+    team_min = prev.groupby("team")["min"].sum().rename("team_min")
+    prev = prev.merge(team_min, left_on="team", right_index=True)
+    prev["share"] = prev["min"] / prev["team_min"]
+    gp = s.groupby("PLAYER_ID")["GP"].sum().reindex(prev["PLAYER_ID"]).to_numpy(dtype=float)
+    prev["mpg"] = prev["min"] / np.where(gp > 0, gp, np.nan)
+    prev["pos_group"] = prev["PLAYER_ID"].map(pos_of)
+
+    tgt = target_team_map.rename(columns={"team": "target_team"})[["PLAYER_ID", "target_team"]]
+    prev = prev.merge(tgt, on="PLAYER_ID", how="left")
+    prev["departed"] = prev["target_team"] != prev["team"]  # not on the team's Oct-1 map
+    prev["arrived"] = prev["target_team"].notna() & prev["departed"]  # on someone else's map
+
+    dep = prev[prev["departed"]]
+    team_rows = []
+    for team, g in prev.groupby("team"):
+        d = g[g["departed"]]
+        row = {"team": team,
+               "vac_fga_pm": d["fga"].sum() / g["team_min"].iloc[0],
+               "vac_ast_pm": d["ast"].sum() / g["team_min"].iloc[0],
+               "star_departed": int(((d["usg"] >= STAR_USG) & (d["mpg"] >= STAR_MPG)).any())}
+        for pos in (0, 1):
+            dp = d[d["pos_group"] == pos]
+            row[f"vac_min_share_pos_{pos}"] = dp["share"].sum()
+            row[f"vac_usg_pos_{pos}"] = (dp["usg"] * dp["share"]).sum()
+        row["vac_min_share_pos_all"] = d["share"].sum()
+        row["vac_usg_pos_all"] = (d["usg"] * d["share"]).sum()
+        team_rows.append(row)
+    team_vac = pd.DataFrame(team_rows)
+
+    # Arrivals: usage×prior-share flowing INTO each target team, by position group.
+    arr = prev[prev["arrived"]]
+    arr_rows = []
+    for team, g in arr.groupby("target_team"):
+        row = {"target_team": team}
+        for pos in (0, 1):
+            gp_ = g[g["pos_group"] == pos]
+            row[f"arrivals_usg_pos_{pos}"] = (gp_["usg"] * gp_["share"]).sum()
+        row["arrivals_usg_pos_all"] = (g["usg"] * g["share"]).sum()
+        arr_rows.append(row)
+    team_arr = pd.DataFrame(arr_rows, columns=["target_team", "arrivals_usg_pos_0",
+                                               "arrivals_usg_pos_1", "arrivals_usg_pos_all"])
+
+    out = tgt.copy()
+    out["pos_group"] = out["PLAYER_ID"].map(pos_of)
+    out = out.merge(team_vac, left_on="target_team", right_on="team", how="left")
+    out = out.merge(team_arr, on="target_team", how="left")
+
+    def _pos_pick(row, base):
+        p = row["pos_group"]
+        if pd.isna(p):
+            return row.get(f"{base}_all", 0.0)
+        return row.get(f"{base}_{int(p)}", 0.0)
+
+    out["vac_min_share_pos"] = out.apply(_pos_pick, axis=1, base="vac_min_share_pos")
+    out["vac_usg_pos"] = out.apply(_pos_pick, axis=1, base="vac_usg_pos")
+    out["arrivals_usg_pos"] = out.apply(_pos_pick, axis=1, base="arrivals_usg_pos")
+    # A player's own arriving usage is not competition against himself — subtract it.
+    own = prev.set_index("PLAYER_ID")
+    own_arrival = (own["usg"] * own["share"]).where(own["arrived"], 0.0)
+    out["arrivals_usg_pos"] = (
+        out["arrivals_usg_pos"] - out["PLAYER_ID"].map(own_arrival).fillna(0.0)
+    ).clip(lower=0.0)
+    for col in VACATED_FEATURES:
+        out[col] = pd.to_numeric(out[col], errors="coerce").fillna(0.0)
+    return out[["PLAYER_ID"] + VACATED_FEATURES]
 
 
 def target_team_map(season_stats: pd.DataFrame, target_season: str) -> pd.DataFrame:

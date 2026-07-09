@@ -84,6 +84,8 @@ VARIANT_SPECS: dict[str, dict] = {
     "learned_alloc": {"minutes_mode": "allocation"},
     # EXP-015 (Step 7) — injury/availability history into the y_gp model only (needs injuries):
     "learned_inj": {"use_injuries": True},
+    # EXP-016b (Step 8.4) — honest-map vacated-usage features (needs vacated_table):
+    "learned_vac": {"use_vacated": True},
 }
 
 
@@ -97,6 +99,8 @@ def project_models(
     seed: int | None = None,
     rosters: pd.DataFrame | None = None,
     injuries: pd.DataFrame | None = None,
+    vacated_table: pd.DataFrame | None = None,
+    transactions: pd.DataFrame | None = None,
 ) -> dict[str, pd.DataFrame]:
     """Project ``target_season`` with every model using **only** prior-season data.
 
@@ -159,8 +163,17 @@ def project_models(
                     raise ValueError(f"Variant {name!r} needs game_logs.")
                 kw["game_logs"] = game_logs
             if kw.get("use_context") or kw.get("minutes_mode") == "allocation":
-                # Target-season team assignment (a preseason roster fact, not an outcome).
-                kw["target_team_map"] = target_team_map(season_stats, target_season)
+                # Target-season team assignment. With ``transactions`` this is the honest
+                # Oct-1 preseason map (EXP-016 correctness fix); without, the old
+                # end-of-season approximation (flatters mid-season movers — EXP-009 caveat).
+                if transactions is not None:
+                    from .rosters import preseason_roster_map
+
+                    kw["target_team_map"] = preseason_roster_map(
+                        season_stats, transactions, target_season
+                    )
+                else:
+                    kw["target_team_map"] = target_team_map(season_stats, target_season)
             if kw.get("minutes_mode") == "allocation":
                 if rosters is None:
                     raise ValueError(f"Variant {name!r} needs rosters (team_rosters frame).")
@@ -169,6 +182,11 @@ def project_models(
                 if injuries is None:
                     raise ValueError(f"Variant {name!r} needs injuries (spells frame).")
                 kw["injury_table"] = injuries
+            if kw.get("use_vacated"):
+                if vacated_table is None:
+                    raise ValueError(f"Variant {name!r} needs vacated_table "
+                                     "(rosters.vacated_feature_table).")
+                kw["vacated_table"] = vacated_table
             models[name] = project_learned(train_ss, train_bio, target_season, cfg=cfg, **kw)
     return models
 

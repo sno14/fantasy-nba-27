@@ -296,6 +296,31 @@ def test_preseason_roster_map_applies_dated_offseason_moves():
     assert list(v["misses"]["PLAYER_ID"]) == [3]
 
 
+def test_project_learned_use_vacated_runs():
+    seasons = ["2019-20", "2020-21", "2021-22", "2022-23"]
+    ss, bio = _synthetic_league(seasons)
+    fast = {**learned.DEFAULT_LGBM_PARAMS, "n_estimators": 25}
+    # Synthetic SEASON-keyed vacated table covering panel seasons + the target.
+    rng = np.random.default_rng(1)
+    rows = []
+    for s in seasons[2:] + ["2023-24"]:
+        for pid in range(40):
+            rows.append({"SEASON": s, "PLAYER_ID": pid,
+                         "vac_min_share_pos": rng.uniform(0, 0.3),
+                         "vac_usg_pos": rng.uniform(0, 0.08),
+                         "vac_fga_pm": rng.uniform(0, 0.3),
+                         "vac_ast_pm": rng.uniform(0, 0.15),
+                         "star_departed": int(rng.random() < 0.2),
+                         "arrivals_usg_pos": rng.uniform(0, 0.08)})
+    table = pd.DataFrame(rows)
+    out = learned.project_learned(ss, bio, "2023-24", params=fast,
+                                  use_vacated=True, vacated_table=table)
+    assert out["gp"].between(1, 82).all() and out["mpg"].between(0, 48).all()
+    with pytest.raises(ValueError, match="no rows for target"):
+        learned.project_learned(ss, bio, "2024-25", params=fast,
+                                use_vacated=True, vacated_table=table)
+
+
 def test_darko_name_normalization_and_join():
     # Accents and suffixes must not break the name join to DARKO (which uses ASCII, no suffix).
     assert darko.normalize_name("Nikola Jokić") == darko.normalize_name("Nikola Jokic")
@@ -343,6 +368,43 @@ def test_team_context_vacated_minutes_math():
     # Newcomer P5 has no prior role; returning P1's prior share is 1000/2400.
     assert feat.loc[5, "own_prev_min_share"] == 0.0
     assert feat.loc[1, "own_prev_min_share"] == pytest.approx(1000 / 2400)
+
+
+def test_vacated_usage_features_math():
+    # Prior season: AAA has P1 (guard star, departs), P2 (guard, stays), P3 (big, stays);
+    # BBB has P4 (guard, stays). Target map: P1 -> BBB; everyone else returns.
+    prior = pd.DataFrame({
+        "SEASON": ["2023-24"] * 4,
+        "PLAYER_ID": [1, 2, 3, 4],
+        "TEAM_ABBREVIATION": ["AAA", "AAA", "AAA", "BBB"],
+        "MIN": [1000.0, 800.0, 600.0, 900.0],
+        "GP": [25, 40, 30, 45],           # P1 mpg = 40 (star threshold needs >= 30)
+        "USG_PCT": [0.30, 0.20, 0.18, 0.22],
+        "FGA": [500.0, 300.0, 200.0, 400.0],
+        "AST": [250.0, 100.0, 50.0, 150.0],
+    })
+    team_map = pd.DataFrame({"PLAYER_ID": [1, 2, 3, 4], "team": ["BBB", "AAA", "AAA", "BBB"]})
+    pos_of = pd.Series({1: 0, 2: 0, 3: 1, 4: 0})  # guards except P3
+
+    f = context.vacated_features(prior, team_map, "2023-24", pos_of).set_index("PLAYER_ID")
+
+    share1 = 1000 / 2400  # P1's share of AAA minutes
+    # P2 (guard on AAA): P1's departure is same-pos vacancy; star flag set (usg .30, mpg 40).
+    assert f.loc[2, "vac_min_share_pos"] == pytest.approx(share1)
+    assert f.loc[2, "vac_usg_pos"] == pytest.approx(0.30 * share1)
+    assert f.loc[2, "vac_fga_pm"] == pytest.approx(500 / 2400)
+    assert f.loc[2, "vac_ast_pm"] == pytest.approx(250 / 2400)
+    assert f.loc[2, "star_departed"] == 1
+    # P3 (big on AAA): no same-pos departure, but team-level shot vacancy is shared.
+    assert f.loc[3, "vac_min_share_pos"] == 0.0
+    assert f.loc[3, "vac_fga_pm"] == pytest.approx(500 / 2400)
+    # P4 (guard on BBB): P1 arrives in his position group -> usage compression.
+    assert f.loc[4, "arrivals_usg_pos"] == pytest.approx(0.30 * share1)
+    assert f.loc[4, "vac_min_share_pos"] == 0.0 and f.loc[4, "star_departed"] == 0
+    # P1 himself (now on BBB): sees BBB's (zero) vacancy, not AAA's — and his own arriving
+    # usage is not compression against himself.
+    assert f.loc[1, "vac_min_share_pos"] == 0.0
+    assert f.loc[1, "arrivals_usg_pos"] == 0.0
 
 
 def test_recency_last_n_window_and_leakage():

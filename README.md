@@ -66,8 +66,10 @@ tests/
 # Pull recent seasons of player data (cached to data/raw/)
 python scripts/pull_data.py --seasons 2023-24 2024-25 2025-26
 
-# Pull injury/IL transaction history (prosportstransactions; first run ~1h, then incremental)
+# Pull injury/IL history + player-movement transactions (prosportstransactions;
+# first run ~30-60 min per dataset, then incremental by date)
 python scripts/pull_injuries.py
+python scripts/pull_injuries.py --dataset transactions
 
 # Score a stat line with your league config
 python -c "from fantasy_nba.scoring import load_scoring; print(load_scoring())"
