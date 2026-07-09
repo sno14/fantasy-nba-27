@@ -879,6 +879,23 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   (season concentration) the rejection is *not* season-concentrated: the model loses pooled
   with two season wins and one big loss — the instability is itself the finding at n≈50/cohort.
 
+### D1 note (dated, no EXP number — product, not hypothesis)  ·  2026-07-10
+- **Built + verified end-to-end:** D1.2 VOR (`models/value.py`, greedy 10-team ×
+  ESPN-starting-slot fill, guard/big; unit-tested greedy math). **Sanity finding worth
+  keeping: VOR meaningfully reorders even this points league** — 59 of the top-100 move
+  ≥ 10 ranks (3 UTIL slots don't wash out guard/big scarcity; e.g. Wemby vor_rank 4 at raw
+  rank 13, Sengun 11 at 5). D1.3 `scripts/pull_schedule.py` (regular-season filter validated
+  to exactly 1,230 games on 2025-26; per-week/B2B/playoff-week/horizon derivations print).
+  D1.4 sheet `scripts/draft_sheet.py`: rank/pos_group/fpts/VOR/ADP/market_priced +
+  breakout_p/ps_*/risk pass-through → `draft_sheet_2026-27.parquet`; ADP matched 134/150.
+  D1.5 rookie market-seed: mechanism live with a rank ≤ 160 guard (the July FP pull's only
+  unmatched names are stale stash players, **not** the 2026 class — seeded 0, correctly).
+- **Standing calendar (all one-command re-runs):** ~mid-Aug `pull_schedule.py --expect
+  2026-27` (schedule publishes) + derive `fantasy_playoff_weeks`/`league_end_offset_weeks`
+  from ESPN's matchup calendar into `league.yaml`; ~Sept `pull_market.py` (Hashtag flips to
+  2026-27, FP adds the rookie class → the D1.5 seed goes live); mid-Oct re-pull
+  `preseason_game_logs` + `draft_history`, regenerate the sheet from `--model learned_ps`.
+
 _Next experiments — numbering reserved by [`docs/implementation-plan.md`](docs/implementation-plan.md)
 (the execution spec; run in its Step order, as re-routed by the dated notes in its tracker — latest:
 the **2026-07-09 draft-focus re-route + gap-closer addendum**). Done: EXP-011…014 (Phase 0+1),

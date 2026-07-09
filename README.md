@@ -61,6 +61,10 @@ scripts/
   pull_market.py   market boards, date-stamped: Hashtag points-league consensus (value) +
                    FantasyPros ADP (availability); --wayback replays archived snapshots
   market_report.py board vs consensus: sleepers/fades (rank_gap + risk) + ADP availability column
+  pull_schedule.py season schedule (D1.3): regular-season filter + per-week/B2B/playoff-week
+                   derivations; 2026-27 publishes ~mid-Aug (vintage warning until then)
+  draft_sheet.py   the decision sheet (D1): VOR vs league replacement + ADP availability +
+                   rookie market-seed (market_priced) + breakout_p/ps_* pass-through
   darko_report.py  DARKO overlay: minutes/rank disagreement report (pull_darko.py fetches)
   explore.py       local interactive Streamlit explorer
 data/              raw/ and processed/ caches (gitignored)

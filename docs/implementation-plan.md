@@ -99,7 +99,7 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | 9b | 2 | Breakout archetype layer, recall-gated | EXP-026 | ☑ | ☑ (both wirings rejected; breakout_p column ships) |
 | 9c | 2 | Coach changes + preseason-October logs (+ win totals) | EXP-027 | ☑ | ☑ (a coach rejected · b `learned_ps` adopted-Oct, big-riser capture +9pp · c waived) |
 | 9d | 2 | Rookie model (draft slot × landing spot) | EXP-028 | ☑ | ☑ (rejected — pick-order unbeaten; D1.5 market seed stands alone) |
-| D1 | 2.5 | Decision layer: league config, VOR, schedule, rookie seed | — (product) | ◐ league.yaml (D1.1 ✅ confirmed 2026-07-10: ESPN default points, 10 teams, weekly H2H — scoring.yaml already matched) | ☐ |
+| D1 | 2.5 | Decision layer: league config, VOR, schedule, rookie seed | — (product) | ◐ D1.1 ✅ · D1.2 VOR ✅ · D1.3 script ✅ (2026-27 schedule publishes ~mid-Aug) · D1.4 VOR+ADP ✅ (playoff cols await ESPN calendar) · D1.5 mechanism ✅ (2026 rookies hit the market pulls ~Sept) | ◐ (see D1 note, 2026-07-10) |
 | D2 | 2.5 | Analyst pass + dual-board freeze | EXP-029 | ☐ | ☐ |
 | 10 | 3 | As-of-date projection function | EXP-018 | ☑ | ☑ (foundation adopted; naive gate parked) |
 | 11 | 3 | In-season eval + lead-time metric | EXP-019 | ☐ | ☐ |
@@ -1048,6 +1048,21 @@ columns print (model + market) and the flag distinguishes them.
 **Done when:** league.yaml filled; `add_vor` + schedule pull run end-to-end; draft sheet
 prints rank / VOR / ADP-availability / playoff-week / rookie-seed columns; sanity reports
 eyeballed and noted in the ledger as a dated D1 note (no EXP number — product, not hypothesis).
+
+> **As built (2026-07-10, local) — D1 is code-complete; three cells wait on external
+> publications:** D1.2 `models/value.py` (greedy 10-team × ESPN-starting-slot fill,
+> guard/big groups; **sanity: VOR meaningfully reorders even a points league — 59 top-100
+> rank moves ≥ 10**, position scarcity is real at 3 UTIL). D1.3 `scripts/pull_schedule.py`
+> (ScheduleLeagueV2 — the cdn JSON 403s; regular-season filter handles Cup/Rivals/
+> international labels, validated 1,230 games on 2025-26; prints per-week distribution,
+> B2Bs, playoff-week counts, the D1.3b horizon cut) — **the feed serves 2026-27 ~mid-Aug;
+> re-run then**, and derive `fantasy_playoff_weeks` + `league_end_offset_weeks` from the
+> ESPN matchup calendar when published. D1.4+D1.5 `scripts/draft_sheet.py` (VOR + ADP
+> availability + rookie market-seed; breakout_p/ps_*/risk pass through) — ADP matched
+> 134/150 of our top-150; **the July FP pull carries no 2026 rookies yet** (seed guard:
+> unmatched deep rows are stale stash names, capped at rank ≤ 160) — the seed goes live
+> with the September market re-pull. Playoff-week board columns land after both
+> publications.
 
 ## Step D2 — EXP-029: the analyst pass + dual-board freeze (the graded human layer)
 

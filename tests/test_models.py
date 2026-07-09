@@ -6,7 +6,7 @@ import pytest
 
 from fantasy_nba.models import (
     aging, breakout, coaches, context, darko, durability, injuries, learned, minutes, preseason,
-    recency, rookies, rosters, uncertainty,
+    recency, rookies, rosters, uncertainty, value,
 )
 from fantasy_nba.models._core import COUNTING
 
@@ -773,3 +773,36 @@ def test_rookie_gp_curve_is_empirical_bucket_mean():
     curve = rookies.gp_by_pick_bucket(train)
     top = train[train["overall_pick"] <= 5]["y_gp"].mean()
     assert curve["1-5"] == pytest.approx(top)
+
+
+def test_replacement_level_and_vor_greedy_math():
+    # 1-team league, 1 G + 1 big + 1 UTIL: board of 3 guards + 2 bigs, descending value.
+    league = {"teams": 1, "roster": {"PG": 1, "C": 1, "UTIL": 1, "BENCH": 2}}
+    board = pd.DataFrame({
+        "PLAYER_ID": [1, 2, 3, 4, 5],
+        "rank": [1, 2, 3, 4, 5],
+        "fpts_pg": [50.0, 45.0, 40.0, 35.0, 30.0],
+    })
+    pos_of = pd.Series({1: 0, 2: 0, 3: 1, 4: 0, 5: 1})  # G G B G B
+
+    # Greedy: P1 -> PG, P2 -> UTIL (guard slot gone), P3 -> C; P4/P5 hit the wire.
+    repl = value.replacement_level(board, pos_of, league)
+    assert repl["guard"] == pytest.approx(35.0)   # P4, the first guard left over
+    assert repl["big"] == pytest.approx(30.0)     # P5
+    assert repl["any"] == pytest.approx(35.0)     # best remaining overall
+
+    out = value.add_vor(board, pos_of, league)
+    assert out.loc[out["PLAYER_ID"] == 1, "vor"].iloc[0] == pytest.approx(50.0 - 35.0)
+    assert out.loc[out["PLAYER_ID"] == 3, "vor"].iloc[0] == pytest.approx(40.0 - 30.0)
+    assert out.loc[out["PLAYER_ID"] == 4, "vor"].iloc[0] == pytest.approx(0.0)
+    # BENCH slots never enter the fill; vor_rank is a dense permutation.
+    assert sorted(out["vor_rank"]) == [1, 2, 3, 4, 5]
+
+
+def test_vor_unknown_position_measures_against_overall_wire():
+    league = {"teams": 1, "roster": {"UTIL": 1}}
+    board = pd.DataFrame({"PLAYER_ID": [1, 2], "rank": [1, 2], "fpts_pg": [20.0, 10.0]})
+    pos_of = pd.Series(dtype=float)  # nobody has a known position
+    out = value.add_vor(board, pos_of, league)
+    assert (out["pos_group"] == "unknown").all()
+    assert out.loc[out["PLAYER_ID"] == 1, "vor"].iloc[0] == pytest.approx(10.0)
