@@ -101,6 +101,25 @@ def fetch_player_game_logs(season: str) -> pd.DataFrame:
     return df
 
 
+def fetch_preseason_game_logs(season: str) -> pd.DataFrame:
+    """One row per player per **preseason** game (Step 9c / EXP-027: `ps_mpg`,
+    `ps_start_share` — the latest-arriving pre-draft role signal). Covid quirk: the
+    2019-20 frame also contains the July-2020 bubble scrimmages — consumers date-filter."""
+    from nba_api.stats.endpoints import leaguegamelog
+
+    def _logs() -> pd.DataFrame:
+        return leaguegamelog.LeagueGameLog(
+            season=season,
+            season_type_all_star="Pre Season",
+            player_or_team_abbreviation="P",
+            timeout=REQUEST_TIMEOUT,
+        ).get_data_frames()[0]
+
+    df = _with_retry(_logs, f"preseason_game_logs {season}")
+    df.insert(0, "SEASON", season)
+    return df
+
+
 def fetch_team_game_logs(season: str) -> pd.DataFrame:
     """One row per team per game (Step 10 amendment: game margins for blowout handling —
     margins are not derivable from the player logs)."""
@@ -172,6 +191,7 @@ def fetch_player_bio(season: str) -> pd.DataFrame:
 _DATASETS = {
     "player_season_stats": fetch_player_season_stats,
     "player_game_logs": fetch_player_game_logs,
+    "preseason_game_logs": fetch_preseason_game_logs,
     "team_game_logs": fetch_team_game_logs,
     "team_rosters": fetch_team_rosters,
     "player_bio": fetch_player_bio,

@@ -68,6 +68,8 @@ tests/
 
 ```bash
 # Pull recent seasons of player data (cached to data/raw/)
+# datasets: player_season_stats, player_game_logs, preseason_game_logs, team_game_logs,
+#           team_rosters, player_bio
 python scripts/pull_data.py --seasons 2023-24 2024-25 2025-26
 
 # Pull injury/IL history + player-movement transactions (prosportstransactions;
