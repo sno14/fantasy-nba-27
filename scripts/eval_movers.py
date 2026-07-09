@@ -56,6 +56,10 @@ def _needs_vacated(variant_names: list[str]) -> bool:
     return any(VARIANT_SPECS[v].get("use_vacated") for v in variant_names)
 
 
+def _needs_breakout(variant_names: list[str]) -> bool:
+    return any(VARIANT_SPECS[v].get("use_breakout") for v in variant_names)
+
+
 def _pooled(per_bucket: pd.DataFrame, value_cols: list[str]) -> pd.DataFrame:
     """n-weighted mean of per-bucket metrics across seasons, ordered faller -> riser."""
     pooled = (
@@ -131,6 +135,14 @@ def main() -> None:
         print(f"[vacated] table rows={len(vacated_table):,} over "
               f"{vacated_table['SEASON'].nunique()} seasons (honest Oct-1 maps)")
 
+    breakout_table = None
+    if _needs_breakout(variants):
+        from fantasy_nba.models import breakout as brk_mod
+
+        breakout_table = brk_mod.breakout_feature_table(season_stats, bio, cfg)
+        print(f"[breakout] table rows={len(breakout_table):,} over "
+              f"{breakout_table['SEASON'].nunique()} seasons")
+
     def _run_view(pool_kind: str):
         per_bucket_frames, dir_frames, pred_frames = [], [], []
         pools_by_model: dict[str, list[pd.DataFrame]] = {}
@@ -140,6 +152,7 @@ def main() -> None:
                 game_logs=game_logs, variants=variants, oracles=args.oracles,
                 seed=args.seed, return_pools=True, pool=pool_kind, rosters=rosters,
                 injuries=injuries, vacated_table=vacated_table, transactions=transactions,
+                breakout_table=breakout_table,
             )
             for frame in (per_bucket, directional, per_pred):
                 frame.insert(0, "season", season)

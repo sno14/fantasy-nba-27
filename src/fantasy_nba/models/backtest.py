@@ -86,6 +86,8 @@ VARIANT_SPECS: dict[str, dict] = {
     "learned_inj": {"use_injuries": True},
     # EXP-016b (Step 8.4) — honest-map vacated-usage features (needs vacated_table):
     "learned_vac": {"use_vacated": True},
+    # EXP-026a (Step 9b) — breakout-archetype features (needs breakout_table):
+    "learned_breakout": {"use_breakout": True},
 }
 
 
@@ -101,6 +103,7 @@ def project_models(
     injuries: pd.DataFrame | None = None,
     vacated_table: pd.DataFrame | None = None,
     transactions: pd.DataFrame | None = None,
+    breakout_table: pd.DataFrame | None = None,
 ) -> dict[str, pd.DataFrame]:
     """Project ``target_season`` with every model using **only** prior-season data.
 
@@ -187,6 +190,11 @@ def project_models(
                     raise ValueError(f"Variant {name!r} needs vacated_table "
                                      "(rosters.vacated_feature_table).")
                 kw["vacated_table"] = vacated_table
+            if kw.get("use_breakout"):
+                if breakout_table is None:
+                    raise ValueError(f"Variant {name!r} needs breakout_table "
+                                     "(breakout.breakout_feature_table).")
+                kw["breakout_table"] = breakout_table
             models[name] = project_learned(train_ss, train_bio, target_season, cfg=cfg, **kw)
     return models
 

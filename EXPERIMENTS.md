@@ -734,6 +734,51 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   consumes the September Hashtag pull; D1.5's rookie market-seed consumes the FantasyPros
   pull (rookies are its expected top-150 unmatched rows — they're kept in the parquet).
 
+### EXP-026 — breakout archetype layer, recall-gated  ·  Status: **both wirings rejected; `breakout_p` ships as an informational draft-sheet column**
+- **Date:** 2026-07-09  ·  **Commit:** this commit  ·  **Step:** implementation-plan Step 9b
+- **Hypothesis:** an archetype classifier (P(next-season fpts/g jump ≥ +6): improvement
+  streak × usage↑ at held TS% × minutes headroom × age 22-24 × experience × pedigree) pulls
+  eventual big risers **into/up** the board — judged on recall and above-market rate, never
+  per-player error (EXP-011's lesson; the realized-pool recall ~53-70% is the real headroom).
+- **Build:** `models/breakout.py` — SEASON-keyed `breakout_feature_table` (fold-safe, the
+  EXP-016b pattern), walk-forward `breakout_scores` (LGBM classifier, base rate 12.2%),
+  deterministic `apply_breakout_policy` (top-K scores outside the stable core get a bounded
+  rank boost; core untouched by construction). Judgment harness `scripts/eval_breakout.py`;
+  above-market rate uses the vintage-verified archived Hashtag consensus (2022-23, 2023-24).
+- **Classifier reality check (it works as a *classifier*):** walk-forward AUC 0.63-0.73;
+  top-20 flag zone hits 3-8 realized breakouts/season (~2-3× the base rate). Preseason flags
+  included Reed Sheppard, Jarace Walker, Anthony Black, Stephon Castle (2025-26), Dyson
+  Daniels (2024-25), Deni Avdija (2023-24) — real names, before the season.
+- **(a) features into the learned model (`learned_breakout`), 4 seasons × seeds {0,1,2}:**
+  **rejected.** Mover buckets consistently *worse*: pooled big-riser bias −6.89→−7.73 /
+  −7.02→−7.38 / (worse s2), riser bias worse all seeds; realized-pool recall flat
+  (Δ −0.003 mean). Aggregate level MAE improves −0.12 (10/12 cells) — the familiar
+  aggregate-vs-mover trade, not the gate. Hygiene flag: `mpg_headroom` is |ρ|=0.936 with
+  `proj_mpg` — in the regression the group largely re-expresses minutes level.
+- **(b) board policy (K=20, core=50, boost=40):** **rejected at the gate.** Recall@150 delta
+  **exactly 0.000 on all three seeds**; above-market delta 0. **The decisive diagnostic (what
+  stops a sizing grid):** the risers the board misses DO score high (74th-100th percentile —
+  Sheppard 100th, Walker 99th, Daniels 98th, Murphy 97th) but only 0/0/1/3 per season crack
+  the top-20 flag zone (crowded by same-profile non-risers), and their board ranks are
+  150-350 — so even an infinite boost at K=20 caps the gain at ≈ +3pp *before* displacement
+  losses. No sizing clears +3pp net. Extension checked: adding the EXP-016b vacated-usage
+  group to the classifier is neutral (AUC ±0.05 mixed, flag-zone hits net −1) — the
+  Maxey-triad leg that's actually missing is the **market gap** (waived until the EXP-017
+  archive accumulates).
+- **Ships:** `scripts/project.py --breakout` adds a walk-forward `breakout_p` column to the
+  draft sheet — informational only, never re-ranks. The D2 analyst pass (EXP-029) reads it as
+  the option-value flag; it's the "at least attempting every breakout" lever in human-decision
+  form, where the measured ~2-3× flag lift is genuinely useful.
+- **Skeptic pass:** (leakage) features strictly prior-season (unit-tested); labels realized
+  next-season deltas; classifier walk-forward; consensus snapshots content-vintage-verified.
+  (selection) recall judged on the *realized* top-150 — the anti-selection view by design.
+  (season concentration) the (a) mover worsening and the (b) recall null are uniform.
+- **Ledger note:** preseason recall does not move by re-ranking what the board already knows —
+  the missed risers are *deep* (ranks 150-350) because their projected level is honestly low
+  pre-breakout. The remaining recall levers are **new information**: EXP-027 preseason-October
+  role signals, EXP-028 rookies, and the market-gap re-arm. Do not re-run flag-zone sizing
+  grids on these features.
+
 _Next experiments — numbering reserved by [`docs/implementation-plan.md`](docs/implementation-plan.md)
 (the execution spec; run in its Step order, as re-routed by the dated notes in its tracker — latest:
 the **2026-07-09 draft-focus re-route + gap-closer addendum**). Done: EXP-011…014 (Phase 0+1),
@@ -741,9 +786,11 @@ EXP-018 (engine; naive gate parked), **EXP-015** injuries (Step 7, split verdict
 spells now serve Step 8 and the Step-12 live feed), **EXP-016** honest preseason maps (adopted;
 backtest-correctness fix) + **EXP-016b** vacated usage (parked; feeds EXP-026/028),
 **EXP-017** market benchmark (adopted live; 017b waived — 2024-25 preseason archives proved
-unrecoverable, archiving from today, re-arm next offseason).
-**Draft-facing, calendar-critical, in order:** **EXP-026** breakout archetype layer, recall-gated (Step 9b) → **EXP-027**
-coach changes + preseason-October logs (Step 9c) → **EXP-028** rookie model, draft slot × landing
+unrecoverable, archiving from today, re-arm next offseason), **EXP-026** breakout layer (both
+wirings rejected; breakout_p ships as a draft-sheet column).
+**Draft-facing, calendar-critical, in order: EXP-027**
+coach changes + preseason-October logs (Step 9c; the remaining preseason recall levers are new
+information, not re-ranking — EXP-026's lesson) → **EXP-028** rookie model, draft slot × landing
 spot, gate = beat pick-order (Step 9d) → D1 decision layer incl. the D1.5 rookie market-seed
 (product; lock real scoring first) → **EXP-029** analyst pass + dual-board freeze (Step D2, last
 ~2 weeks before the draft; scores April 2027). **In-season, before opening night: EXP-019** (Step 11)

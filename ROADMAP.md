@@ -330,16 +330,22 @@ eval-only (opt-in `--recency`); the shipped board uses the plain `learned` found
 - [x] **Test:** ran with segments per the spec — the answer is no (see EXP-014).
 
 #### 7.B — Young-player trajectory / breakout layer  ← re-scoped 2026-07-09: a **recall-gated** breakout layer (EXP-026, implementation-plan Step 9b) — per EXP-011, never judged on per-player error (you can't know which of ~20 archetype fits pops; ranking them all above their market price *is* the edge)
-- [ ] Breakout-probability classifier (`models/breakout.py`, P(next-season Δ ≥ +6)) + two
-      wirings: features into the learned model, and a flagged ceiling-stance **board policy**
-      for late-round picks (spec: Step 9b).
-- [ ] **Features (from research):** age 22–24, prior gradual-improvement streak, usage↑ with held
-      TS%, minutes headroom, draft pedigree — plus the Step-8.4 vacated-usage group and the
-      Step-9 market gap (the Maxey triad: archetype × vacated usage × market confirmation).
-- [ ] **Test (the recall family):** realized big-riser recall@150 and **above-market rate** (did
-      we rank the eventual riser above the expert consensus?) with an aggregate-MAE/stable-bias
-      cost line. (EXP-000 warns population aging curves alone don't help young players — this is
-      the targeted fix, judged on the metric that can actually move.)
+- [x] **Built + judged (EXP-026, 2026-07-09): both wirings rejected; the flag column ships.**
+      Classifier (`models/breakout.py`, walk-forward) genuinely works as a classifier — AUC
+      0.63–0.73, top-20 flag zone hits 2–3× base rate, preseason flags included Sheppard /
+      Walker / Daniels / Avdija. But (a) features into the learned model make the mover buckets
+      *worse* all seeds (aggregate MAE better — the familiar trade); (b) the rank-boost policy
+      moves recall@150 by exactly 0.000 all seeds, and the diagnostic bound kills all sizings:
+      missed risers score high (74th–100th pctile) yet sit at board ranks 150–350 with a
+      crowded flag zone — max gain ≈ +3pp before displacement. Vacated-usage extension:
+      neutral. The missing Maxey-triad leg is the **market gap** (re-arms with the EXP-017
+      archive).
+- [x] **Ships:** `scripts/project.py --breakout` → `breakout_p` on the draft sheet
+      (informational, never re-ranks); the D2 analyst pass reads it as the option-value flag.
+- [x] **Standing lesson (test ran as specced):** preseason recall doesn't move by re-ranking
+      what the board already knows — missed risers are deep because their projected level is
+      honestly low pre-breakout. Remaining recall levers are new information: EXP-027
+      preseason-October roles, EXP-028 rookies, market-gap re-arm.
 
 #### 7.C — External availability / injury data  ← DONE (EXP-015, 2026-07-09: split verdict)
 - [x] Ingested: prosportstransactions injury+IL history 2009→today (`scripts/pull_injuries.py`,

@@ -25,6 +25,7 @@ import numpy as np
 import pandas as pd
 
 from ..scoring import ScoringConfig, load_scoring, score_frame
+from . import breakout as brk
 from . import context as ctx
 from . import injuries as inj
 from . import recency as rec
@@ -92,11 +93,12 @@ def feature_columns(
     use_recency: bool = False,
     use_trade_split: bool = False,
     use_vacated: bool = False,
+    use_breakout: bool = False,
 ) -> list[str]:
     """Feature set for the learned model — Marcel-equivalent, optionally + trajectory (EXP-008),
     + team-context/vacated-minutes (EXP-009), + within-season recency (EXP-008b),
-    + the post-trade split (EXP-012; requires ``use_recency``), and/or + the honest-map
-    vacated-usage group (EXP-016b)."""
+    + the post-trade split (EXP-012; requires ``use_recency``), + the honest-map
+    vacated-usage group (EXP-016b), and/or + the breakout-archetype group (EXP-026a)."""
     return (
         BASE_FEATURES
         + (TRAJ_FEATURES if use_trajectory else [])
@@ -104,6 +106,7 @@ def feature_columns(
         + (rec.RECENCY_FEATURES if use_recency else [])
         + (rec.TRADE_FEATURES if use_trade_split else [])
         + (ctx.VACATED_FEATURES if use_vacated else [])
+        + (brk.BREAKOUT_FEATURES if use_breakout else [])
     )
 
 
@@ -182,6 +185,7 @@ def _features_for(
     recency_feats: pd.DataFrame | None = None,
     injury_feats: pd.DataFrame | None = None,
     vacated_feats: pd.DataFrame | None = None,
+    breakout_feats: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """Marcel aggregates (+ trajectory / team-context / recency / injury features) for ``target_season``.
 
@@ -220,6 +224,12 @@ def _features_for(
         # Off the Oct-1 map (unsigned on draft day) = no team vacancy to inherit.
         for col in ctx.VACATED_FEATURES:
             feats[col] = feats[col].fillna(0.0)
+    if breakout_feats is not None:
+        feats = feats.merge(breakout_feats, on="PLAYER_ID", how="left")
+        # Missing = no archetype signal; unknown pedigree = undrafted sentinel.
+        for col in brk.BREAKOUT_FEATURES:
+            fill = brk.UNDRAFTED_PICK if col == "draft_pick" else 0.0
+            feats[col] = feats[col].fillna(fill)
     return feats
 
 
@@ -232,6 +242,7 @@ def build_panel(
     trade_table: pd.DataFrame | None = None,
     injury_table: pd.DataFrame | None = None,
     vacated_table: pd.DataFrame | None = None,
+    breakout_table: pd.DataFrame | None = None,
     min_prior_seasons: int = 2,
     min_label_minutes: float = 200.0,
     n_seasons: int = 3,
@@ -271,9 +282,13 @@ def build_panel(
             vacated_table.loc[vacated_table["SEASON"] == s, ["PLAYER_ID"] + ctx.VACATED_FEATURES]
             if vacated_table is not None else None
         )
+        breakout_feats = (
+            breakout_table.loc[breakout_table["SEASON"] == s, ["PLAYER_ID"] + brk.BREAKOUT_FEATURES]
+            if breakout_table is not None else None
+        )
         feats = _features_for(
             prior, prior_bio, s, use_trajectory, n_seasons, weights, reg_minutes,
-            context_feats, recency_feats, injury_feats, vacated_feats,
+            context_feats, recency_feats, injury_feats, vacated_feats, breakout_feats,
         )
         labels = _labels(season_stats, s, min_label_minutes)
         merged = feats.merge(labels, on="PLAYER_ID", how="inner")
@@ -363,6 +378,8 @@ def project_learned(
     injury_table: pd.DataFrame | None = None,
     use_vacated: bool = False,
     vacated_table: pd.DataFrame | None = None,
+    use_breakout: bool = False,
+    breakout_table: pd.DataFrame | None = None,
     target_mode: str = "level",
     weight_mode: str | None = None,
     weight_alpha: float = 1.0,
@@ -411,13 +428,15 @@ def project_learned(
         raise ValueError("use_injuries needs injury_table (the spells frame from injuries.build_spells).")
     if use_vacated and vacated_table is None:
         raise ValueError("use_vacated needs vacated_table (rosters.vacated_feature_table).")
+    if use_breakout and breakout_table is None:
+        raise ValueError("use_breakout needs breakout_table (breakout.breakout_feature_table).")
     if minutes_mode not in ("regression", "allocation"):
         raise ValueError(f"minutes_mode must be 'regression' or 'allocation', got {minutes_mode!r}")
     if minutes_mode == "allocation" and (rosters is None or target_team_map is None):
         raise ValueError("minutes_mode='allocation' needs rosters (team_rosters frame) and "
                          "target_team_map ([PLAYER_ID, team]).")
     feature_cols = feature_columns(use_trajectory, use_context, use_recency, use_trade_split,
-                                   use_vacated)
+                                   use_vacated, use_breakout)
 
     recency_table = trade_table = None
     if use_recency:
@@ -432,6 +451,7 @@ def project_learned(
         recency_table=recency_table, trade_table=trade_table,
         injury_table=injury_table if use_injuries else None,
         vacated_table=vacated_table if use_vacated else None,
+        breakout_table=breakout_table if use_breakout else None,
         min_label_minutes=min_label_minutes,
         n_seasons=n_seasons, weights=weights, reg_minutes=reg_minutes,
     )
@@ -467,10 +487,18 @@ def project_learned(
         if vacated_feats.empty:
             raise ValueError(f"vacated_table has no rows for target season {target_season!r} — "
                              "build it with the target season included.")
+    breakout_feats = None
+    if use_breakout:
+        breakout_feats = breakout_table.loc[
+            breakout_table["SEASON"] == target_season, ["PLAYER_ID"] + brk.BREAKOUT_FEATURES
+        ]
+        if breakout_feats.empty:
+            raise ValueError(f"breakout_table has no rows for target season {target_season!r} — "
+                             "build it with the target season included.")
 
     agg = _features_for(
         season_stats, bio, target_season, use_trajectory, n_seasons, weights, reg_minutes,
-        context_feats, recency_feats, injury_feats, vacated_feats,
+        context_feats, recency_feats, injury_feats, vacated_feats, breakout_feats,
     )
     X = agg[feature_cols]
     X_gp = agg[feature_cols + GP_EXTRA_FEATURES] if use_injuries else X

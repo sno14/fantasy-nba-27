@@ -5,7 +5,8 @@ import pandas as pd
 import pytest
 
 from fantasy_nba.models import (
-    aging, context, darko, durability, injuries, learned, minutes, recency, rosters, uncertainty,
+    aging, breakout, context, darko, durability, injuries, learned, minutes, recency, rosters,
+    uncertainty,
 )
 from fantasy_nba.models._core import COUNTING
 
@@ -368,6 +369,78 @@ def test_team_context_vacated_minutes_math():
     # Newcomer P5 has no prior role; returning P1's prior share is 1000/2400.
     assert feat.loc[5, "own_prev_min_share"] == 0.0
     assert feat.loc[1, "own_prev_min_share"] == pytest.approx(1000 / 2400)
+
+
+def _breakout_league():
+    """Three seasons, two players: P1 is the textbook breakout archetype (rising fpts/min,
+    usage up at held TS%, low minutes, age 23); P2 is declining with a TS collapse."""
+    rows, bio_rows = [], []
+    spec = {  # (season, pid): (mpg, pts_per_game, usg, ts)
+        ("2021-22", 1): (16, 6.0, 0.16, 0.55), ("2022-23", 1): (18, 9.0, 0.19, 0.56),
+        ("2023-24", 1): (20, 12.0, 0.22, 0.57),
+        ("2021-22", 2): (30, 18.0, 0.25, 0.56), ("2022-23", 2): (30, 15.0, 0.23, 0.52),
+        ("2023-24", 2): (30, 12.0, 0.21, 0.48),
+    }
+    for (season, pid), (mpg, ppg, usg, ts) in spec.items():
+        gp = 70
+        rows.append({
+            "SEASON": season, "PLAYER_ID": pid, "PLAYER_NAME": f"p{pid}",
+            "GP": gp, "MIN": gp * mpg,
+            **{src: (ppg if src == "PTS" else 1.0) * gp for src in
+               ["FGM", "FGA", "FG3M", "FTM", "FTA", "OREB", "DREB", "REB", "AST",
+                "STL", "BLK", "TOV", "PTS"]},
+            "USG_PCT": usg, "TS_PCT": ts,
+        })
+        yr = int(season[:4])
+        bio_rows.append({"SEASON": season, "PLAYER_ID": pid, "AGE": (22 if pid == 1 else 28) + yr - 2021,
+                         "DRAFT_NUMBER": "15" if pid == 1 else "Undrafted"})
+    return pd.DataFrame(rows), pd.DataFrame(bio_rows)
+
+
+def test_breakout_features_archetype_math():
+    ss, bio = _breakout_league()
+    t = breakout.breakout_feature_table(ss, bio).set_index(["SEASON", "PLAYER_ID"])
+
+    f1 = t.loc[("2024-25", 1)] if ("2024-25", 1) in t.index else t.loc[("2023-24", 1)]
+    # As-of 2023-24, P1 has one prior rise (2022-23 > 2021-22) -> streak 1; as more seasons
+    # accrue the streak caps at 2. Check the 2023-24 block explicitly:
+    f = t.loc[("2023-24", 1)]
+    assert f["improve_streak_2y"] == 1
+    assert f["usg_slope_held_ts"] == pytest.approx(0.03)   # ΔUSG at held TS
+    assert f["mpg_headroom"] == pytest.approx(36 - 18)
+    assert f["age_22_24"] == 1 and f["draft_pick"] == 15
+    assert f["years_experience"] == 2
+    g = t.loc[("2023-24", 2)]
+    assert g["improve_streak_2y"] == 0
+    assert g["usg_slope_held_ts"] == 0.0                    # TS collapsed -> gated to 0
+    assert g["age_22_24"] == 0 and g["draft_pick"] == breakout.UNDRAFTED_PICK
+
+    labels = breakout.breakout_labels(ss).set_index(["SEASON", "PLAYER_ID"])["y_breakout"]
+    assert labels.loc[("2022-23", 1)] == 0   # +3 fpts/g-ish, below the +6 edge
+    assert labels.loc[("2022-23", 2)] == 0
+
+
+def test_breakout_policy_boosts_flagged_but_never_core():
+    board = pd.DataFrame({
+        "rank": range(1, 101),
+        "PLAYER_ID": range(1, 101),
+        "PLAYER_NAME": [f"p{i}" for i in range(1, 101)],
+    })
+    scores = pd.DataFrame({"PLAYER_ID": [95, 96, 30], "breakout_p": [0.9, 0.8, 0.99]})
+    # boost 60 would carry both past the core -> the clamp stops them right after it.
+    out = breakout.apply_breakout_policy(board, scores, k=2, core=50, boost=60)
+    # The core is untouched: ranks 1..50 are the same players (30 is core -> not flagged).
+    assert list(out.loc[out["rank"] <= 50, "PLAYER_ID"]) == list(range(1, 51))
+    assert out.loc[out["PLAYER_ID"] == 95, "rank"].iloc[0] == 51
+    assert out.loc[out["PLAYER_ID"] == 96, "rank"].iloc[0] == 52
+    assert out["breakout_flag"].sum() == 2
+    # A bounded boost moves a flagged player by ~boost, not to the core.
+    out40 = breakout.apply_breakout_policy(board, scores, k=2, core=50, boost=40)
+    r95 = out40.loc[out40["PLAYER_ID"] == 95, "rank"].iloc[0]
+    assert 50 < r95 <= 57
+    # Determinism: same input, same output.
+    out2 = breakout.apply_breakout_policy(board, scores, k=2, core=50, boost=60)
+    assert (out["PLAYER_ID"] == out2["PLAYER_ID"]).all()
 
 
 def test_vacated_usage_features_math():

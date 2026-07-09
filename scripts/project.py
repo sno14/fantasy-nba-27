@@ -47,6 +47,12 @@ def main() -> None:
         help="Re-rank the board by risk stance (implies --ranges). 'safe' (default when set) "
         "applies a mild downside penalty: as accurate as median but demotes injury-prone players.",
     )
+    parser.add_argument(
+        "--breakout", action="store_true",
+        help="Add the EXP-026 breakout_p column (P(fpts/g jump ≥ +6), walk-forward archetype "
+        "classifier). Informational only — it never re-ranks (the rank-boost policy failed its "
+        "gate); the D2 analyst pass reads it as the option-value flag.",
+    )
     args = parser.parse_args()
 
     season_stats = storage.read("player_season_stats")
@@ -89,6 +95,18 @@ def main() -> None:
             proj = rank_board(proj, method=args.rank_by)
             show = ["rank", "PLAYER_NAME", "target_age", "gp", "mpg", "fpts_pg", "draft_value",
                     "fpts_p10", "fpts_median", "fpts_p90", "risk"]
+
+    if args.breakout:
+        from fantasy_nba.models import breakout as brk
+
+        cached = sorted(season_stats["SEASON"].unique())
+        seasons = cached[1:] + ([args.target] if args.target not in cached else [])
+        table = brk.breakout_feature_table(season_stats, bio, cfg, seasons=seasons)
+        labels = brk.breakout_labels(season_stats, cfg)
+        scores = brk.breakout_scores(table, labels, args.target)
+        proj = proj.merge(scores, on="PLAYER_ID", how="left")
+        proj["breakout_p"] = proj["breakout_p"].fillna(0.0).round(3)
+        show.append("breakout_p")
 
     path = storage.write(proj, f"{args.model}_{args.target}", layer="processed")
     print(f"Scoring: {cfg.name}  |  players projected: {len(proj):,}")

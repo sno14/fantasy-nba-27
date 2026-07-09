@@ -54,6 +54,7 @@ scripts/
   pull_injuries.py prosportstransactions scraper (injuries + transactions; drives the real
                    Edge/Chrome via Playwright — a browser window opens; incremental by date)
   eval_gp.py       EXP-015 judgments: GP point estimate (learned_inj) + Monte-Carlo GP tails
+  eval_breakout.py EXP-026 judgment: breakout board policy vs learned, recall@150 + above-market
   pull_market.py   market boards, date-stamped: Hashtag points-league consensus (value) +
                    FantasyPros ADP (availability); --wayback replays archived snapshots
   market_report.py board vs consensus: sleepers/fades (rank_gap + risk) + ADP availability column
@@ -78,7 +79,8 @@ python scripts/pull_injuries.py --dataset transactions
 python -c "from fantasy_nba.scoring import load_scoring; print(load_scoring())"
 
 # Generate the 2026-27 draft board with risk ranges (safe / median / floor / ceiling)
-python scripts/project.py --target 2026-27 --rank-by safe --top 50
+# --breakout adds the EXP-026 breakout_p column (informational option-value flag)
+python scripts/project.py --target 2026-27 --rank-by safe --breakout --top 50
 
 # Explore data + projections interactively in the browser
 python -m streamlit run scripts/explore.py
