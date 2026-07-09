@@ -110,9 +110,16 @@ special-case handling.
       deferred because the top-100 lever is availability, not MPG-role (a smaller measured effect).
 - [ ] Pace adjustment — deferred (low measured leverage).
 
-### Stage 4 — Special cases
-- [ ] Rookie model (draft position + college/international stats)
-- [ ] Role-change / traded-player adjustment
+### Stage 4 — Special cases  ← re-scoped 2026-07-09 into the Stage-7 execution plan
+- [ ] Rookie model — now **EXP-028 (implementation-plan Step 9d)**: draft slot × landing spot
+      (reuses the Step-8.4 vacated-usage features; gate = beat the draft-pick-order baseline).
+      College/international stat translation stays a later refinement. **Stopgap ships first:**
+      D1.5 seeds rookies from the expert-consensus pull, flagged `market_priced`, so the draft
+      sheet has no invisible players even before the model exists.
+- [ ] Role-change / traded-player adjustment — largely absorbed by Stage 7: preseason =
+      the Step-8/8.4 dated-transactions + vacated-usage features; in-season = the as-of
+      engine's post-trade features (EXP-018) + Step-7 live availability. Keep this box until
+      those steps run, then tick with a pointer.
 
 ### Stage 5 — Scoring & delivery
 - [ ] Category-league scoring mode (z-scores / rankings)
@@ -364,6 +371,14 @@ eval-only (opt-in `--recency`); the shipped board uses the plain `learned` found
       runs now if ≥4 seasons of historical preseason rankings/ADP are recoverable, else
       benchmark-only + archive from today, re-arm next season. Standing question: where we
       systematically disagree, who's right — and does blending wash out our mover edge?
+- [ ] **Analyst pass (EXP-029, Step D2, 2026-07-09):** the graded human-judgment layer —
+      pre-draft review of every big board-vs-consensus disagreement, breakout flag, injury
+      returnee, and rookie; adjustments + written rationales committed to
+      `config/analyst_overrides.yaml`; **dual-board freeze** (pure model A vs analyst-adjusted
+      B, both committed before opening night) scored against each other in April 2027. The
+      layer must earn its place or be deleted — the discipline commercial systems' human
+      layers never face. Long-run: each season's archives are a labeled map of *where the
+      market beats us and on whom* — harvest every spring.
 
 #### 7.F — Usage-coupled rate/efficiency  ← parked (revisit only via 7.A)
 - [ ] Per-minute rates are already well-predicted (EXP-001); direct rate/efficiency modelling was
