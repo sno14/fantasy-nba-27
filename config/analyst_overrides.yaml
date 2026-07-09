@@ -1,0 +1,28 @@
+# Analyst overrides (Step D2 / EXP-029) — the auditable human-judgment layer.
+#
+# DISCIPLINE (implementation-plan D2.2):
+#   * Written during the analyst pass, the last ~2 weeks before draft day, player by
+#     player off the generated trigger list (scripts/analyst_triggers.py). EMPTY until
+#     then — never fabricate overrides outside the calendar-locked pass.
+#   * Every reviewed player gets an entry, INCLUDING explicit `action: none` verdicts —
+#     "reviewed, no change" is information for the April 2027 attribution table.
+#   * Append-only. Never edit an entry after it is written: a change of mind is a NEW
+#     entry for the same player with a later date (the latest-dated entry wins).
+#   * Rationale is written BEFORE the season and graded after it. Board B must beat
+#     board A in April or this layer is deleted (D2.4).
+#
+# SCHEMA — a YAML list; each entry:
+#   - name: "Player Name"          # matched via the shared normalizer + alias map;
+#                                  #   an unmatched or ambiguous name fails loudly
+#     date: 2026-10-05             # the day the verdict was written
+#     category: role               # role | injury | hype | rookie | other
+#     action: none                 # or: {rank_delta: -8}   (negative = move UP 8 ranks)
+#                                  # or: {fpts_delta: 2.0}  (adjust fpts/g; total recomputed)
+#     rationale: >
+#       One paragraph. Concrete evidence a feature can't hold (beat-writer reporting,
+#       depth chart, coach statements, rehab timelines) — written before the season.
+#
+# Application: python scripts/apply_analyst.py <board.parquet>  ->  board B
+# (deterministic, unit-tested; board A's file is never touched).
+
+[]

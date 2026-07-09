@@ -100,7 +100,7 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | 9c | 2 | Coach changes + preseason-October logs (+ win totals) | EXP-027 | ☑ | ☑ (a coach rejected · b `learned_ps` adopted-Oct, big-riser capture +9pp · c waived) |
 | 9d | 2 | Rookie model (draft slot × landing spot) | EXP-028 | ☑ | ☑ (rejected — pick-order unbeaten; D1.5 market seed stands alone) |
 | D1 | 2.5 | Decision layer: league config, VOR, schedule, rookie seed | — (product) | ◐ D1.1 ✅ · D1.2 VOR ✅ · D1.3 script ✅ (2026-27 schedule publishes ~mid-Aug) · D1.4 VOR+ADP ✅ (playoff cols await ESPN calendar) · D1.5 mechanism ✅ (2026 rookies hit the market pulls ~Sept) | ◐ (see D1 note, 2026-07-10) |
-| D2 | 2.5 | Analyst pass + dual-board freeze | EXP-029 | ☐ | ☐ |
+| D2 | 2.5 | Analyst pass + dual-board freeze | EXP-029 | ☑ (overrides schema + `apply_analyst.py` + trigger generator, tested 2026-07-10) | ◐ pending (pass + dual freeze calendar-locked: last ~2 wks pre-draft / pre-opening-night; scores Apr 2027) |
 | 10 | 3 | As-of-date projection function | EXP-018 | ☑ | ☑ (foundation adopted; naive gate parked) |
 | 11 | 3 | In-season eval + lead-time metric | EXP-019 | ☐ | ☐ |
 | 12 | 3 | Nightly update pipeline + status overrides | — | ☐ | ☐ |

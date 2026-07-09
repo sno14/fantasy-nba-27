@@ -896,6 +896,37 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   2026-27, FP adds the rookie class → the D1.5 seed goes live); mid-Oct re-pull
   `preseason_game_logs` + `draft_history`, regenerate the sheet from `--model learned_ps`.
 
+### EXP-029 — analyst pass + dual-board freeze (the graded human layer)  ·  Status: **pending (machinery built 2026-07-10 · pass calendar-locked to the last ~2 weeks pre-draft · scores April 2027)**
+- **Date:** 2026-07-10 (build) ·  **Commit:** this commit  ·  **Step:** implementation-plan Step D2
+- **Hypothesis:** an auditable, written-down analyst pass (the human-judgment layer commercial
+  systems keep opaque) adds value over the pure model board — testable only by freezing both
+  boards before opening night and grading them against each other in April.
+- **Build (the buildable half — done):** `config/analyst_overrides.yaml` (schema per D2.2:
+  name/date/category/action/rationale; `none` verdicts logged too; append-only — corrections
+  are new later-dated entries, latest wins). `models/analyst.py` + `scripts/apply_analyst.py`:
+  deterministic board A → board B (rank_delta repositions with edge clipping; fpts_delta
+  adjusts fpts/g, recomputes the total from gp, re-inserts stably with ties keeping incumbents
+  ahead; `model_rank` + `analyst_*` audit columns carry the D2.4 attribution; board A's file
+  is never touched — enforced in the script). Unmatched/ambiguous override names hard-fail.
+  D2.1 trigger generator `scripts/analyst_triggers.py`: top-200 union of our board and the
+  Hashtag consensus — |rank gap| ≥ 15 (+ consensus-only `not_on_board`), EXP-026 breakout
+  flags, severe-injury returnees (Step-7 spell notes ending in trailing 18 months), rookies
+  (`market_priced` / no stats history). 9 unit tests (validation, arithmetic, tie-stability,
+  purity, trigger categories).
+- **Smoke run (July data, machinery only — no overrides written):** empty overrides →
+  board B = board A + audit columns; trigger list = 146 players (101 rank-gap, 14 returnee,
+  38 not-on-board, 3 breakout) — **inflated by data vintage** (July board vs July consensus;
+  Derik Queen gap −102 is a consensus-staleness artifact, not signal). The real October run
+  (learned_ps sheet + Sept/Oct market pulls) is expected to land near the spec's ~30–50.
+- **Remaining (calendar-locked, do NOT do early):** the analyst pass itself (last ~2 weeks
+  before the draft, off the regenerated trigger list; overrides written with rationales
+  before the season) and the D2.3 dual freeze (`frozen_2026-27_preseason_model.parquet` +
+  `…_analyst.parquet`, committed before opening night, dated ledger note). D2.4 scoring
+  April 2027: standard metrics on both boards + per-adjustment attribution; verdict capped
+  at adopted-tentative/parked on a one-season sample.
+- **Skeptic pass (build-time):** no leakage possible yet (no overrides exist); the freeze's
+  git timestamp is the no-hindsight proof; application arithmetic is unit-tested and pure.
+
 _Next experiments — numbering reserved by [`docs/implementation-plan.md`](docs/implementation-plan.md)
 (the execution spec; run in its Step order, as re-routed by the dated notes in its tracker — latest:
 the **2026-07-09 draft-focus re-route + gap-closer addendum**). Done: EXP-011…014 (Phase 0+1),
@@ -910,9 +941,10 @@ wirings rejected; breakout_p ships as a draft-sheet column), **EXP-027** coach +
 source, pick number shown alongside; re-pull `draft_history` before October for the 2026 class).
 **Draft-facing, calendar-critical, in order: D1** decision layer incl. the D1.5 rookie market-seed
 (product; **scoring + league confirmed 2026-07-10: ESPN default points, 10 teams, weekly H2H —
-scoring.yaml already matched, no re-runs**) → **EXP-029** analyst pass + dual-board freeze (Step D2, last
-~2 weeks before the draft; both freeze boards regenerate with `learned_ps` after preseason tips;
-scores April 2027). **In-season, before opening night: EXP-019** (Step 11)
+scoring.yaml already matched, no re-runs**) → **EXP-029** analyst pass + dual-board freeze (Step D2 —
+**machinery built + tested 2026-07-10, opened pending above**; the pass itself + dual freeze are
+calendar-locked to the last ~2 weeks before the draft; both freeze boards regenerate with
+`learned_ps` after preseason tips; scores April 2027). **In-season, before opening night: EXP-019** (Step 11)
 · Step 12 nightly pipeline · **EXP-020** benchmarks · **EXP-021** learned ranges (input: the
 EXP-013c empirical-residual-CDF note). Deferred: **EXP-022/023/024** (they chase the ≈0 preseason
 gap) · **EXP-025** (reserved) rotation-survival hurdle._

@@ -5,8 +5,8 @@ import pandas as pd
 import pytest
 
 from fantasy_nba.models import (
-    aging, breakout, coaches, context, darko, durability, injuries, learned, minutes, preseason,
-    recency, rookies, rosters, uncertainty, value,
+    aging, analyst, breakout, coaches, context, darko, durability, injuries, learned, minutes,
+    preseason, recency, rookies, rosters, uncertainty, value,
 )
 from fantasy_nba.models._core import COUNTING
 
@@ -806,3 +806,160 @@ def test_vor_unknown_position_measures_against_overall_wire():
     out = value.add_vor(board, pos_of, league)
     assert (out["pos_group"] == "unknown").all()
     assert out.loc[out["PLAYER_ID"] == 1, "vor"].iloc[0] == pytest.approx(10.0)
+
+
+# ---------------------------------------------------------------------------
+# Analyst pass (Step D2 / EXP-029): override arithmetic + trigger list
+# ---------------------------------------------------------------------------
+
+def _analyst_board(n=6):
+    """Rank-ordered synthetic board with the columns apply_overrides touches."""
+    return pd.DataFrame({
+        "PLAYER_ID": range(1, n + 1),
+        "PLAYER_NAME": [f"Player {i}" for i in range(1, n + 1)],
+        "rank": range(1, n + 1),
+        "fpts_pg": [40.0 - 4 * i for i in range(n)],
+        "gp": [70.0] * n,
+        "fpts_total": [(40.0 - 4 * i) * 70.0 for i in range(n)],
+    })
+
+
+def _ov(name, kind="none", value=0.0, date="2026-10-05", category="role", pos=0):
+    return {"name": name, "name_key": analyst.name_key(name), "date": pd.Timestamp(date),
+            "category": category, "kind": kind, "value": float(value),
+            "rationale": "test", "_pos": pos}
+
+
+def test_load_overrides_parses_and_validates(tmp_path):
+    good = tmp_path / "good.yaml"
+    good.write_text(
+        "- name: LeBron James\n  date: 2026-10-05\n  category: role\n"
+        "  action: {rank_delta: -8}\n  rationale: beat-writer reporting\n"
+        "- name: Some Rookie\n  date: 2026-10-06\n  category: rookie\n"
+        "  action: none\n  rationale: reviewed, no change\n",
+        encoding="utf-8")
+    entries = analyst.load_overrides(good)
+    assert [e["kind"] for e in entries] == ["rank_delta", "none"]
+    assert entries[0]["value"] == -8.0
+
+    empty = tmp_path / "empty.yaml"
+    empty.write_text("# only comments\n[]\n", encoding="utf-8")
+    assert analyst.load_overrides(empty) == []
+
+    for bad_body in (
+        # bad category
+        "- name: X\n  date: 2026-10-05\n  category: vibes\n  action: none\n  rationale: r\n",
+        # two-key action
+        "- name: X\n  date: 2026-10-05\n  category: role\n"
+        "  action: {rank_delta: -8, fpts_delta: 1}\n  rationale: r\n",
+        # unknown action key
+        "- name: X\n  date: 2026-10-05\n  category: role\n"
+        "  action: {mpg_delta: 3}\n  rationale: r\n",
+        # empty rationale
+        "- name: X\n  date: 2026-10-05\n  category: role\n  action: none\n  rationale: ' '\n",
+        # missing date
+        "- name: X\n  category: role\n  action: none\n  rationale: r\n",
+    ):
+        bad = tmp_path / "bad.yaml"
+        bad.write_text(bad_body, encoding="utf-8")
+        with pytest.raises(ValueError):
+            analyst.load_overrides(bad)
+
+
+def test_effective_overrides_latest_dated_correction_wins():
+    entries = [
+        _ov("Player 2", "rank_delta", -1, date="2026-10-01", pos=0),
+        _ov("Player 2", "none", date="2026-10-07", pos=1),   # the dated correction
+        _ov("Player 3", "fpts_delta", 2.0, date="2026-10-02", pos=2),
+    ]
+    eff = analyst.effective_overrides(entries)
+    assert len(eff) == 2
+    assert {e["name_key"]: e["kind"] for e in eff}["player 2"] == "none"
+
+
+def test_apply_overrides_none_records_without_moving():
+    board = _analyst_board()
+    out = analyst.apply_overrides(board, [_ov("Player 3")])
+    assert list(out["PLAYER_ID"]) == list(board["PLAYER_ID"])
+    row = out[out["PLAYER_ID"] == 3].iloc[0]
+    assert row["analyst_action"] == "none" and row["analyst_category"] == "role"
+    assert row["model_rank"] == 3 and row["rank"] == 3
+    # untouched rows carry empty audit fields
+    assert (out.loc[out["PLAYER_ID"] != 3, "analyst_action"] == "").all()
+    # the input frame is not mutated
+    assert "analyst_action" not in board.columns
+
+
+def test_apply_overrides_rank_delta_moves_and_clips():
+    out = analyst.apply_overrides(_analyst_board(), [_ov("Player 5", "rank_delta", -3)])
+    assert list(out["PLAYER_ID"]) == [1, 5, 2, 3, 4, 6]
+    assert list(out["rank"]) == [1, 2, 3, 4, 5, 6]
+    assert out.loc[out["PLAYER_ID"] == 5, "model_rank"].iloc[0] == 5
+
+    # clips at the board edges rather than walking off them
+    up = analyst.apply_overrides(_analyst_board(), [_ov("Player 2", "rank_delta", -99)])
+    assert list(up["PLAYER_ID"])[0] == 2
+    down = analyst.apply_overrides(_analyst_board(), [_ov("Player 2", "rank_delta", 99)])
+    assert list(down["PLAYER_ID"])[-1] == 2
+
+
+def test_apply_overrides_fpts_delta_adjusts_and_repositions():
+    board = _analyst_board()  # fpts_pg: 40 36 32 28 24 20
+    out = analyst.apply_overrides(board, [_ov("Player 4", "fpts_delta", 6.0)])
+    row = out[out["PLAYER_ID"] == 4].iloc[0]
+    assert row["fpts_pg"] == pytest.approx(34.0)
+    assert row["fpts_total"] == pytest.approx(34.0 * 70.0)
+    # 34 fpts/g slots between P2 (36) and P3 (32)
+    assert list(out["PLAYER_ID"]) == [1, 2, 4, 3, 5, 6]
+    assert list(out["rank"]) == [1, 2, 3, 4, 5, 6]
+    # equal totals keep the incumbent ahead (stable)
+    tie = analyst.apply_overrides(board, [_ov("Player 4", "fpts_delta", 4.0)])  # -> 32, ties P3
+    assert list(tie["PLAYER_ID"]) == [1, 2, 3, 4, 5, 6]
+
+
+def test_apply_overrides_unmatched_or_ambiguous_name_raises():
+    with pytest.raises(ValueError, match="matches no board row"):
+        analyst.apply_overrides(_analyst_board(), [_ov("Nobody Here")])
+    dup = _analyst_board()
+    dup.loc[5, "PLAYER_NAME"] = "Player 1"
+    with pytest.raises(ValueError, match="board rows"):
+        analyst.apply_overrides(dup, [_ov("Player 1", "rank_delta", -1)])
+
+
+def test_trigger_list_flags_each_category():
+    board = pd.DataFrame({
+        "PLAYER_ID": [1, 2, 3, 4],
+        "PLAYER_NAME": ["Alpha One", "Beta Two", "Gamma Three", "Rookie Seed"],
+        "rank": [1, 2, 60, 90],
+        "breakout_p": [0.0, 0.0, 0.9, 0.0],
+        "breakout_flag": [0, 0, 1, 0],
+        "market_priced": [0, 0, 0, 1],
+    })
+    consensus = pd.DataFrame({
+        "player": ["Alpha One", "Beta Two", "Gamma Three", "Rookie Seed", "Consensus Only"],
+        "consensus_rank": [1, 40, 55, 88, 120],
+    })
+    consensus["name_key"] = consensus["player"].map(analyst.name_key)
+    known = set(board.loc[board["market_priced"] == 0, "PLAYER_NAME"].map(analyst.name_key))
+
+    trig = analyst.trigger_list(board, consensus, known_keys=known, returnee_ids={2})
+    by_name = trig.set_index("PLAYER_NAME")["triggers"].str.split(",").to_dict()
+    assert "Alpha One" not in by_name                      # no gap, no flags
+    assert set(by_name["Beta Two"]) == {"rank_gap", "injury_returnee"}
+    assert "breakout" in by_name["Gamma Three"]
+    assert set(by_name["Rookie Seed"]) == {"rookie"}
+    assert set(by_name["Consensus Only"]) == {"not_on_board", "rookie"}
+    # sorted by best rank on either list
+    assert list(trig["PLAYER_NAME"])[0] == "Beta Two"
+
+
+def test_severe_returnees_windows_on_spell_end():
+    spells = pd.DataFrame({
+        "PLAYER_ID": [1, 2, 3],
+        "start": pd.to_datetime(["2026-01-01", "2024-01-01", "2026-02-01"]),
+        "end": pd.to_datetime(["2026-06-01", "2024-06-01", "2026-05-01"]),
+        "days": [151, 151, 89],
+        "notes": ["torn ACL surgery", "torn achilles", "sore hamstring"],
+    })
+    out = analyst.severe_returnees(spells, "2026-10-01")
+    assert out == {1}  # 2 ended outside 18m; 3 isn't severe

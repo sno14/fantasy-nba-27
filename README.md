@@ -65,6 +65,10 @@ scripts/
                    derivations; 2026-27 publishes ~mid-Aug (vintage warning until then)
   draft_sheet.py   the decision sheet (D1): VOR vs league replacement + ADP availability +
                    rookie market-seed (market_priced) + breakout_p/ps_* pass-through
+  analyst_triggers.py  D2.1 pre-draft review list: top-200 board-vs-consensus rank gaps +
+                   breakout flags + severe-injury returnees (18m) + rookies
+  apply_analyst.py D2.2 analyst overrides (config/analyst_overrides.yaml): board A -> board B,
+                   deterministic + audited; board A's file is never touched
   darko_report.py  DARKO overlay: minutes/rank disagreement report (pull_darko.py fetches)
   explore.py       local interactive Streamlit explorer
 data/              raw/ and processed/ caches (gitignored)

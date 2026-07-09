@@ -410,7 +410,10 @@ eval-only (opt-in `--recency`); the shipped board uses the plain `learned` found
       Basketball Monster captures all still showed 2023-24 boards (verified: Wemby ADP 19,
       no 2024 rookies, Embiid #1 g=39). 3/4 seasons < the ≥4 gate ⇒ benchmark-only this
       season, **archive from today**, re-arm the A/B next offseason on the accumulated pulls.
-- [ ] **Analyst pass (EXP-029, Step D2, 2026-07-09):** the graded human-judgment layer —
+- [ ] **Analyst pass (EXP-029, Step D2, 2026-07-09; machinery built + tested 2026-07-10 —
+      `models/analyst.py`, `scripts/apply_analyst.py`, `scripts/analyst_triggers.py`,
+      `config/analyst_overrides.yaml`; the pass + freeze stay calendar-locked):** the graded
+      human-judgment layer —
       pre-draft review of every big board-vs-consensus disagreement, breakout flag, injury
       returnee, and rookie; adjustments + written rationales committed to
       `config/analyst_overrides.yaml`; **dual-board freeze** (pure model A vs analyst-adjusted
