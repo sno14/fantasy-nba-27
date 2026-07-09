@@ -95,7 +95,7 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | R3 | 1.5 | Volume/efficiency split + pace normalization | EXP-024 | ☐ | ☐ deferred* |
 | 7 | 2 | Injury/availability data | EXP-015 | ☑ | ☑ (split: GP rejected · MC tails adopted) |
 | 8 | 2 | Dated transactions + preseason rosters + vacated usage | EXP-016/016b | ☑ | ☑ (016 adopted · 016b parked) |
-| 9 | 2 | Market benchmark (expert consensus + ADP-for-availability) | EXP-017(+b) | ☐ | ☐ |
+| 9 | 2 | Market benchmark (expert consensus + ADP-for-availability) | EXP-017(+b) | ☑ | ☑ (017 adopted live · 017b waived — archives <4 seasons; re-pull Sept, re-arm 2027) |
 | 9b | 2 | Breakout archetype layer, recall-gated | EXP-026 | ☐ | ☐ |
 | 9c | 2 | Coach changes + preseason-October logs (+ win totals) | EXP-027 | ☐ | ☐ |
 | 9d | 2 | Rookie model (draft slot × landing spot) | EXP-028 | ☐ | ☐ |

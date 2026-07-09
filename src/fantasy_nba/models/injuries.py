@@ -67,6 +67,9 @@ ALIASES: dict[str, str] = {
     # 2026-07-09 — initial map from the first full-history match report:
     "dj augustine": "dj augustin",        # PST misspelling (35 events)
     "roy devyn marble": "devyn marble",   # PST uses the full given name
+    # 2026-07-09 — market sources (Step 9): full given names vs our stats' short forms
+    "alexandre sarr": "alex sarr",
+    "nicolas claxton": "nic claxton",
 }
 
 # Append-only, dated list of *known-unresolvable* collisions: (name_key, team, season-start yr)

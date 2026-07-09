@@ -376,15 +376,20 @@ eval-only (opt-in `--recency`); the shipped board uses the plain `learned` found
       unbacktested** (no historical DARKO snapshots) and, honestly, **modest value**: DARKO's strength
       is rates (already ours, EXP-001), its minutes is its *weakest* stat (our need), and rookies are
       placeholder-initialized — so it's a risk/disagreement highlighter, not a mover fix.
-- [ ] Pull the market benchmark — **source hierarchy (user, 2026-07-09):** expert consensus
-      rankings (Hashtag Basketball; Basketball Monster if exportable) are the **value** signal —
-      they import the human-intel layer (camp reports, coach quotes) without scraping news;
-      platform ADP (Yahoo/ESPN) is too noisy for value and is kept **only** for the draft-day
-      availability column. Spec: implementation-plan Step 9.
-- [ ] **Test (EXP-017b):** `market_gap = our rank − consensus rank` as a learned *feature* —
-      runs now if ≥4 seasons of historical preseason rankings/ADP are recoverable, else
-      benchmark-only + archive from today, re-arm next season. Standing question: where we
-      systematically disagree, who's right — and does blending wash out our mover edge?
+- [x] **Market benchmark pulled + reporting (EXP-017, adopted live, 2026-07-09):**
+      `scripts/pull_market.py` — Hashtag **points-league** rankings (the expert-consensus value
+      signal, 579 rows, plain requests) + FantasyPros consensus ADP (availability only, 260
+      rows), date-stamped append-only like DARKO, alias-hardened name join (100% of our
+      top-150). `scripts/market_report.py` — sleepers/fades vs consensus (rank_gap + risk
+      column) and the D1.4 "likely gone by pick" ADP column. Re-pull in Sept when both
+      sources flip to 2026-27 preseason boards (a vintage note prints on every report).
+- [x] **Test (EXP-017b): waived-with-condition (the EXP-010 waiver), 2026-07-09.** Archive
+      audit: Wayback has genuine preseason snapshots for 2022-23 and 2023-24 (both sources,
+      rookie-verified) and 2025-26 (ADP only; Hashtag snapshot is 25 rows deep), but
+      **2024-25 preseason is unrecoverable** — the Aug-2024 FP/Hashtag and Oct-2024
+      Basketball Monster captures all still showed 2023-24 boards (verified: Wemby ADP 19,
+      no 2024 rookies, Embiid #1 g=39). 3/4 seasons < the ≥4 gate ⇒ benchmark-only this
+      season, **archive from today**, re-arm the A/B next offseason on the accumulated pulls.
 - [ ] **Analyst pass (EXP-029, Step D2, 2026-07-09):** the graded human-judgment layer —
       pre-draft review of every big board-vs-consensus disagreement, breakout flag, injury
       returnee, and rookie; adjustments + written rationales committed to

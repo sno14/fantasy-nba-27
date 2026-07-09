@@ -54,6 +54,9 @@ scripts/
   pull_injuries.py prosportstransactions scraper (injuries + transactions; drives the real
                    Edge/Chrome via Playwright — a browser window opens; incremental by date)
   eval_gp.py       EXP-015 judgments: GP point estimate (learned_inj) + Monte-Carlo GP tails
+  pull_market.py   market boards, date-stamped: Hashtag points-league consensus (value) +
+                   FantasyPros ADP (availability); --wayback replays archived snapshots
+  market_report.py board vs consensus: sleepers/fades (rank_gap + risk) + ADP availability column
   darko_report.py  DARKO overlay: minutes/rank disagreement report (pull_darko.py fetches)
   explore.py       local interactive Streamlit explorer
 data/              raw/ and processed/ caches (gitignored)

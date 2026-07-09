@@ -696,15 +696,53 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   landing-spot vacancy), both of which take `VACATED_FEATURES`/`vacated_feature_table` as
   inputs. Do not re-A/B vacancy variants against the standard mover gate.
 
+### EXP-017 — market benchmark: expert consensus + ADP  ·  Status: **adopted (live overlay)** · EXP-017b **waived-with-condition** (archives < 4 seasons; archiving from today)
+- **Date:** 2026-07-09  ·  **Commit:** this commit  ·  **Step:** implementation-plan Step 9
+- **What (EXP-017):** the market boards as benchmark + disagreement-finder, per the 2026-07-09
+  source hierarchy. `scripts/pull_market.py`: **Hashtag Basketball points-league rankings**
+  (the expert-consensus *value* signal — 579 rows, public HTML, plain requests, no Cloudflare)
+  and **FantasyPros consensus ADP** (Yahoo/ESPN average — the *availability* signal only, 260
+  rows; already showing genuine 2026-27 draft data in July). Date-stamped append-only
+  (`data/raw/market/<source>_<date>.parquet`, the DARKO-archive pattern). Name join =
+  shared normalizer + the dated cross-source alias map (`injuries.ALIASES` — 2 market aliases
+  added); match **100% of our top-150** (99.5% of all 579). `scripts/market_report.py`:
+  sleepers/fades vs consensus (`rank_gap = our_rank − consensus_rank`, risk column attached)
+  + the D1.4 "likely gone by pick" ADP column. Verified end-to-end against the saved
+  `learned_2026-27` board.
+- **Vintage caveat (prints on every report):** in July, Hashtag's board is still last season's
+  — the consensus benchmark for the 2026-27 draft arrives when they publish preseason
+  rankings (~Sept). FantasyPros ADP is already 2026-27. Re-pull both in September; pulls are
+  ~seconds each.
+- **EXP-017b (market-gap as a feature) — the retrievability audit and the branch taken:**
+  Wayback Machine holds *genuine* preseason snapshots — rookie/trade-marker verified — for:
+  **2022-23** (FP ADP Oct-02-2022, Banchero ADP 66 ✓; Hashtag Oct-05-2022, ~125 rows ✓),
+  **2023-24** (FP Oct-17-2023, Wemby 20 ✓; Hashtag Oct-05-2023, ~180 rows ✓), **2025-26**
+  (FP Oct-05-2025, Flagg 36 ✓; Hashtag snapshot only ~25 rows — too thin). **2024-25 is
+  unrecoverable:** the only captures (FP Aug-03-2024, Hashtag Aug-17-2024, Basketball Monster
+  Oct-02-2024) all still displayed **2023-24 boards** (FP: Wemby ADP 19 ≈ his rookie-year
+  ADP, zero 2024 rookies in 257 rows; HT: Embiid #1; BBM: Embiid #1 with g=39 — trailing
+  player-rater values, and BBM's projection views are subscriber-side). 3 of 4 eval seasons
+  < the spec's ≥4 gate ⇒ **benchmark-only this season, archive from today, re-arm next
+  offseason** (`pull_market.py --wayback TIMESTAMP` can replay the audit / ingest archives
+  later — the parsers handle the 2022–2025 schema drift).
+- **Skeptic pass:** n/a for the live benchmark (no model change). For the audit: vintage was
+  established from *content* (rookie presence, known ranks), never from snapshot dates —
+  exactly the check that caught three stale-page traps that would have poisoned a backtest
+  with lagged-actuals ranks masquerading as preseason consensus.
+- **Ledger note:** the standing question (where we disagree, who's right) starts being
+  answerable in April 2027 from today's archive. EXP-026's `above-market rate` metric
+  consumes the September Hashtag pull; D1.5's rookie market-seed consumes the FantasyPros
+  pull (rookies are its expected top-150 unmatched rows — they're kept in the parquet).
+
 _Next experiments — numbering reserved by [`docs/implementation-plan.md`](docs/implementation-plan.md)
 (the execution spec; run in its Step order, as re-routed by the dated notes in its tracker — latest:
 the **2026-07-09 draft-focus re-route + gap-closer addendum**). Done: EXP-011…014 (Phase 0+1),
 EXP-018 (engine; naive gate parked), **EXP-015** injuries (Step 7, split verdict above — scraper +
 spells now serve Step 8 and the Step-12 live feed), **EXP-016** honest preseason maps (adopted;
-backtest-correctness fix) + **EXP-016b** vacated usage (parked; feeds EXP-026/028).
-**Draft-facing, calendar-critical, in order: EXP-017(+b)** market: expert consensus (Hashtag/BBM) for value,
-platform ADP for the availability column only; market-gap as a feature if historical archives are
-recoverable (Step 9) → **EXP-026** breakout archetype layer, recall-gated (Step 9b) → **EXP-027**
+backtest-correctness fix) + **EXP-016b** vacated usage (parked; feeds EXP-026/028),
+**EXP-017** market benchmark (adopted live; 017b waived — 2024-25 preseason archives proved
+unrecoverable, archiving from today, re-arm next offseason).
+**Draft-facing, calendar-critical, in order:** **EXP-026** breakout archetype layer, recall-gated (Step 9b) → **EXP-027**
 coach changes + preseason-October logs (Step 9c) → **EXP-028** rookie model, draft slot × landing
 spot, gate = beat pick-order (Step 9d) → D1 decision layer incl. the D1.5 rookie market-seed
 (product; lock real scoring first) → **EXP-029** analyst pass + dual-board freeze (Step D2, last
