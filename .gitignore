@@ -4,6 +4,8 @@ data/processed/
 *.parquet
 *.csv
 !config/*.csv
+# Manual-data exception (Step 9c): tiny, static, hand-curated — the repo's source of truth.
+!data/manual/*.csv
 
 # Python
 __pycache__/

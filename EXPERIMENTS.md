@@ -779,6 +779,70 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   role signals, EXP-028 rookies, and the market-gap re-arm. Do not re-run flag-zone sizing
   grids on these features.
 
+### EXP-027 — coach changes + preseason-October logs (+ win-totals rider)  ·  Status: **split — (a) coach rejected · (b) preseason roles adopted (October window) · (c) win totals waived**
+- **Date:** 2026-07-10  ·  **Commit:** this commit  ·  **Step:** implementation-plan Step 9c
+- **Hypothesis (per EXP-026's standing lesson):** the remaining preseason recall levers are
+  **new information**, not re-ranking. Two cheap exogenous groups: (a) coaching changes
+  (effect hypothesized in new-coach × depth/age interactions — a new coach reshuffles the
+  *rotation*); (b) preseason-October game logs (`ps_mpg` / `ps_mpg_delta` / `ps_start_share`,
+  role only, never rates — the latest-arriving pre-draft signal).
+- **Build:** `data/manual/coach_changes.csv` — the repo's first committed manual dataset
+  (143 rows, 2009-10…2026-27; opening-night-coach-differs rule, `interim` = mid-prior-season
+  takeover retained; curated from the B-R/Wikipedia coach records, 2013-14 + 2016-17 verified
+  row-for-row, 2026-27 = the six completed 2026 hires per the June-23 tracker: CHI Splitter /
+  DAL May / MIL Jenkins / NOP Mosley / ORL Sweeney / POR Nori). `models/coaches.py`
+  (SEASON-keyed table on the honest Oct-1 map; depth_rank = prior-minutes rank on the mapped
+  roster) and `models/preseason.py` (Sep-1→Dec-31 window per season start-year — excludes the
+  July-2020 bubble rows, keeps the Dec-2011/Dec-2020 late preseasons; `ps_start_share` =
+  top-5-team-minutes proxy, LeagueGameLog has no starter flag; no-preseason-appearance stays
+  NaN — "role unknown", never 0). Variants `learned_coach` / `learned_ps`; A/B 4 seasons ×
+  seeds {0,1,2}, model-pool + realized-pool views, player-clustered CIs (`--ci` now repeatable).
+- **Rule-11 hygiene:** all features pass (worst |ρ| = 0.753, ps_mpg_delta vs proj_mpg — vets
+  rest in October, so the delta anti-correlates with prior MPG; coach interactions ≤ 0.31).
+  Gain shares tell the story early: preseason group **25-29%** of y_mpg/y_gp gain; coach
+  group ~1%.
+- **(a) `learned_coach` — rejected.** Realized-top-150 recall Δ mean **−0.2pp** (0/−2.0/+1.3);
+  big-riser capture 62→63 / 62→64 / 65→66 (**+1.2pp**, under the +2pp arm); pooled aggregate
+  MAE Δ +0.005 with seed spread 0.13 (noise); paired CIs flip sign across seeds (big-riser
+  delta +0.34*/+0.15/−0.09 — seed luck by rule 8). The hypothesized interaction effect is too
+  diffuse at season granularity. The CSV stays committed — EXP-028's `team_expected_wins`
+  slot and the D2 analyst pass can still read it as context.
+- **(b) `learned_ps` — adopted (October window).** The recall-arm gate (EXP-016b form:
+  realized big-riser recall +2pp with aggregate MAE not worse) passes **on every seed**:
+  big-riser capture 62→74 / 62→75 / 65→71 = **+9.2pp mean** (min seed +5.4pp; mean > seed
+  spread 6.2pp); realized-top-150 recall 71.3→74.7 / 74.0→74.0 / 72.0→74.7 (**+2.0pp mean** —
+  the first preseason recall movement in the program); pooled aggregate MAE **better all
+  three seeds** (−0.131/−0.130/−0.167, spread 0.037; 9/12 season-seed cells; 2025-26 the
+  largest, −0.46…−0.56, with delta_corr 0.32→0.49 and sign-acc 0.61→0.70). Trade-off, stated
+  honestly: paired big-riser *bias* on shared players is slightly more negative
+  (−0.28…−0.42/seed, CI excludes 0 in 1 of 3) — the new pool members are deep sleepers whose
+  point estimates stay low; recall was the gate, per EXP-011/026.
+- **(c) Vegas win totals — waived (non-trivial scrape).** sportsoddshistory.com now 301s to
+  covers.com with JS-rendered content; Basketball-Reference preseason-odds pages 403
+  automated fetches. Fails the "include only if trivial" bar ⇒ D1.4 `team_priors.yaml`
+  manual entry stands.
+- **Ships:** ps columns on the draft sheet regardless of verdict (`scripts/project.py
+  --preseason`); **`--model learned_ps` = the adopted pre-draft board configuration** once
+  the target's October games are cached (July boards keep `--model learned`; the rule-10a
+  freeze + D1 sheet should regenerate with it days before the draft). Until then it no-ops
+  with a pointer (`re-pull preseason_game_logs` in October).
+- **Skeptic pass:** (leakage) preseason games of S predate every regular-season outcome of S —
+  the cutpoint for this group is "day before the opener", deliberately later than the Oct-1
+  injury/roster convention because the draft actually happens then (stated as a design fact,
+  not an accident); coach rows are opening-night facts knowable at the draft; both tables
+  SEASON-keyed and unit-tested (bubble filter, NaN semantics, interaction math, empty-target
+  hard-fail). (selection) pool = each model's own top-150 unchanged; the decisive metric is
+  judged on the *realized* pool. (season concentration) the (a) null is uniform; the (b)
+  recall gain is positive in 3-4 of 4 seasons on every seed (largest 2025-26, never
+  negative); the MAE win is largest in 2025-26 but positive-mean on all seeds.
+  Eval-window-conditional until 2026-27 confirms (rule 10c).
+- **Ledger note:** this is the program's proof that the missing riser signal is **new
+  information arriving late**: three role-only columns from ~4 October games move recall more
+  than every feature engineered from prior-season box scores combined (EXP-008/009/012/016b/
+  026 all null on recall). Consequence for the calendar: the board that matters is built
+  **after preseason play, days before the draft** — wire the D1 sheet and the dual freeze to
+  `learned_ps`, and re-pull `preseason_game_logs` in mid-October 2026.
+
 _Next experiments — numbering reserved by [`docs/implementation-plan.md`](docs/implementation-plan.md)
 (the execution spec; run in its Step order, as re-routed by the dated notes in its tracker — latest:
 the **2026-07-09 draft-focus re-route + gap-closer addendum**). Done: EXP-011…014 (Phase 0+1),
@@ -787,14 +851,14 @@ spells now serve Step 8 and the Step-12 live feed), **EXP-016** honest preseason
 backtest-correctness fix) + **EXP-016b** vacated usage (parked; feeds EXP-026/028),
 **EXP-017** market benchmark (adopted live; 017b waived — 2024-25 preseason archives proved
 unrecoverable, archiving from today, re-arm next offseason), **EXP-026** breakout layer (both
-wirings rejected; breakout_p ships as a draft-sheet column).
-**Draft-facing, calendar-critical, in order: EXP-027**
-coach changes + preseason-October logs (Step 9c; the remaining preseason recall levers are new
-information, not re-ranking — EXP-026's lesson) → **EXP-028** rookie model, draft slot × landing
+wirings rejected; breakout_p ships as a draft-sheet column), **EXP-027** coach + October logs
+(split above — `learned_ps` is the adopted October board; re-pull preseason logs mid-Oct).
+**Draft-facing, calendar-critical, in order: EXP-028** rookie model, draft slot × landing
 spot, gate = beat pick-order (Step 9d) → D1 decision layer incl. the D1.5 rookie market-seed
 (product; **scoring + league confirmed 2026-07-10: ESPN default points, 10 teams, weekly H2H —
 scoring.yaml already matched, no re-runs**) → **EXP-029** analyst pass + dual-board freeze (Step D2, last
-~2 weeks before the draft; scores April 2027). **In-season, before opening night: EXP-019** (Step 11)
+~2 weeks before the draft; both freeze boards regenerate with `learned_ps` after preseason tips;
+scores April 2027). **In-season, before opening night: EXP-019** (Step 11)
 · Step 12 nightly pipeline · **EXP-020** benchmarks · **EXP-021** learned ranges (input: the
 EXP-013c empirical-residual-CDF note). Deferred: **EXP-022/023/024** (they chase the ≈0 preseason
 gap) · **EXP-025** (reserved) rotation-survival hurdle._

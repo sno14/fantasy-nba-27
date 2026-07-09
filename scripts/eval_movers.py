@@ -60,6 +60,14 @@ def _needs_breakout(variant_names: list[str]) -> bool:
     return any(VARIANT_SPECS[v].get("use_breakout") for v in variant_names)
 
 
+def _needs_coach(variant_names: list[str]) -> bool:
+    return any(VARIANT_SPECS[v].get("use_coach") for v in variant_names)
+
+
+def _needs_preseason(variant_names: list[str]) -> bool:
+    return any(VARIANT_SPECS[v].get("use_preseason") for v in variant_names)
+
+
 def _pooled(per_bucket: pd.DataFrame, value_cols: list[str]) -> pd.DataFrame:
     """n-weighted mean of per-bucket metrics across seasons, ordered faller -> riser."""
     pooled = (
@@ -100,9 +108,10 @@ def main() -> None:
     parser.add_argument("--oracles", action="store_true",
                         help="Step 3: add oracle_minutes/oracle_rates rows built from the "
                              "learned board (EXP-011b decomposition).")
-    parser.add_argument("--ci", nargs=2, metavar=("MODEL_A", "MODEL_B"),
+    parser.add_argument("--ci", nargs=2, metavar=("MODEL_A", "MODEL_B"), action="append",
                         help="Paired bootstrap 90%% CI on per-bucket bias delta (B − A), pooled "
-                             "across seasons — the noise guard for adopt gates.")
+                             "across seasons — the noise guard for adopt gates. Repeatable "
+                             "(one pair per flag) so a single run covers several candidates.")
     parser.add_argument("--seed", type=int, default=None,
                         help="Override LightGBM random_state for all learned models. The "
                              "seed-stability protocol: run at 0/1/2 and average before judging "
@@ -143,6 +152,27 @@ def main() -> None:
         print(f"[breakout] table rows={len(breakout_table):,} over "
               f"{breakout_table['SEASON'].nunique()} seasons")
 
+    coach_table = None
+    if _needs_coach(variants):
+        from fantasy_nba.models import coaches as coa_mod
+
+        coach_table = coa_mod.coach_feature_table(
+            season_stats, storage.read("transactions"), bio,
+        )
+        n_new = int(coach_table["new_coach"].sum())
+        print(f"[coach] table rows={len(coach_table):,} over "
+              f"{coach_table['SEASON'].nunique()} seasons ({n_new:,} new-coach player-rows)")
+
+    preseason_table = None
+    if _needs_preseason(variants):
+        from fantasy_nba.models import preseason as pre_mod
+
+        preseason_table = pre_mod.preseason_feature_table(
+            storage.read("preseason_game_logs"), season_stats,
+        )
+        print(f"[preseason] table rows={len(preseason_table):,} over "
+              f"{preseason_table['SEASON'].nunique()} seasons")
+
     def _run_view(pool_kind: str):
         per_bucket_frames, dir_frames, pred_frames = [], [], []
         pools_by_model: dict[str, list[pd.DataFrame]] = {}
@@ -152,7 +182,8 @@ def main() -> None:
                 game_logs=game_logs, variants=variants, oracles=args.oracles,
                 seed=args.seed, return_pools=True, pool=pool_kind, rosters=rosters,
                 injuries=injuries, vacated_table=vacated_table, transactions=transactions,
-                breakout_table=breakout_table,
+                breakout_table=breakout_table, coach_table=coach_table,
+                preseason_table=preseason_table,
             )
             for frame in (per_bucket, directional, per_pred):
                 frame.insert(0, "season", season)
@@ -194,8 +225,7 @@ def main() -> None:
             print("\n=== Reducible gap (measured bias − floor @ sigma 1.0) ===")
             print(gap.round(3).to_string(index=False))
 
-        if args.ci:
-            a, b = args.ci
+        for a, b in (args.ci or []):
             if a not in pools_by_model or b not in pools_by_model:
                 raise SystemExit(f"--ci models must be in the run; have {sorted(pools_by_model)}")
             ci = bootstrap_bias_delta_ci(

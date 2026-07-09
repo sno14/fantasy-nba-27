@@ -88,6 +88,10 @@ VARIANT_SPECS: dict[str, dict] = {
     "learned_vac": {"use_vacated": True},
     # EXP-026a (Step 9b) — breakout-archetype features (needs breakout_table):
     "learned_breakout": {"use_breakout": True},
+    # EXP-027a/b (Step 9c) — coach-change interactions / preseason-October role (need
+    # coach_table / preseason_table):
+    "learned_coach": {"use_coach": True},
+    "learned_ps": {"use_preseason": True},
 }
 
 
@@ -104,6 +108,8 @@ def project_models(
     vacated_table: pd.DataFrame | None = None,
     transactions: pd.DataFrame | None = None,
     breakout_table: pd.DataFrame | None = None,
+    coach_table: pd.DataFrame | None = None,
+    preseason_table: pd.DataFrame | None = None,
 ) -> dict[str, pd.DataFrame]:
     """Project ``target_season`` with every model using **only** prior-season data.
 
@@ -195,6 +201,16 @@ def project_models(
                     raise ValueError(f"Variant {name!r} needs breakout_table "
                                      "(breakout.breakout_feature_table).")
                 kw["breakout_table"] = breakout_table
+            if kw.get("use_coach"):
+                if coach_table is None:
+                    raise ValueError(f"Variant {name!r} needs coach_table "
+                                     "(coaches.coach_feature_table).")
+                kw["coach_table"] = coach_table
+            if kw.get("use_preseason"):
+                if preseason_table is None:
+                    raise ValueError(f"Variant {name!r} needs preseason_table "
+                                     "(preseason.preseason_feature_table).")
+                kw["preseason_table"] = preseason_table
             models[name] = project_learned(train_ss, train_bio, target_season, cfg=cfg, **kw)
     return models
 

@@ -47,7 +47,8 @@ scripts/
   pull_data.py     CLI to fetch and cache raw data
   project.py       generate the projection / draft board (+ risk ranges, --rank-by)
   backtest.py      no-leakage backtest on a top-N draft pool
-  eval_movers.py   mover-segmented Stage-7 eval (--variants, --floor, --oracles, --actual-pool, --ci, --seed)
+  eval_movers.py   mover-segmented Stage-7 eval (--variants, --floor, --oracles, --actual-pool,
+                   --ci A B (repeatable), --seed)
   eval_quantiles.py  EXP-013c quantile-head eval: pinball loss vs baselines + per-bucket coverage
   tune_learned.py  EXP-013d nested walk-forward LGBM tuner (grid on folds <= 2021-22 only)
   eval_asof.py     EXP-018 in-season gate: project_asof vs frozen-T0 vs naive updater (--ewma, --blend)
@@ -61,6 +62,10 @@ scripts/
   darko_report.py  DARKO overlay: minutes/rank disagreement report (pull_darko.py fetches)
   explore.py       local interactive Streamlit explorer
 data/              raw/ and processed/ caches (gitignored)
+  manual/          hand-curated datasets — committed (the gitignore's manual-data exception):
+                   coach_changes.csv = opening-night head-coach changes 2009-10..2026-27,
+                   curated from Basketball-Reference coach pages (interim = took over
+                   mid-prior-season or opens the season interim); feeds models/coaches.py
 tests/
 ```
 
@@ -82,7 +87,9 @@ python -c "from fantasy_nba.scoring import load_scoring; print(load_scoring())"
 
 # Generate the 2026-27 draft board with risk ranges (safe / median / floor / ceiling)
 # --breakout adds the EXP-026 breakout_p column (informational option-value flag)
-python scripts/project.py --target 2026-27 --rank-by safe --breakout --top 50
+# --preseason adds the Step-9c October-role columns (ps_mpg / ps_mpg_delta / ps_start_share)
+#   once the target season's preseason games are cached (re-pull preseason_game_logs in Oct)
+python scripts/project.py --target 2026-27 --rank-by safe --breakout --preseason --top 50
 
 # Explore data + projections interactively in the browser
 python -m streamlit run scripts/explore.py

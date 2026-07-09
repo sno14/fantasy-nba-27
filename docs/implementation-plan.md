@@ -97,7 +97,7 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | 8 | 2 | Dated transactions + preseason rosters + vacated usage | EXP-016/016b | ☑ | ☑ (016 adopted · 016b parked) |
 | 9 | 2 | Market benchmark (expert consensus + ADP-for-availability) | EXP-017(+b) | ☑ | ☑ (017 adopted live · 017b waived — archives <4 seasons; re-pull Sept, re-arm 2027) |
 | 9b | 2 | Breakout archetype layer, recall-gated | EXP-026 | ☑ | ☑ (both wirings rejected; breakout_p column ships) |
-| 9c | 2 | Coach changes + preseason-October logs (+ win totals) | EXP-027 | ☐ | ☐ |
+| 9c | 2 | Coach changes + preseason-October logs (+ win totals) | EXP-027 | ☑ | ☑ (a coach rejected · b `learned_ps` adopted-Oct, big-riser capture +9pp · c waived) |
 | 9d | 2 | Rookie model (draft slot × landing spot) | EXP-028 | ☐ | ☐ |
 | D1 | 2.5 | Decision layer: league config, VOR, schedule, rookie seed | — (product) | ◐ league.yaml (D1.1 ✅ confirmed 2026-07-10: ESPN default points, 10 teams, weekly H2H — scoring.yaml already matched) | ☐ |
 | D2 | 2.5 | Analyst pass + dual-board freeze | EXP-029 | ☐ | ☐ |
@@ -913,6 +913,17 @@ scrape is trivial; otherwise D1 manual entry stands.
 
 **Done when:** one EXP-027 ledger entry with a/b/c sub-verdicts; preseason-minutes columns
 wired to the draft sheet; ROADMAP 7.A/7.B addenda boxes ticked.
+
+> **As completed (2026-07-10, local):** split verdict — **(a) rejected** (`learned_coach`
+> noise on every arm; the hand-curated CSV stays committed, `data/manual/coach_changes.csv`,
+> the gitignore's first manual-data exception), **(b) adopted for the October window**
+> (`learned_ps`: realized big-riser capture +9.2pp mean over seeds, aggregate MAE better all
+> seeds — the first preseason recall movement in the program; `scripts/project.py --model
+> learned_ps` + `--preseason` columns), **(c) waived** (sportsoddshistory now JS-rendered on
+> covers.com; B-R 403s — D1.4 manual `team_priors.yaml` stands). Full numbers in EXP-027.
+> **Calendar consequence:** the D1 sheet and the rule-10a dual freeze regenerate with
+> `learned_ps` after preseason play in mid-October 2026 (`pull_data.py --datasets
+> preseason_game_logs` then `project.py --model learned_ps --preseason`).
 
 ## Step 9d — EXP-028: rookie model (draft slot × landing spot) — Stage 4, first cut
 

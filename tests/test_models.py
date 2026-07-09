@@ -5,8 +5,8 @@ import pandas as pd
 import pytest
 
 from fantasy_nba.models import (
-    aging, breakout, context, darko, durability, injuries, learned, minutes, recency, rosters,
-    uncertainty,
+    aging, breakout, coaches, context, darko, durability, injuries, learned, minutes, preseason,
+    recency, rosters, uncertainty,
 )
 from fantasy_nba.models._core import COUNTING
 
@@ -596,3 +596,119 @@ def test_injury_name_resolution_team_disambiguation_and_hard_fail():
     mid = injuries.injury_features(spells, "2024-02-01").set_index("PLAYER_ID")
     assert mid.loc[5, "inj_days_1y"] == 31  # Jan 1 -> Feb 1 only
     assert mid.loc[5, "inj_recency_days"] == 0  # still out
+
+
+def test_coach_feature_table_interactions_and_depth():
+    # Prior season 2023-24: AAA has P1 (young, minutes leader) + P2 (veteran backup);
+    # BBB has P3. Only AAA gets a new (interim) coach for 2024-25.
+    ss = pd.DataFrame({
+        "SEASON": ["2023-24"] * 3,
+        "PLAYER_ID": [1, 2, 3],
+        "TEAM_ABBREVIATION": ["AAA", "AAA", "BBB"],
+        "MIN": [1800.0, 900.0, 1500.0],
+        "GP": [70, 60, 65],
+    })
+    bio = pd.DataFrame({
+        "SEASON": ["2023-24"] * 3, "PLAYER_ID": [1, 2, 3], "AGE": [21, 28, 25],
+    })
+    tx = pd.DataFrame(columns=["date", "team", "acquired", "relinquished", "notes"])
+    cc = pd.DataFrame({
+        "season": ["2024-25"], "team": ["AAA"], "new_coach": ["New Guy"], "interim": [1],
+    })
+
+    t = coaches.coach_feature_table(ss, tx, bio, cc, seasons=["2024-25"])
+    f = t.set_index("PLAYER_ID")
+
+    assert f.loc[1, "new_coach"] == 1 and f.loc[1, "new_coach_interim"] == 1
+    assert f.loc[1, "new_coach_x_depth"] == 1          # minutes leader -> depth rank 1
+    assert f.loc[1, "new_coach_x_young"] == 1          # target age 22
+    assert f.loc[2, "new_coach_x_depth"] == 2          # backup -> depth rank 2
+    assert f.loc[2, "new_coach_x_young"] == 0          # target age 29
+    assert f.loc[3, ["new_coach", "new_coach_interim",
+                     "new_coach_x_depth", "new_coach_x_young"]].eq(0).all()
+
+
+def test_coach_changes_csv_loads_and_is_clean():
+    # Guards the committed manual dataset itself: schema, no dup (season, team),
+    # interim binary, full curated era present.
+    df = coaches.load_coach_changes()
+    assert set(df["interim"].unique()) <= {0, 1}
+    assert df["team"].str.len().eq(3).all()
+    seasons = set(df["season"])
+    assert {"2009-10", "2013-14", "2020-21", "2026-27"} <= seasons
+    assert "2017-18" not in seasons  # the offseason with zero changes — a real fact, not a gap
+    # 2026-27 rows match the June-2026 tracker state (6 completed hires).
+    assert len(df[df["season"] == "2026-27"]) == 6
+
+
+def test_preseason_feature_table_role_math_and_bubble_filter():
+    # 2024-25 preseason: team 100 plays two October games; six players -> top-5 MIN proxy.
+    rows = []
+    mins_g1 = {1: 30, 2: 25, 3: 20, 4: 15, 5: 10, 6: 5}   # P6 not a "starter"
+    for pid, m in mins_g1.items():
+        rows.append({"SEASON": "2024-25", "PLAYER_ID": pid, "TEAM_ID": 100,
+                     "GAME_ID": "G1", "GAME_DATE": "2024-10-05", "MIN": m})
+    for pid, m in {1: 30, 3: 28, 4: 22, 5: 18, 6: 25}.items():  # P2 sits game 2
+        rows.append({"SEASON": "2024-25", "PLAYER_ID": pid, "TEAM_ID": 100,
+                     "GAME_ID": "G2", "GAME_DATE": "2024-10-08", "MIN": m})
+    # 2019-20 frame: one real October game + one July-2020 bubble scrimmage (must be dropped).
+    rows.append({"SEASON": "2019-20", "PLAYER_ID": 7, "TEAM_ID": 200,
+                 "GAME_ID": "G3", "GAME_DATE": "2019-10-06", "MIN": 20})
+    rows.append({"SEASON": "2019-20", "PLAYER_ID": 8, "TEAM_ID": 200,
+                 "GAME_ID": "G4", "GAME_DATE": "2020-07-22", "MIN": 30})
+    logs = pd.DataFrame(rows)
+
+    prior = pd.DataFrame({
+        "SEASON": ["2023-24"], "PLAYER_ID": [1], "MIN": [1750.0], "GP": [70],  # 25 MPG
+    })
+    t = preseason.preseason_feature_table(logs, prior)
+
+    f = t[t["SEASON"] == "2024-25"].set_index("PLAYER_ID")
+    assert f.loc[1, "ps_mpg"] == pytest.approx(30.0)
+    assert f.loc[1, "ps_start_share"] == pytest.approx(1.0)   # top-5 both games
+    assert f.loc[1, "ps_mpg_delta"] == pytest.approx(5.0)     # 30 vs prior 25 MPG
+    assert f.loc[2, "ps_mpg"] == pytest.approx(25.0)          # one appearance
+    assert f.loc[2, "ps_start_share"] == pytest.approx(0.5)   # started 1 of the team's 2
+    assert f.loc[6, "ps_start_share"] == pytest.approx(0.5)   # 6th man in G1, top-5 in G2
+    assert pd.isna(f.loc[2, "ps_mpg_delta"])                  # no prior season -> NaN, not 0
+
+    b = t[t["SEASON"] == "2019-20"]
+    assert set(b["PLAYER_ID"]) == {7}                         # bubble scrimmage row filtered
+
+
+def test_project_learned_coach_and_preseason_variants_run():
+    seasons = ["2019-20", "2020-21", "2021-22", "2022-23"]
+    ss, bio = _synthetic_league(seasons)
+    fast = {**learned.DEFAULT_LGBM_PARAMS, "n_estimators": 25}
+
+    # Season-keyed synthetic tables covering the training seasons + target (the contract).
+    blocks = []
+    for s in seasons[1:] + ["2023-24"]:
+        pids = ss["PLAYER_ID"].unique()
+        blocks.append(pd.DataFrame({
+            "SEASON": s, "PLAYER_ID": pids,
+            "new_coach": (pids % 3 == 0).astype(int),
+            "new_coach_interim": 0,
+            "new_coach_x_depth": (pids % 3 == 0).astype(int) * (pids % 12 + 1),
+            "new_coach_x_young": (pids % 6 == 0).astype(int),
+            "ps_mpg": 20.0 + (pids % 10),
+            "ps_mpg_delta": (pids % 5) - 2.0,
+            "ps_start_share": (pids % 4) / 4.0,
+        }))
+    table = pd.concat(blocks, ignore_index=True)
+    coach_t = table[["SEASON", "PLAYER_ID"] + coaches.COACH_FEATURES]
+    ps_t = table[["SEASON", "PLAYER_ID"] + preseason.PRESEASON_FEATURES]
+    # Half the pool has no preseason rows -> NaN path through LightGBM must work.
+    ps_t = ps_t[ps_t["PLAYER_ID"] % 2 == 0]
+
+    out_c = learned.project_learned(ss, bio, "2023-24", params=fast,
+                                    use_coach=True, coach_table=coach_t)
+    out_p = learned.project_learned(ss, bio, "2023-24", params=fast,
+                                    use_preseason=True, preseason_table=ps_t)
+    for out in (out_c, out_p):
+        assert out["gp"].between(1, 82).all() and out["mpg"].between(0, 48).all()
+
+    with pytest.raises(ValueError, match="coach_table"):
+        learned.project_learned(ss, bio, "2023-24", params=fast, use_coach=True)
+    with pytest.raises(ValueError, match="preseason_table"):
+        learned.project_learned(ss, bio, "2023-24", params=fast, use_preseason=True)

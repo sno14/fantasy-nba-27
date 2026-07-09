@@ -323,10 +323,15 @@ eval-only (opt-in `--recency`); the shipped board uses the plain `learned` found
       of its gate. Features stay: **EXP-026 (breakout layer) and EXP-028 (rookie model)
       consume them** — that's where vacated usage was always expected to pay (the Maxey
       pattern is archetype × vacancy, not a marginal bias fix).
-- [ ] **Cheap exogenous pair (2026-07-09, EXP-027, Step 9c):** hand-curated coach-change table
-      (the effect lives in new-coach × depth/age interactions) + **preseason-October game logs**
-      (`ps_mpg`, `ps_start_share` — the latest-arriving pre-draft role signal; ships to the
-      draft sheet regardless of the A/B verdict) + optional Vegas win-totals rider.
+- [x] **Cheap exogenous pair (EXP-027, Step 9c — split verdict 2026-07-10):** coach-change
+      interactions **rejected** (noise on every arm at season granularity; the hand-curated
+      `data/manual/coach_changes.csv` stays committed — the gitignore's manual-data
+      exception). **Preseason-October game logs adopted (October window):** `learned_ps`
+      pools +9.2pp more realized big risers at better aggregate MAE, all seeds — the
+      draft-day board regenerates with it after preseason play (`project.py --model
+      learned_ps`); `--preseason` ships the raw ps_mpg / ps_mpg_delta / ps_start_share
+      columns regardless. Win-totals rider **waived** (source now JS-rendered behind
+      covers.com; D1.4 manual entry stands).
 - [x] **Test:** ran with segments per the spec — the answer is no (see EXP-014).
 
 #### 7.B — Young-player trajectory / breakout layer  ← re-scoped 2026-07-09: a **recall-gated** breakout layer (EXP-026, implementation-plan Step 9b) — per EXP-011, never judged on per-player error (you can't know which of ~20 archetype fits pops; ranking them all above their market price *is* the edge)
@@ -346,6 +351,11 @@ eval-only (opt-in `--recency`); the shipped board uses the plain `learned` found
       what the board already knows — missed risers are deep because their projected level is
       honestly low pre-breakout. Remaining recall levers are new information: EXP-027
       preseason-October roles, EXP-028 rookies, market-gap re-arm.
+- [x] **Lesson confirmed (EXP-027b, 2026-07-10):** the first lever that moved preseason
+      recall was *new late-arriving information* — three role-only October columns
+      (`learned_ps`, big-riser capture +9.2pp, MAE better all seeds) beat every
+      prior-box-score feature group tried. The pre-draft board is an **October** artifact:
+      re-pull preseason logs mid-Oct, regenerate the sheet + both freeze boards with it.
 
 #### 7.C — External availability / injury data  ← DONE (EXP-015, 2026-07-09: split verdict)
 - [x] Ingested: prosportstransactions injury+IL history 2009→today (`scripts/pull_injuries.py`,

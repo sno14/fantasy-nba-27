@@ -11,6 +11,7 @@ CONFIG_DIR = ROOT / "config"
 DATA_DIR = ROOT / "data"
 RAW_DIR = DATA_DIR / "raw"
 PROCESSED_DIR = DATA_DIR / "processed"
+MANUAL_DIR = DATA_DIR / "manual"  # hand-curated, committed (Step 9c gitignore exception)
 
 SCORING_CONFIG = CONFIG_DIR / "scoring.yaml"
 

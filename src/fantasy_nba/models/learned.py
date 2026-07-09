@@ -26,8 +26,10 @@ import pandas as pd
 
 from ..scoring import ScoringConfig, load_scoring, score_frame
 from . import breakout as brk
+from . import coaches as coa
 from . import context as ctx
 from . import injuries as inj
+from . import preseason as pre
 from . import recency as rec
 from ._core import COUNTING, DEFAULT_REG_MINUTES, DEFAULT_WEIGHTS, _season_start, weighted_aggregates
 
@@ -94,11 +96,14 @@ def feature_columns(
     use_trade_split: bool = False,
     use_vacated: bool = False,
     use_breakout: bool = False,
+    use_coach: bool = False,
+    use_preseason: bool = False,
 ) -> list[str]:
     """Feature set for the learned model — Marcel-equivalent, optionally + trajectory (EXP-008),
     + team-context/vacated-minutes (EXP-009), + within-season recency (EXP-008b),
     + the post-trade split (EXP-012; requires ``use_recency``), + the honest-map
-    vacated-usage group (EXP-016b), and/or + the breakout-archetype group (EXP-026a)."""
+    vacated-usage group (EXP-016b), + the breakout-archetype group (EXP-026a), + the
+    coaching-change group (EXP-027a), and/or + the preseason-October role group (EXP-027b)."""
     return (
         BASE_FEATURES
         + (TRAJ_FEATURES if use_trajectory else [])
@@ -107,6 +112,8 @@ def feature_columns(
         + (rec.TRADE_FEATURES if use_trade_split else [])
         + (ctx.VACATED_FEATURES if use_vacated else [])
         + (brk.BREAKOUT_FEATURES if use_breakout else [])
+        + (coa.COACH_FEATURES if use_coach else [])
+        + (pre.PRESEASON_FEATURES if use_preseason else [])
     )
 
 
@@ -186,6 +193,8 @@ def _features_for(
     injury_feats: pd.DataFrame | None = None,
     vacated_feats: pd.DataFrame | None = None,
     breakout_feats: pd.DataFrame | None = None,
+    coach_feats: pd.DataFrame | None = None,
+    preseason_feats: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """Marcel aggregates (+ trajectory / team-context / recency / injury features) for ``target_season``.
 
@@ -230,6 +239,15 @@ def _features_for(
         for col in brk.BREAKOUT_FEATURES:
             fill = brk.UNDRAFTED_PICK if col == "draft_pick" else 0.0
             feats[col] = feats[col].fillna(fill)
+    if coach_feats is not None:
+        feats = feats.merge(coach_feats, on="PLAYER_ID", how="left")
+        # Off the Oct-1 map (no team on draft day) = no new-coach effect.
+        for col in coa.COACH_FEATURES:
+            feats[col] = feats[col].fillna(0.0)
+    if preseason_feats is not None:
+        feats = feats.merge(preseason_feats, on="PLAYER_ID", how="left")
+        # No preseason appearance stays NaN on purpose: it means "role unknown" (rested vet,
+        # camp cut, overseas), never "played 0 minutes" — LightGBM handles NaN natively.
     return feats
 
 
@@ -243,6 +261,8 @@ def build_panel(
     injury_table: pd.DataFrame | None = None,
     vacated_table: pd.DataFrame | None = None,
     breakout_table: pd.DataFrame | None = None,
+    coach_table: pd.DataFrame | None = None,
+    preseason_table: pd.DataFrame | None = None,
     min_prior_seasons: int = 2,
     min_label_minutes: float = 200.0,
     n_seasons: int = 3,
@@ -261,6 +281,9 @@ def build_panel(
     Oct 1 of each S — ``injury_features`` self-restricts to spells strictly before that date.
     ``vacated_table`` (``rosters.vacated_feature_table``, EXP-016b) is SEASON-keyed and sliced
     per S — each block was built from the honest Oct-1 map + prior-season stats only.
+    ``coach_table`` (``coaches.coach_feature_table``, EXP-027a) and ``preseason_table``
+    (``preseason.preseason_feature_table``, EXP-027b) follow the same SEASON-keyed contract
+    (the preseason block reads S's own October exhibition games — all pre-outcome).
     """
     seasons = sorted(season_stats["SEASON"].unique(), key=_season_start)
     frames = []
@@ -286,9 +309,18 @@ def build_panel(
             breakout_table.loc[breakout_table["SEASON"] == s, ["PLAYER_ID"] + brk.BREAKOUT_FEATURES]
             if breakout_table is not None else None
         )
+        coach_feats = (
+            coach_table.loc[coach_table["SEASON"] == s, ["PLAYER_ID"] + coa.COACH_FEATURES]
+            if coach_table is not None else None
+        )
+        preseason_feats = (
+            preseason_table.loc[preseason_table["SEASON"] == s, ["PLAYER_ID"] + pre.PRESEASON_FEATURES]
+            if preseason_table is not None else None
+        )
         feats = _features_for(
             prior, prior_bio, s, use_trajectory, n_seasons, weights, reg_minutes,
             context_feats, recency_feats, injury_feats, vacated_feats, breakout_feats,
+            coach_feats, preseason_feats,
         )
         labels = _labels(season_stats, s, min_label_minutes)
         merged = feats.merge(labels, on="PLAYER_ID", how="inner")
@@ -380,6 +412,10 @@ def project_learned(
     vacated_table: pd.DataFrame | None = None,
     use_breakout: bool = False,
     breakout_table: pd.DataFrame | None = None,
+    use_coach: bool = False,
+    coach_table: pd.DataFrame | None = None,
+    use_preseason: bool = False,
+    preseason_table: pd.DataFrame | None = None,
     target_mode: str = "level",
     weight_mode: str | None = None,
     weight_alpha: float = 1.0,
@@ -411,6 +447,10 @@ def project_learned(
     EXP-016b knob (Step 8.4): ``use_vacated`` adds the honest-map ``VACATED_FEATURES`` —
     pass ``vacated_table`` (``rosters.vacated_feature_table``, SEASON-keyed; must cover the
     training seasons *and* the target season).
+    EXP-027 knobs (Step 9c): ``use_coach`` adds the coaching-change interactions
+    (``coach_table`` = ``coaches.coach_feature_table``); ``use_preseason`` adds the
+    October-role group (``preseason_table`` = ``preseason.preseason_feature_table``) —
+    both SEASON-keyed, same coverage contract as ``vacated_table``.
     EXP-013 knobs: ``target_mode='delta'`` trains on change-from-own-anchor instead of levels;
     ``weight_mode`` ∈ {``'mover'``, ``'relevance'``} re-weights training rows (see
     :func:`_sample_weight`), scaled by ``weight_alpha``.
@@ -430,13 +470,17 @@ def project_learned(
         raise ValueError("use_vacated needs vacated_table (rosters.vacated_feature_table).")
     if use_breakout and breakout_table is None:
         raise ValueError("use_breakout needs breakout_table (breakout.breakout_feature_table).")
+    if use_coach and coach_table is None:
+        raise ValueError("use_coach needs coach_table (coaches.coach_feature_table).")
+    if use_preseason and preseason_table is None:
+        raise ValueError("use_preseason needs preseason_table (preseason.preseason_feature_table).")
     if minutes_mode not in ("regression", "allocation"):
         raise ValueError(f"minutes_mode must be 'regression' or 'allocation', got {minutes_mode!r}")
     if minutes_mode == "allocation" and (rosters is None or target_team_map is None):
         raise ValueError("minutes_mode='allocation' needs rosters (team_rosters frame) and "
                          "target_team_map ([PLAYER_ID, team]).")
     feature_cols = feature_columns(use_trajectory, use_context, use_recency, use_trade_split,
-                                   use_vacated, use_breakout)
+                                   use_vacated, use_breakout, use_coach, use_preseason)
 
     recency_table = trade_table = None
     if use_recency:
@@ -452,6 +496,8 @@ def project_learned(
         injury_table=injury_table if use_injuries else None,
         vacated_table=vacated_table if use_vacated else None,
         breakout_table=breakout_table if use_breakout else None,
+        coach_table=coach_table if use_coach else None,
+        preseason_table=preseason_table if use_preseason else None,
         min_label_minutes=min_label_minutes,
         n_seasons=n_seasons, weights=weights, reg_minutes=reg_minutes,
     )
@@ -495,10 +541,28 @@ def project_learned(
         if breakout_feats.empty:
             raise ValueError(f"breakout_table has no rows for target season {target_season!r} — "
                              "build it with the target season included.")
+    coach_feats = None
+    if use_coach:
+        coach_feats = coach_table.loc[
+            coach_table["SEASON"] == target_season, ["PLAYER_ID"] + coa.COACH_FEATURES
+        ]
+        if coach_feats.empty:
+            raise ValueError(f"coach_table has no rows for target season {target_season!r} — "
+                             "build it with the target season included.")
+    preseason_feats = None
+    if use_preseason:
+        preseason_feats = preseason_table.loc[
+            preseason_table["SEASON"] == target_season, ["PLAYER_ID"] + pre.PRESEASON_FEATURES
+        ]
+        if preseason_feats.empty:
+            raise ValueError(f"preseason_table has no rows for target season {target_season!r} — "
+                             "the target's October games must exist (live use: after preseason "
+                             "tips off).")
 
     agg = _features_for(
         season_stats, bio, target_season, use_trajectory, n_seasons, weights, reg_minutes,
         context_feats, recency_feats, injury_feats, vacated_feats, breakout_feats,
+        coach_feats, preseason_feats,
     )
     X = agg[feature_cols]
     X_gp = agg[feature_cols + GP_EXTRA_FEATURES] if use_injuries else X

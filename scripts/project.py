@@ -28,10 +28,13 @@ def main() -> None:
     parser.add_argument(
         "--model",
         default="v2m",
-        choices=["baseline", "v2", "v2m", "learned"],
+        choices=["baseline", "v2", "v2m", "learned", "learned_ps"],
         help="baseline (Marcel); v2 (+ empirical aging curves & durability); "
         "v2m (+ Stage 3 minutes aging curve); learned (LightGBM decompositional model, EXP-007 — "
-        "the Stage-7 foundation: best per-game MAE and least mean-reverting on movers). "
+        "the Stage-7 foundation: best per-game MAE and least mean-reverting on movers); "
+        "learned_ps (+ EXP-027b preseason-October role features — the adopted pre-draft "
+        "configuration once the target's October games are cached: pools ~+9pp more eventual "
+        "big risers at better aggregate MAE). "
         "Backtests: baseline~v2; v2m improves minutes MAE; learned improves both further.",
     )
     parser.add_argument(
@@ -53,13 +56,34 @@ def main() -> None:
         "classifier). Informational only — it never re-ranks (the rank-boost policy failed its "
         "gate); the D2 analyst pass reads it as the option-value flag.",
     )
+    parser.add_argument(
+        "--preseason", action="store_true",
+        help="Add the Step-9c October-role columns (ps_mpg / ps_mpg_delta / ps_start_share) "
+        "from the cached preseason game logs. Ships regardless of the EXP-027b A/B verdict — "
+        "'the coach played him 34 minutes with the starters in October' is directly "
+        "human-readable days before the draft. No-ops with a note until the target season's "
+        "preseason games have been pulled.",
+    )
     args = parser.parse_args()
 
     season_stats = storage.read("player_season_stats")
     bio = storage.read("player_bio")
     cfg = load_scoring(args.scoring)
 
-    if args.model == "learned":
+    if args.model == "learned_ps":
+        from fantasy_nba.models import preseason as pre
+
+        logs = storage.read("preseason_game_logs")
+        if args.target not in set(logs["SEASON"]):
+            raise SystemExit(
+                f"--model learned_ps needs {args.target} preseason games cached — re-pull "
+                "preseason_game_logs once October exhibition play starts (until then use "
+                "--model learned)."
+            )
+        table = pre.preseason_feature_table(logs, season_stats)
+        proj = project_learned(season_stats, bio, target_season=args.target, cfg=cfg,
+                               use_preseason=True, preseason_table=table)
+    elif args.model == "learned":
         proj = project_learned(season_stats, bio, target_season=args.target, cfg=cfg)
     elif args.model == "v2m":
         proj = project_v2(season_stats, bio, target_season=args.target, cfg=cfg, age_minutes=True)
@@ -107,6 +131,20 @@ def main() -> None:
         proj = proj.merge(scores, on="PLAYER_ID", how="left")
         proj["breakout_p"] = proj["breakout_p"].fillna(0.0).round(3)
         show.append("breakout_p")
+
+    if args.preseason:
+        from fantasy_nba.models import preseason as pre
+
+        logs = storage.read("preseason_game_logs")
+        if args.target in set(logs["SEASON"]):
+            table = pre.preseason_feature_table(logs, season_stats, seasons=[args.target])
+            proj = proj.merge(table.drop(columns="SEASON"), on="PLAYER_ID", how="left")
+            for col in pre.PRESEASON_FEATURES:
+                proj[col] = proj[col].round(2)
+            show += pre.PRESEASON_FEATURES
+        else:
+            print(f"[preseason] no {args.target} preseason games cached yet — columns skipped "
+                  "(re-pull preseason_game_logs once October exhibition play starts).")
 
     path = storage.write(proj, f"{args.model}_{args.target}", layer="processed")
     print(f"Scoring: {cfg.name}  |  players projected: {len(proj):,}")
