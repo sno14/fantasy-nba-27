@@ -567,14 +567,16 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
 
 _Next experiments — numbering reserved by [`docs/implementation-plan.md`](docs/implementation-plan.md)
 (the execution spec; run in its Step order, as re-routed by the dated notes in its tracker — latest:
-the **2026-07-09 draft-focus re-route**). Done: EXP-011…014 (Phase 0+1), EXP-018 (engine; naive gate
-parked). **Draft-facing, calendar-critical, in order: EXP-015** injuries (Step 7; shared scraper with
-Step 8, feeds the EXP-018 re-gate) → **EXP-016/016b** dated transactions + vacated-usage features
-(Step 8) → **EXP-017(+b)** market: expert consensus (Hashtag/BBM) for value, platform ADP for the
-availability column only; market-gap as a feature if historical archives are recoverable (Step 9) →
-**EXP-026** breakout archetype layer, recall-gated (Step 9b) → **EXP-027** coach changes +
-preseason-October logs (Step 9c) → D1 decision layer (product; lock real scoring first). **In-season,
-before opening night: EXP-019** (Step 11) · Step 12 nightly pipeline · **EXP-020** benchmarks ·
-**EXP-021** learned ranges (input: the EXP-013c empirical-residual-CDF note). Deferred:
-**EXP-022/023/024** (they chase the ≈0 preseason gap) · **EXP-025** (reserved) rotation-survival
-hurdle._
+the **2026-07-09 draft-focus re-route + gap-closer addendum**). Done: EXP-011…014 (Phase 0+1),
+EXP-018 (engine; naive gate parked). **Draft-facing, calendar-critical, in order: EXP-015** injuries
+(Step 7; shared scraper with Step 8, feeds the EXP-018 re-gate) → **EXP-016/016b** dated transactions
++ vacated-usage features (Step 8) → **EXP-017(+b)** market: expert consensus (Hashtag/BBM) for value,
+platform ADP for the availability column only; market-gap as a feature if historical archives are
+recoverable (Step 9) → **EXP-026** breakout archetype layer, recall-gated (Step 9b) → **EXP-027**
+coach changes + preseason-October logs (Step 9c) → **EXP-028** rookie model, draft slot × landing
+spot, gate = beat pick-order (Step 9d) → D1 decision layer incl. the D1.5 rookie market-seed
+(product; lock real scoring first) → **EXP-029** analyst pass + dual-board freeze (Step D2, last
+~2 weeks before the draft; scores April 2027). **In-season, before opening night: EXP-019** (Step 11)
+· Step 12 nightly pipeline · **EXP-020** benchmarks · **EXP-021** learned ranges (input: the
+EXP-013c empirical-residual-CDF note). Deferred: **EXP-022/023/024** (they chase the ≈0 preseason
+gap) · **EXP-025** (reserved) rotation-survival hurdle._

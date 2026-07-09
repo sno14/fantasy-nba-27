@@ -69,7 +69,8 @@ Do not start a step before the previous step's **Done when** box is fully satisf
    Therefore: (a) **before the 2026-27 season starts**, freeze the board + per-player
    predictions to a committed file (`data/processed/frozen_2026-27_preseason.parquet` +
    a dated ledger note) and score it after the season — the program's only true
-   out-of-sample test; (b) hyperparameter selection is **nested** — tune on folds
+   out-of-sample test; *(amended 2026-07-09: the freeze is **dual** — pure-model board A
+   and analyst-adjusted board B, per Step D2 / EXP-029)*; (b) hyperparameter selection is **nested** — tune on folds
    ≤ 2021-22 only, confirm once on the eval window (Step 5d); (c) adopted-item ledger
    entries carry "eval-window-conditional until 2026-27 confirms."
 11. **Feature-hygiene protocol** (design-critique §5.1). Every new feature *group* ships
@@ -97,7 +98,9 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | 9 | 2 | Market benchmark (expert consensus + ADP-for-availability) | EXP-017(+b) | ☐ | ☐ |
 | 9b | 2 | Breakout archetype layer, recall-gated | EXP-026 | ☐ | ☐ |
 | 9c | 2 | Coach changes + preseason-October logs (+ win totals) | EXP-027 | ☐ | ☐ |
-| D1 | 2.5 | Decision layer: league config, VOR, schedule | — (product) | ◐ league.yaml | ☐ |
+| 9d | 2 | Rookie model (draft slot × landing spot) | EXP-028 | ☐ | ☐ |
+| D1 | 2.5 | Decision layer: league config, VOR, schedule, rookie seed | — (product) | ◐ league.yaml | ☐ |
+| D2 | 2.5 | Analyst pass + dual-board freeze | EXP-029 | ☐ | ☐ |
 | 10 | 3 | As-of-date projection function | EXP-018 | ☑ | ☑ (foundation adopted; naive gate parked) |
 | 11 | 3 | In-season eval + lead-time metric | EXP-019 | ☐ | ☐ |
 | 12 | 3 | Nightly update pipeline + status overrides | — | ☐ | ☐ |
@@ -146,9 +149,22 @@ vacated-usage features)**, **Step 9b (EXP-026 breakout layer, recall-gated)**, *
 platform ADP (Yahoo/ESPN) is too noisy for value and is kept **only** for the draft-day
 availability column). **Recommended session order:** Step 7 (EXP-015) first — its scraper is
 shared with Step 8, and its injury feed is both the EXP-018 re-gate dependency and the
-in-season news channel — then 8 (+8.4) → 9 → 9b → 9c → D1 (**before draft day, with the real
-scoring locked in `scoring.yaml`**) → 11 → 12 (**before opening night**) → 13–15. Step 11 is
-data-independent and may interleave anywhere.
+in-season news channel — then 8 (+8.4) → 9 → 9b → 9c → 9d → D1 (**before draft day, with the
+real scoring locked in `scoring.yaml`**) → D2 (**the last ~2 weeks before the draft**) → 11 →
+12 (**before opening night**) → 13–15. Step 11 is data-independent and may interleave anywhere.
+
+**Re-route addendum (2026-07-09, same day — gap-closers vs commercial systems):** the user
+asked how to close the gap on what human-curated systems (Basketball Monster-class) do
+better. Three additions, in return-on-effort order: **D1.5 rookie market-seed** (trivial
+stopgap: rookies enter the draft sheet from the Step-9 consensus pull, flagged
+`market_priced` — closes the "invisible rookies" hole immediately), **Step D2 (EXP-029)
+analyst pass + dual-board freeze** (the human-judgment layer, replicated auditable and
+*scored*: freeze the pure-model and analyst-adjusted boards separately before opening night,
+grade both in April — the layer must earn its place or be deleted), and **Step 9d (EXP-028)
+rookie model** (draft slot × landing spot; reuses Step-8.4 vacated-usage features; gate =
+beat the draft-pick-order baseline). The long-run gap-closer is already structural: Step-9/13
+archives turn every season into a labeled dataset of *where the commercial systems beat us
+and on whom* — harvest it each spring.
 
 ---
 
@@ -898,6 +914,47 @@ scrape is trivial; otherwise D1 manual entry stands.
 **Done when:** one EXP-027 ledger entry with a/b/c sub-verdicts; preseason-minutes columns
 wired to the draft sheet; ROADMAP 7.A/7.B addenda boxes ticked.
 
+## Step 9d — EXP-028: rookie model (draft slot × landing spot) — Stage 4, first cut
+
+**Why now:** rookies are the bluntest gap vs commercial systems — a player with no
+prior-season row simply isn't on our board. The market-seed stopgap (D1.5) closes the
+*visibility* hole; this step is the first attempt to beat the market's rookie rank with a
+model. Research consensus: rookie fantasy value ≈ **draft slot + landing-spot opportunity**;
+college-stat translation is a later refinement, not a prerequisite.
+
+**9d.1 Data — draft history:** `nba_api` draft-history endpoint (one static pull, all years)
+→ `data/raw/draft_history.parquet` (`PLAYER_ID, draft_year, overall_pick, round`). Add to the
+ingest datasets. Undrafted rookies: `overall_pick = 61` sentinel + `undrafted` flag.
+
+**9d.2 Build — `src/fantasy_nba/models/rookies.py`:**
+- *Panel:* historical rookie seasons 2010-11…2025-26 = players whose first
+  `player_season_stats` row is that season (~60/season × 16 ≈ 1,000 rows — small on purpose).
+  Labels: realized rookie `y_mpg` and `y_fpts_pm` (fantasy points per minute under the
+  scoring config). **Two targets only** — 13 rate targets on 1,000 rows would overfit;
+  compose `fpts_pg = mpg × fpts_pm`. GP: rookie-cohort empirical mean by pick bucket (don't
+  model — EXP-004 applies doubly to players with no history).
+- *Features:* `overall_pick` (+ log), `undrafted`, `age_at_draft` (bio), `intl_flag` if
+  derivable from bio country — plus the landing spot: the Step-8.4 vacated-usage group for
+  his position group on the target roster, `n_same_pos` crowding, `depth_rank` treating his
+  pick as pedigree, `team_expected_wins` if the 9c rider landed (tank → rookie runway).
+  Position for rookies: draft-combine/bio listed position → the allocation groups.
+- *Board integration:* rookie rows appended to the board flagged `rookie_model`; when the
+  D1.5 market seed also exists, show both (`rookie_rank_model`, `rookie_rank_market`) — the
+  disagreement between them is itself draft-day information.
+- *Uncertainty:* rookies get the widest range bucket by construction (no history); flag,
+  don't hide.
+
+**9d.3 Run/Gate:** walk-forward on rookie cohorts (train < eval season). Baseline =
+**draft-pick order** (rank rookies purely by pick — the naive strategy everyone can do).
+Adopt if pooled rookie-cohort Spearman beats pick-order by ≥ 0.05 with MAE not worse
+(rule 8 guarded); where market archives exist (EXP-017b branch), also report vs market rank
+— informational this season, gate next. On reject: the D1.5 market seed stands alone;
+ledger the numbers (a pick-order tie is a real finding — it means the market seed suffices).
+
+**Done when:** EXP-028 logged; rookie rows appear on the draft sheet under whichever source
+won; ROADMAP Stage-4 rookie checkbox updated; tests (synthetic rookie panel: pick-order
+monotonicity, no-leakage on the first-season definition).
+
 ---
 
 # PHASE 2.5 — the decision layer (Step D1, from the specialist review)
@@ -951,9 +1008,66 @@ contain those weeks.
 ADP-availability column on the draft sheet ("likely gone by pick N" via ADP ± σ from the
 Step-9 pull).
 
+**D1.5 Rookie market-seed (added 2026-07-09 — the stopgap for the Stage-4 gap):** rookies
+have no prior-season row, so the model board silently omits them. Until/unless EXP-028
+(Step 9d) beats the market: seed every rookie from the Step-9 expert-consensus pull onto the
+draft sheet, flagged **`market_priced`** (no model behind the number — say so in the column).
+Rank → value: interpolate `fpts_pg` from our own board at the consensus rank (so totals/VOR
+compute consistently); ranges: the widest uncertainty bucket. **Sanity report:** count of
+seeded rookies + eyeball the top 5 against the consensus source. If EXP-028 adopts, both
+columns print (model + market) and the flag distinguishes them.
+
 **Done when:** league.yaml filled; `add_vor` + schedule pull run end-to-end; draft sheet
-prints rank / VOR / ADP-availability / playoff-week columns; sanity reports eyeballed and
-noted in the ledger as a dated D1 note (no EXP number — product, not hypothesis).
+prints rank / VOR / ADP-availability / playoff-week / rookie-seed columns; sanity reports
+eyeballed and noted in the ledger as a dated D1 note (no EXP number — product, not hypothesis).
+
+## Step D2 — EXP-029: the analyst pass + dual-board freeze (the graded human layer)
+
+*The gap-closer for what commercial systems' human staff do (camp reports, depth-chart
+judgment, injury context) — replicated **auditable** and **scored**. Two-part discipline:
+every adjustment is written down with a rationale before the season; the layer is graded
+against the untouched model after the season and must earn its place or be deleted.
+Timing: the last ~2 weeks before draft day (needs Step 9's market pull; benefits from 9c's
+preseason-October minutes and Step 7's injury history).*
+
+**D2.1 Trigger list (generated, not vibes):** within the top-200 union of our board and the
+expert consensus: (a) |our rank − consensus rank| ≥ 15; (b) every EXP-026 breakout-flag
+player; (c) every major-injury returnee (Step-7 `inj_bodypart_severe` in trailing 18 months);
+(d) every rookie (D1.5/9d). Expect ~30–50 players.
+
+**D2.2 The pass:** one session, player by player: review the qualitative evidence a feature
+can't hold (beat-writer reporting, depth chart, coach statements, rehab timelines — web
+sources, local session). Output per player into `config/analyst_overrides.yaml`:
+```yaml
+- name: "Player Name"
+  date: 2026-10-05
+  category: role | injury | hype | rookie | other
+  action: none | rank_delta: -8 | fpts_delta: +2.0
+  rationale: >
+    One paragraph. Written before the season; never edited after (append a dated
+    correction instead).
+```
+`"none"` verdicts are logged too — "reviewed, no change" is information. Application:
+`scripts/apply_analyst.py board.parquet` → board B (deterministic, unit-tested arithmetic;
+never touches board A's file).
+
+**D2.3 The dual freeze (extends rule 10a):** commit **both** boards before opening night —
+`data/processed/frozen_2026-27_preseason_model.parquet` (A: pure model) and
+`…_analyst.parquet` (B: A + overrides) — plus a dated ledger note. Git timestamps are the
+no-hindsight proof.
+
+**D2.4 Scoring (April 2027, the other half of the experiment):** one eval run, both boards,
+standard metrics (top-150 level MAE, mover buckets, big-riser recall, ranking Spearman) +
+a **per-adjustment attribution table**: for each override — model rank, adjusted rank,
+realized rank, which won. Verdicts: B > A → keep the pass, expand to in-season waivers;
+A > B → delete the layer and ledger *which rationale categories* failed (that's tuition,
+not just a loss); tie → keep as a documentation habit, not signal. **One-season sample:**
+whatever the outcome, the ledger status is at most `adopted-tentative` / `parked` — an
+unlucky injury on one heavily-adjusted player can swing it; say so in the entry.
+
+**Done when:** overrides file populated with rationales; `apply_analyst.py` tested; both
+frozen boards committed + ledger note dated before opening night; EXP-029 opened in the
+ledger with status `pending (scores April 2027)`.
 
 ---
 
@@ -1206,6 +1320,8 @@ floor-adjusted on movers, updating nightly, benchmarked against the market — t
 | 017 | benchmark: expert consensus (Hashtag/BBM) = value signal, ADP = availability column only; 017b market-gap feature runs now if ≥4 historical seasons recoverable, else waived + archive |
 | 026 | features: standard gate. Policy: big-riser recall@150 +3pp OR above-market +5pp, aggregate MAE ≤ +1%, stable bias ±0.3 |
 | 027 | per-group standard mover gate + recall view; preseason-minutes columns ship to the draft sheet regardless of verdict |
+| 028 | rookie-cohort Spearman beats draft-pick-order baseline by ≥ 0.05 pooled, MAE not worse (rule 8); on reject the D1.5 market seed stands |
+| 029 | dual freeze before opening night is unconditional; layer verdict in April 2027 — B beats A on top-150 MAE + riser recall → keep; A beats B → delete + ledger failure categories; one-season sample ⇒ at most adopted-tentative |
 | D1 | product step — no gate; ships with sanity reports (VOR reorder count, schedule spot-checks) |
 | 022 | direct beats composed on riser bias ≥25% reducible-gap (rule-8), or bucketed covariance large+positive → adopt correction/blend |
 | 023 | standard mover gate; watch age ≤ 24 cohort; rule-11 hygiene on the lag group |
