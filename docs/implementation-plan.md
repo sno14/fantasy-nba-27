@@ -93,8 +93,10 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | R2 | 1.5 | Per-season lags + era context | EXP-023 | ☐ | ☐ deferred* |
 | R3 | 1.5 | Volume/efficiency split + pace normalization | EXP-024 | ☐ | ☐ deferred* |
 | 7 | 2 | Injury/availability data | EXP-015 | ☐ | ☐ |
-| 8 | 2 | Dated transactions + preseason rosters | EXP-016 | ☐ | ☐ |
-| 9 | 2 | ADP / market benchmark | EXP-017 | ☐ | ☐ |
+| 8 | 2 | Dated transactions + preseason rosters + vacated usage | EXP-016/016b | ☐ | ☐ |
+| 9 | 2 | Market benchmark (expert consensus + ADP-for-availability) | EXP-017(+b) | ☐ | ☐ |
+| 9b | 2 | Breakout archetype layer, recall-gated | EXP-026 | ☐ | ☐ |
+| 9c | 2 | Coach changes + preseason-October logs (+ win totals) | EXP-027 | ☐ | ☐ |
 | D1 | 2.5 | Decision layer: league config, VOR, schedule | — (product) | ◐ league.yaml | ☐ |
 | 10 | 3 | As-of-date projection function | EXP-018 | ☑ | ☑ (foundation adopted; naive gate parked) |
 | 11 | 3 | In-season eval + lead-time metric | EXP-019 | ☐ | ☐ |
@@ -111,7 +113,8 @@ refinements) are deferred behind it — they chase the same ≈0 preseason gap. 
 (exogenous data) keep their place: they attack GP/availability and backtest correctness,
 which the Phase-0 verdict does not touch.*
 
-**Session addenda (2026-07-09, post-Step-10) — notes for the next session, in priority order:**
+**Session addenda (2026-07-09, post-Step-10) — technical notes for the next session
+(item 1's ordering is superseded by the draft-focus re-route below; items 2–5 stand):**
 
 1. **Next step = Step 11 (EXP-019).** Run its diagnostics on the **EWMA configuration**
    (`use_ewma=True` — best pooled config in EXP-018, 3.763 vs naive 3.837); treat it as the
@@ -132,6 +135,20 @@ which the Phase-0 verdict does not touch.*
    cutpoint panel (the ledger's named re-arm point).
 5. **Step 12 note:** `update_daily` should emit the naive-updater line next to the asof board
    — it's the standing benchmark, and the daily disagreement between them is itself a signal.
+
+**Re-route (2026-07-09, draft focus — supersedes addendum item 1 above):** the user's stated
+priority is capturing risers/fallers **for the draft** (calendar-hard: draft ≈ Oct), then the
+in-season loop. The riser signal is exogenous (EXP-011's verdict; the Maxey pattern: archetype
+fit × vacated usage × market gap), so Phase 2 grows three additions — **Step 8.4 (EXP-016b
+vacated-usage features)**, **Step 9b (EXP-026 breakout layer, recall-gated)**, **Step 9c
+(EXP-027 coach changes + preseason-October logs)** — and Step 9's market sources are revised
+(user 2026-07-09: expert consensus — Hashtag / Basketball Monster — is the quality benchmark;
+platform ADP (Yahoo/ESPN) is too noisy for value and is kept **only** for the draft-day
+availability column). **Recommended session order:** Step 7 (EXP-015) first — its scraper is
+shared with Step 8, and its injury feed is both the EXP-018 re-gate dependency and the
+in-season news channel — then 8 (+8.4) → 9 → 9b → 9c → D1 (**before draft day, with the real
+scoring locked in `scoring.yaml`**) → 11 → 12 (**before opening night**) → 13–15. Step 11 is
+data-independent and may interleave anywhere.
 
 ---
 
@@ -754,25 +771,132 @@ is deployable preseason signal.
 performance question). The feature adoption decisions from Step 6 get re-affirmed or
 reversed on the honest numbers — update their ledger entries with a dated addendum.
 
-**Done when:** validation ≥ 90%, consumers re-run, EXP-016 logged, ROADMAP 7.A data
+**8.4 — EXP-016b: vacated-usage features (the preseason opportunity signal, done honestly).**
+EXP-009 tested team-level vacated *minutes* on end-of-season rosters (parked: net wash — and
+the map flattered mid-season movers). With the honest preseason map + dated departures, build
+the sharper version in `models/context.py`:
+```python
+VACATED_FEATURES = [
+    "vac_min_share_pos",   # Σ departed same-pos-group teammates' prior share of team minutes
+    "vac_usg_pos",         # Σ departed same-pos-group teammates' prior USG% × minutes share
+    "vac_fga_pm",          # departed teammates' FGA per team minute (shot vacancy)
+    "vac_ast_pm",          # departed teammates' AST per team minute (creation vacancy)
+    "star_departed",       # any departure with prior USG% ≥ 24 and MPG ≥ 30 (holdouts count
+                           #   only when the departure is dated ≤ Oct 1 — no hindsight)
+    "arrivals_usg_pos",    # the mirror: usage arriving in his position group (role compression)
+]
+```
+Position groups via `allocation.position_group` (`pos_group_asof` past-preferred lookup for
+departed players). USG%: verify it survives the Advanced merge in cached `player_season_stats`
+(same check pattern as Step R3's PACE); else derive `(FGA + 0.44·FTA + TOV)` per team
+possession-proxy. A/B as `learned_vac` on the standard eval **plus the realized-pool recall
+view** — this group's whole point is pulling context-driven risers *into* the pool, which the
+model-pool bias tables understate (EXP-011's lesson).
+
+**Gate (EXP-016b):** standard mover gate on the model-pool view, **or** realized-top-150
+big-riser recall +2pp pooled with aggregate level MAE not worse. Rule-8/11 guarded. Separate
+ledger verdict from the map-correctness fix (EXP-016 is unconditional; 016b is a feature bet).
+
+**Done when:** validation ≥ 90%, consumers re-run, EXP-016 + EXP-016b logged, ROADMAP 7.A data
 checkbox ticked.
 
-## Step 9 — EXP-017: ADP / market
+## Step 9 — EXP-017: market benchmark (expert consensus first; ADP only for availability)
 
-**Build — `scripts/pull_adp.py`:** one consensus ADP source (FantasyPros points-league ADP
-preferred; HashtagBasketball fallback), date-stamped like the DARKO pull
-(`data/raw/adp/adp_<date>.parquet`), name-joined with match-rate report. New
-`scripts/adp_report.py` (mirror `darko_report.py`): board-vs-ADP top-20 disagreements each
-way (our rank − ADP rank), flagged with the risk column so "we're low on X" reads with
-context.
+**Source hierarchy (user decision, 2026-07-09):** platform ADP (Yahoo/ESPN) is too noisy to
+serve as the value benchmark. Two distinct market objects, never conflated:
+- **Expert consensus rankings — the quality signal:** Hashtag Basketball season rankings
+  (public HTML, points-mode where available); Basketball Monster projections if exportable
+  (subscription — check before building). This is what "the market knows" means in every
+  disagreement report and in EXP-017b/EXP-026 below. It also imports the human-intel layer
+  (camp reports, coach quotes) without scraping news.
+- **Consensus ADP (FantasyPros points-league) — the availability signal only:** kept solely
+  for the draft-sheet "likely gone by pick N" column (D1.4), where actual draft position is
+  what matters even when it's wrong about value.
 
-**Run/Gate:** benchmark-only at first — **no feature use** until ≥ 2 seasons of dated ADP
-archives exist (same waiver as DARKO/EXP-010; log that condition in the ledger). The
-deliverable is the disagreement report wired into the draft-day workflow and the archives
-accumulating.
+**Build — `scripts/pull_market.py`:** both sources, date-stamped like the DARKO pull
+(`data/raw/market/<source>_<date>.parquet`), name-joined with match-rate report (≥ 95% on the
+draftable pool; Step-7 name-join hardening rules apply). New `scripts/market_report.py`
+(mirror `darko_report.py`): board-vs-consensus top-20 disagreements each way (our rank −
+consensus rank), flagged with the risk column so "we're low on X" reads with context.
 
-**Done when:** pull + report run end-to-end; EXP-017 logged (`adopted (benchmark-only)`);
-ROADMAP 7.E ADP checkbox ticked.
+**EXP-017b — market-rank-gap as a *feature* (the Basketball-Monster-in-a-column bet):**
+`market_gap = our_rank − consensus_rank` (+ the raw consensus rank) fed to the learned model —
+the hypothesis is the model learns *when* the market knows something we don't (young player,
+new team) vs when it's chasing name value. **Requires historical preseason archives:** check
+retrievability first (FantasyPros historical ADP pages go back years; Hashtag/BBM past-season
+rankings may be recoverable) — if ≥ 4 backtest seasons are recoverable, run the A/B now
+(standard mover gate + the recall view, rule-11 hygiene); if not, benchmark-only this season
+(the EXP-010 waiver), archive from today, re-arm next season. Log which branch was taken.
+
+**Done when:** pulls + report run end-to-end; EXP-017 logged (benchmark), EXP-017b logged
+(run or explicitly waived-with-condition); ROADMAP 7.E checkbox ticked.
+
+## Step 9b — EXP-026: breakout archetype layer, judged on recall (ROADMAP 7.B, done right)
+
+**Why this gate:** EXP-011 proved the model-pool riser *bias* is ≈ irreducible preseason —
+but the realized-pool view showed the actual cost: **recall 71%** (missed sleepers never enter
+the pool; realized-pool gap −2.7). A breakout layer is therefore judged on **getting eventual
+risers into/up the board and above their market price**, never on per-player point error —
+you can't know which of ~20 archetype fits pops; ranking all of them higher *is* the edge
+(the Maxey pattern: age-22–24 improvement streak × usage↑ at held TS% × vacated usage ×
+market gap, all visible preseason).
+
+**Build — `src/fantasy_nba/models/breakout.py`:**
+```python
+BREAKOUT_FEATURES = [
+    "improve_streak_2y",   # consecutive prior seasons of rising fpts_pm (0/1/2)
+    "usg_slope_held_ts",   # ΔUSG% (t−1 vs t−2) where ΔTS% ≥ −0.01, else 0
+    "mpg_headroom",        # max(0, 36 − prev_mpg): room to grow
+    "age_22_24",           # the research's breakout window
+    "years_experience",
+    "draft_pick",          # pedigree; verify DRAFT_NUMBER survives the player_bio pull,
+                           #   else one draft-history endpoint pull
+]
+
+def breakout_score(panel, feature_cols) -> pd.Series:
+    """P(actual next-season Δ ≥ +6 fpts/g) — LGBM binary classifier on the existing
+    panel labels, walk-forward like every other fit."""
+```
+Two wirings, judged separately: **(a) features into the learned model** (standard A/B,
+`learned_breakout`); **(b) a board policy** — top-K breakout scores get a flagged
+`ceiling`-stance rank boost + a `breakout_p` column on the draft sheet (deterministic,
+auditable — the "at least attempting every breakout" lever, sized so late-round picks chase
+option value while the stable core is untouched).
+
+**Metrics (per season + pooled):** realized big-riser **recall@150**; **above-market rate**
+(of realized big risers, fraction we ranked above the expert consensus — needs Step 9; this
+is the draft-capture number: did we have him before the room did); cost line = aggregate
+level MAE + stable-bucket bias.
+
+**Gate:** (a) standard rule-8/11. (b) policy adopts if big-riser recall@150 +3pp **or**
+above-market rate +5pp, with aggregate MAE ≤ +1% and stable-bucket bias within ±0.3.
+Log EXP-026 with both wirings' verdicts.
+
+## Step 9c — EXP-027: coach changes + preseason-October logs (+ win totals rider)
+
+Three cheap exogenous groups, judged separately (rule 11), rejected fast if they don't stick:
+
+**(a) Coaching changes — hand-curated, one afternoon.** `data/manual/coach_changes.csv`
+(`season, team, new_coach, interim`), 2009-10…2026-27 from Basketball-Reference coach pages
+(~30 rows/season; commit the CSV — tiny, static, hand-checked; the repo's first manual-data
+exception to the gitignore, note it in README). Features: `new_coach` **interacted** with
+depth-rank/age (hypothesis: a new coach reshuffles the *rotation*, so the effect lives in
+young/fringe players, not the main effect). A/B `learned_coach`, standard gate + recall view.
+
+**(b) Preseason October game logs — the latest-arriving pre-draft signal.** nba_api
+`LeagueGameLog` accepts `season_type_all_star="Pre Season"`; spot-check 3 historical seasons
+for coverage, then add `preseason_game_logs` to the ingest datasets. Features (role only,
+never rates — samples are tiny): `ps_mpg`, `ps_mpg_delta` (vs prior season), `ps_start_share`.
+**Ship the columns to the draft sheet (D1) regardless of the A/B verdict** — "the coach played
+him 34 minutes with the starters in October" is directly human-readable days before the draft.
+
+**(c) Vegas win totals (optional rider):** historical preseason win totals (sportsoddshistory)
+→ `team_expected_wins` (tanking → young-minutes runway; contender depth → minutes cap). Also
+back-fills D1.4's `team_priors.yaml` (currently manual-entry). Include in the A/B only if the
+scrape is trivial; otherwise D1 manual entry stands.
+
+**Done when:** one EXP-027 ledger entry with a/b/c sub-verdicts; preseason-minutes columns
+wired to the draft sheet; ROADMAP 7.A/7.B addenda boxes ticked.
 
 ---
 
@@ -1078,7 +1202,10 @@ floor-adjusted on movers, updating nightly, benchmarked against the market — t
 | 014 | minutes MAE ≤ control AND riser ≥25% closed; OR role-change segments −15% level MAE, others ≤3% worse |
 | 015a | GP Spearman +0.05 vs current | 015b: coverage ∈ [78,88]% AND safe-Spearman ties/wins |
 | 016 | unconditional for backtests (correctness); re-affirm Step-6 verdicts on honest rosters |
-| 017 | benchmark-only until 2 seasons of ADP archives |
+| 016b | standard mover gate OR realized-top-150 big-riser recall +2pp with aggregate MAE not worse |
+| 017 | benchmark: expert consensus (Hashtag/BBM) = value signal, ADP = availability column only; 017b market-gap feature runs now if ≥4 historical seasons recoverable, else waived + archive |
+| 026 | features: standard gate. Policy: big-riser recall@150 +3pp OR above-market +5pp, aggregate MAE ≤ +1%, stable bias ±0.3 |
+| 027 | per-group standard mover gate + recall view; preseason-minutes columns ship to the draft sheet regardless of verdict |
 | D1 | product step — no gate; ships with sanity reports (VOR reorder count, schedule spot-checks) |
 | 022 | direct beats composed on riser bias ≥25% reducible-gap (rule-8), or bucketed covariance large+positive → adopt correction/blend |
 | 023 | standard mover gate; watch age ≤ 24 cohort; rule-11 hygiene on the lag group |
