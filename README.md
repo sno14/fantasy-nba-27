@@ -102,7 +102,7 @@ python -m streamlit run scripts/explore.py
 
 ## Configuring scoring
 
-Edit `config/scoring.yaml`. The defaults are DraftKings-style placeholders — replace the
-weights and bonuses with your league's actual values. The projection engine outputs stat
-lines; the scoring module turns them into points, so changing scoring never requires
-re-running projections.
+`config/scoring.yaml` carries the **confirmed league scoring** (2026-07-10: ESPN default
+points league — 10 teams, weekly H2H; structure in `config/league.yaml`). The projection
+engine outputs stat lines; the scoring module turns them into points, so if the league ever
+customizes, editing the YAML is the only change — projections never re-run.

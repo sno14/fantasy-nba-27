@@ -99,7 +99,7 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | 9b | 2 | Breakout archetype layer, recall-gated | EXP-026 | ☑ | ☑ (both wirings rejected; breakout_p column ships) |
 | 9c | 2 | Coach changes + preseason-October logs (+ win totals) | EXP-027 | ☐ | ☐ |
 | 9d | 2 | Rookie model (draft slot × landing spot) | EXP-028 | ☐ | ☐ |
-| D1 | 2.5 | Decision layer: league config, VOR, schedule, rookie seed | — (product) | ◐ league.yaml | ☐ |
+| D1 | 2.5 | Decision layer: league config, VOR, schedule, rookie seed | — (product) | ◐ league.yaml (D1.1 ✅ confirmed 2026-07-10: ESPN default points, 10 teams, weekly H2H — scoring.yaml already matched) | ☐ |
 | D2 | 2.5 | Analyst pass + dual-board freeze | EXP-029 | ☐ | ☐ |
 | 10 | 3 | As-of-date projection function | EXP-018 | ☑ | ☑ (foundation adopted; naive gate parked) |
 | 11 | 3 | In-season eval + lead-time metric | EXP-019 | ☐ | ☐ |
@@ -971,6 +971,12 @@ league's settings): teams, roster slots, lineup frequency (daily/weekly), format
 (h2h/season points), games cap, fantasy-playoff weeks, waiver system + FAAB budget,
 keeper flag. Scoring stays in `config/scoring.yaml` — **verify it matches the real league
 before draft day** (critique §2.4: every verdict is scoring-conditional).
+> **D1.1 DONE (2026-07-10):** league confirmed — **ESPN default points, 10 teams, weekly
+> H2H** — written to `league.yaml` (ESPN-default sub-settings marked as such).
+> `scoring.yaml` was already the ESPN default points weights, so **every ledger verdict to
+> date ran under the real scoring; no re-runs needed**. Still open in D1: schedule weeks
+> (derive from ESPN's 2026-27 matchup calendar when published), D1.2 VOR (10 teams ×
+> 13 slots), D1.3 schedule values, D1.4 sheet, D1.5 rookie market-seed.
 
 **D1.2 Replacement value — new `src/fantasy_nba/models/value.py`:**
 ```python

@@ -1,9 +1,11 @@
-# League scoring definition.
+﻿# League scoring definition.
 #
 # ESPN Fantasy Basketball DEFAULT points-league scoring.
 # Source: https://www.espn.com/fantasy/basketball/story/_/id/30296896
-# Swap these weights for your league's actual values if it deviates from the ESPN default —
-# nothing else changes; projections stay the same and only the points conversion updates.
+# CONFIRMED as the real league's scoring (user, 2026-07-10: ESPN default points league) —
+# the D1.1 pre-draft verification is done; every ledger verdict already ran under these
+# weights. If the league ever customizes, only this file changes (projections are stat
+# lines; scoring converts them).
 #
 # Stat keys use these canonical names (see fantasy_nba.scoring.STAT_KEYS):
 #   pts   points                fgm  field goals made      fg3m  three-pointers made

@@ -792,7 +792,8 @@ wirings rejected; breakout_p ships as a draft-sheet column).
 coach changes + preseason-October logs (Step 9c; the remaining preseason recall levers are new
 information, not re-ranking — EXP-026's lesson) → **EXP-028** rookie model, draft slot × landing
 spot, gate = beat pick-order (Step 9d) → D1 decision layer incl. the D1.5 rookie market-seed
-(product; lock real scoring first) → **EXP-029** analyst pass + dual-board freeze (Step D2, last
+(product; **scoring + league confirmed 2026-07-10: ESPN default points, 10 teams, weekly H2H —
+scoring.yaml already matched, no re-runs**) → **EXP-029** analyst pass + dual-board freeze (Step D2, last
 ~2 weeks before the draft; scores April 2027). **In-season, before opening night: EXP-019** (Step 11)
 · Step 12 nightly pipeline · **EXP-020** benchmarks · **EXP-021** learned ranges (input: the
 EXP-013c empirical-residual-CDF note). Deferred: **EXP-022/023/024** (they chase the ≈0 preseason

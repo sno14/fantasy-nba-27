@@ -3,22 +3,24 @@
 # *structure*: it drives replacement-level (VOR), schedule/playoff-week values, streaming
 # horizons, and the ROS cutoff.
 #
-# Settings below reflect the user's league direction (2026-07): weekly H2H matchups in a
-# points format, daily lineup setting, league ending ~2-3 weeks before the NBA regular
-# season to dodge late-season rest/tank noise. Scoring numbers are NOT final — scoring.yaml
-# holds ESPN-style placeholders until the league locks them (re-run the headline eval under
-# the final scoring before draft day; every verdict is scoring-conditional, critique §2.4).
+# CONFIRMED (user, 2026-07-10): **ESPN default points league, 10 teams, weekly H2H
+# matchups.** scoring.yaml already carries the ESPN default points weights, so every
+# ledger verdict to date was computed under the real league scoring — nothing re-runs
+# (D1.1's "verify before draft day" check: passed). ESPN-default details below that the
+# user has not explicitly confirmed are marked "ESPN default" — revisit only if the
+# league customizes.
 
 name: my-league
-platform: espn            # espn | yahoo | other (informational for now)
-teams: 10                 # TBD — update when the league settles
-format: h2h_points        # weekly H2H matchups, points scoring (decided 2026-07)
-lineup_frequency: daily   # daily lineup setting within weekly matchups (decided 2026-07)
+platform: espn
+teams: 10                 # confirmed 2026-07-10
+format: h2h_points        # weekly H2H matchups, points scoring (confirmed 2026-07-10)
+lineup_frequency: daily   # ESPN default: lineups set daily within the weekly matchup
                           # => weekly game counts drive matchups; streaming drives the
                           #    last roster spots — both D1 outputs matter.
 
-# Roster slots (drives replacement level per slot). Keys are platform slot names;
-# positions map to allocation position groups until platform eligibility exists.
+# Roster slots (ESPN default: 13 players — drives replacement level per slot). Keys are
+# platform slot names; positions map to allocation position groups until platform
+# eligibility exists.
 roster:
   PG: 1
   SG: 1
@@ -31,9 +33,10 @@ roster:
   BENCH: 3
   IR: 1
 
-games_cap_per_week: null      # integer if the league caps weekly games, else null
+games_cap_per_week: null      # ESPN points default: no weekly games cap
 
-# League season ends BEFORE the NBA regular season (decided 2026-07, exact gap TBD).
+# League season ends BEFORE the NBA regular season (user direction 2026-07, exact gap
+# still TBD — derive concrete weeks from ESPN's 2026-27 matchup calendar once published).
 # Consequences (wired in Step D1 / Step 11): ROS projections and totals cut at
 # league_end, not the NBA finale; fantasy playoff weeks are derived from the schedule
 # minus this offset; the late-season rest/tank regime largely falls OUT of the
@@ -42,6 +45,6 @@ games_cap_per_week: null      # integer if the league caps weekly games, else nu
 league_end_offset_weeks: 3    # ~2-3 weeks before NBA regular-season end; not concrete
 fantasy_playoff_weeks: [19, 20, 21]   # placeholder — derive from schedule + offset once set
 
-waivers: faab                 # faab | priority — TBD
-faab_budget: 100
+waivers: priority             # ESPN default: rolling waiver priority (no FAAB unless customized)
+faab_budget: null
 keeper: false                 # dynasty/keeper valuation is out of scope while false
