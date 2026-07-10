@@ -47,9 +47,13 @@ this core once it passes the consistency check — each its own gated change.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
+import yaml
 
+from ..config import CONFIG_DIR
 from ..scoring import ScoringConfig, load_scoring, score_frame
 from ._core import COUNTING, DEFAULT_REG_MINUTES, DEFAULT_WEIGHTS, _season_start
 from .learned import BASE_FEATURES, DEFAULT_LGBM_PARAMS, _features_for
@@ -86,6 +90,12 @@ ROS_TARGETS = ["y_ros_mpg", "y_ros_gp"] + ROS_RATE_TARGETS
 # training cutpoint panel replace the single window as the form signal.
 EWMA_GRID = (5, 10, 20, 40)  # candidate half-lives, in games
 EWMA_FEATURES = ["ewma_mpg", "ewma_mpg_delta"] + [f"ewma_rate_{s}" for s in COUNTING]
+
+# EXP-018 measured result (2026-07-09 addendum item 3): fit_half_lives returned the identical
+# answer in all four backtest folds — every rate → 40 games, MPG → 10. Frozen as documented
+# constants (the fitting function stays for re-checks); consumers use these instead of paying
+# the slow per-fold refit. Re-fit only if the panel changes shape (new feature regime).
+FROZEN_HALF_LIVES: dict = {"mpg": 10, **{s: 40 for s in COUNTING}}
 
 
 # --- Naive-blend features (response to the measured EXP-018 core result) -----------------
@@ -419,9 +429,13 @@ def project_asof(
     target_season: str | None = None,
     use_ewma: bool = False,
     use_blend: bool = False,
+    half_lives: dict | None = None,
     n_seasons: int = 3,
     weights: tuple[float, ...] = DEFAULT_WEIGHTS,
     reg_minutes: float = DEFAULT_REG_MINUTES,
+    status_overrides: list[dict] | None = None,
+    season_end: pd.Timestamp | str | None = None,
+    schedule: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """Remaining-season per-game projection as of ISO date ``T``.
 
@@ -431,7 +445,11 @@ def project_asof(
     ``project_learned``'s + ``[games_so_far, ros_gp_max]``. ``rosters``/``injuries`` are
     accepted for the amendment layers (unused in the core). ``target_season`` overrides the
     date→season inference (handy in tests / at exact preseason cutpoints). ``use_ewma`` adds
-    the fitted-half-life EWMA form block (half-lives fitted on the training slice only).
+    the EWMA form block with the ``FROZEN_HALF_LIVES`` constants (pass ``half_lives`` to
+    override, e.g. a per-fold refit). ``status_overrides`` (Step 12,
+    :func:`load_status_overrides`) caps ROS GP for manually flagged-out players —
+    availability only, applied after prediction; ``season_end``/``schedule`` sharpen the
+    games-remaining arithmetic when the season's schedule pull exists.
     """
     cfg = cfg or load_scoring()
     params = params or DEFAULT_LGBM_PARAMS
@@ -444,14 +462,18 @@ def project_asof(
     train_bio = bio[bio["SEASON"].map(_season_start) < ty]
     train_gl = gl[gl["SEASON"].map(_season_start) < ty]
 
-    half_lives = fit_half_lives(train_gl) if use_ewma else None
+    if use_ewma:
+        half_lives = half_lives or FROZEN_HALF_LIVES
     panel = build_asof_panel(train_ss, train_gl, train_bio, n_seasons, weights, reg_minutes,
                              half_lives=half_lives, use_blend=use_blend)
     models = _fit_asof_models(panel, params, use_ewma=use_ewma, use_blend=use_blend)
 
     feats = asof_features(gl, season_stats, bio, season, Tts, n_seasons, weights, reg_minutes,
                           half_lives=half_lives, use_blend=use_blend)
-    return predict_board(models, feats, cfg, season)
+    board = predict_board(models, feats, cfg, season)
+    if status_overrides:
+        board = apply_status_overrides(board, status_overrides, Tts, season_end, schedule)
+    return board
 
 
 def asof_features(
@@ -476,6 +498,104 @@ def asof_features(
         names = game_logs[game_logs["SEASON"] == season].groupby("PLAYER_ID")["PLAYER_NAME"].last()
         feats["PLAYER_NAME"] = feats["PLAYER_NAME"].fillna(feats["PLAYER_ID"].map(names))
     return feats
+
+
+# --- Step 12: manual status overrides (config/overrides.yaml) ----------------------------
+# Player status the box scores can't know yet ("out until", "out for season") — applied to
+# AVAILABILITY only: the ROS GP prediction is capped at the games physically remaining after
+# the return date; rates and minutes are never touched. Deterministic and auditable — the
+# zero-scraping news channel until an official injury-report feed exists.
+
+SEASON_LENGTH_DAYS = 174  # typical opening night -> regular-season finale span (fallback
+                          # when no schedule pull exists for the season)
+
+
+def load_status_overrides(path: str | Path | None = None) -> list[dict]:
+    """Parse ``config/overrides.yaml`` -> ``[{name, out_until | out_for_season}]``.
+    Missing file = no overrides (the common case). Malformed entries raise — a silently
+    dropped status override is a wrong board with no audit trail."""
+    path = Path(path) if path else CONFIG_DIR / "overrides.yaml"
+    if not path.exists():
+        return []
+    with open(path, encoding="utf-8") as fh:
+        raw = yaml.safe_load(fh) or {}
+    entries = raw.get("overrides") or []
+    out = []
+    for i, e in enumerate(entries):
+        if not isinstance(e, dict) or "name" not in e:
+            raise ValueError(f"{path} override {i + 1}: needs at least a 'name'.")
+        has_until = e.get("out_until") is not None
+        has_season = bool(e.get("out_for_season"))
+        if has_until == has_season:  # both or neither
+            raise ValueError(f"{path} override {e['name']!r}: exactly one of out_until / "
+                             f"out_for_season is required.")
+        out.append({"name": str(e["name"]),
+                    "out_until": pd.Timestamp(e["out_until"]) if has_until else None,
+                    "out_for_season": has_season})
+    return out
+
+
+def _games_remaining_after(D: pd.Timestamp, T: pd.Timestamp, season_end: pd.Timestamp,
+                           ros_gp_max: float, schedule: pd.DataFrame | None) -> float:
+    """Games a generic player can still play after returning on ``D`` (as of ``T``).
+    With a schedule pull: the median across teams of regular-season games after ``D``
+    (the board carries no team column — the median is the honest generic count).
+    Without: the board's own remaining-games ceiling scaled by calendar fraction."""
+    D = max(D, T)
+    if schedule is not None and len(schedule):
+        s = schedule[schedule.get("regular_season", True) == True]  # noqa: E712
+        s = s[pd.to_datetime(s["game_date"]) > D]
+        if s.empty:
+            return 0.0
+        per_team = pd.concat([s["home"], s["away"]]).value_counts()
+        return float(per_team.median())
+    if season_end <= T:
+        return 0.0
+    frac = max((season_end - D).days, 0) / max((season_end - T).days, 1)
+    return float(np.round(ros_gp_max * frac))
+
+
+def apply_status_overrides(
+    board: pd.DataFrame,
+    overrides: list[dict],
+    T: pd.Timestamp | str,
+    season_end: pd.Timestamp | str | None = None,
+    schedule: pd.DataFrame | None = None,
+) -> pd.DataFrame:
+    """Cap ROS GP for players manually flagged out: ``gp = min(gp, games remaining after
+    the return date)``; ``fpts_total`` recomputed; ``fpts_pg``/``mpg``/rates untouched.
+    Adds a ``status_override`` audit column. Unmatched or ambiguous names raise (matched
+    via the shared normalizer + alias map). Returns a new frame."""
+    from .analyst import name_key  # local import — analyst imports other model modules
+
+    T = pd.Timestamp(T)
+    if season_end is None:
+        season_end = T + pd.Timedelta(days=SEASON_LENGTH_DAYS)  # conservative fallback;
+        # callers with a schedule pull pass the real finale date instead.
+    season_end = pd.Timestamp(season_end)
+
+    out = board.copy()
+    out["status_override"] = out.get("status_override", "")
+    keys = out["PLAYER_NAME"].map(name_key)
+    for e in overrides:
+        hits = np.flatnonzero((keys == name_key(e["name"])).to_numpy())
+        if len(hits) != 1:
+            raise ValueError(f"Status override {e['name']!r} matches {len(hits)} board rows "
+                             f"— fix the name (or extend injuries.ALIASES).")
+        i = int(hits[0])
+        if e["out_for_season"]:
+            cap, note = 0.0, "out_for_season"
+        else:
+            gp_max = float(out.loc[i, "ros_gp_max"]) if "ros_gp_max" in out.columns else float(out.loc[i, "gp"])
+            cap = _games_remaining_after(e["out_until"], T, season_end, gp_max, schedule)
+            note = f"out_until:{e['out_until'].date().isoformat()}"
+        new_gp = min(float(out.loc[i, "gp"]), cap)
+        if new_gp != float(out.loc[i, "gp"]):
+            note += f" (gp {out.loc[i, 'gp']:.0f}->{new_gp:.0f})"
+        out.loc[i, "gp"] = new_gp
+        out.loc[i, "fpts_total"] = round(float(out.loc[i, "fpts_pg"]) * new_gp, 1)
+        out.loc[i, "status_override"] = note
+    return out
 
 
 def predict_board(models: dict, feats: pd.DataFrame, cfg: ScoringConfig, season: str) -> pd.DataFrame:

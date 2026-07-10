@@ -1,8 +1,8 @@
-"""EXP-018 gate (implementation-plan Step 10): does in-season updating earn its complexity?
+"""EXP-018 gate + EXP-019 in-season diagnostics (implementation-plan Steps 10-11).
 
-Per season and cutpoint (+30/+60/+90 days from the season's first game), score three
-projections of the **remaining season** (per-game fpts of games strictly after T) on each
-projection's own top-150 pool (by projected ROS total):
+**EXP-018 gate (default mode):** per season and cutpoint (+30/+60/+90 days from the
+season's first game), score three projections of the **remaining season** (per-game fpts
+of games strictly after T) on each projection's own top-150 pool (by projected ROS total):
 
 * ``asof``      — ``project_asof`` (one model per season fold, trained on the cutpoint panel
                   from strictly-prior seasons; predicts at every cutpoint).
@@ -14,8 +14,27 @@ projection's own top-150 pool (by projected ROS total):
 
 Gate: asof beats both on ROS level MAE in ≥ 2 of 3 cutpoints, in 3/4 seasons.
 
+**EXP-019 diagnostics (``--exp019``, Step 11)** — runs on the EWMA configuration (the
+EXP-018 pooled winner) with the frozen half-lives (rates → 40, MPG → 10), and prints:
+
+1. the **in-season mover eval**: per cutpoint, the pooled per-bucket bias table on each
+   model's top-150 ROS pool (``actual_delta_ros = act_ros_pg − prior_full_season_pg``,
+   the standard bucket edges) + the per-cutpoint selection floor and reducible gap;
+2. **early-riser recall** at +30d: of the realized in-season big risers
+   (``act_ros_pg ≥ prior + 6``, ≥ 20 ROS games), the fraction inside our top-150 ROS
+   board, and their projected vs realized Δ;
+3. the **lead-time metric** (weekly grid — never literal daily re-projection): for each
+   confirmed role change (trailing-10 MPG ≥ +6 over baseline, sustained 15 games), the
+   first grid date the model's ROS MPG moved ≥ 50% of the realized change, vs the naive
+   updater; median/IQR lead days per season;
+4. a **league-horizon sensitivity** (amendment D1.3b): the cutpoint ROS MAE table with
+   labels truncated at the league end analogue (``league_end_offset_weeks`` before the
+   NBA finale) next to the full-season one — do the verdicts move?
+
 Usage:
     python scripts/eval_asof.py --seasons 2022-23 2023-24 2024-25 2025-26 --seed 0
+    python scripts/eval_asof.py --seasons 2022-23 2023-24 2024-25 2025-26 \
+        --cutpoints 30 60 90 --exp019
 """
 
 from __future__ import annotations
@@ -30,13 +49,25 @@ import numpy as np
 import pandas as pd
 
 from fantasy_nba.data import storage
-from fantasy_nba.models import asof
+from fantasy_nba.models import asof, floor_sim
 from fantasy_nba.models._core import COUNTING, _season_start
-from fantasy_nba.models.backtest import project_models
+from fantasy_nba.models.backtest import _actual, project_models
+from fantasy_nba.models.eval_movers import (
+    BUCKET_LABELS, _season_before, lead_time_table, pool_frame, role_change_events,
+)
+from fantasy_nba.models.value import load_league
 from fantasy_nba.scoring import load_scoring, score_frame
 
 GATE_OFFSETS = (30, 60, 90)
 NAIVE_K = 20.0
+
+# EXP-019 constants (Step 11).
+RISER_EDGE = 6.0            # the big-riser bucket edge, ROS form
+RISER_MIN_ROS_GP = 20       # a "realized in-season riser" needs a real ROS sample
+MIN_PRIOR_MINUTES = 500.0   # prior-season line floor (matches the preseason mover eval)
+GRID_STEP_DAYS = 7          # lead-time projection grid (weekly — addendum item 2)
+GRID_MAX_DAYS = 182         # last grid offset from season start
+LEAD_FRAC = 0.5             # "moved >= 50% of the eventual realized change"
 
 
 def ros_actual(gl_season: pd.DataFrame, T: pd.Timestamp) -> pd.DataFrame:
@@ -91,6 +122,221 @@ def pool_mae(board: pd.DataFrame, actual: pd.DataFrame, cfg, top_n: int = 150) -
     return float((m["fpts_pg"] - m["act_fpts_pg"]).abs().mean()), len(m)
 
 
+def ros_actual_scored(gl_season: pd.DataFrame, T: pd.Timestamp, cfg,
+                      end: pd.Timestamp | None = None) -> pd.DataFrame:
+    """ROS actuals scored for pooling: ``[PLAYER_ID, act_ros_gp, act_fpts_pg,
+    act_fpts_total]``. ``end`` truncates the label window (the league-horizon view —
+    the fantasy league ends before the NBA finale, so deployed ROS cuts there too)."""
+    sub = gl_season if end is None else gl_season[gl_season["_date"] <= end]
+    a = ros_actual(sub, T)
+    if a.empty:
+        return pd.DataFrame(columns=["PLAYER_ID", "act_ros_gp", "act_fpts_pg", "act_fpts_total"])
+    a["act_fpts_pg"] = score_frame(a, cfg)
+    a["act_fpts_total"] = a["act_fpts_pg"] * a["act_ros_gp"]
+    return a[["PLAYER_ID", "act_ros_gp", "act_fpts_pg", "act_fpts_total"]]
+
+
+def _rank_board(b: pd.DataFrame) -> pd.DataFrame:
+    out = b.sort_values("fpts_total", ascending=False).reset_index(drop=True)
+    out["rank"] = range(1, len(out) + 1)
+    return out
+
+
+def _grid_mpg_asof(models: dict, preseason: pd.DataFrame, gl_s: pd.DataFrame,
+                   dates: list[pd.Timestamp], half_lives: dict) -> pd.DataFrame:
+    """Weekly-grid ROS-MPG projections ``[date, PLAYER_ID, mpg]`` — the fold's models are
+    fitted once, the preseason block computed once; only the STD/EWMA blocks move per date
+    (the Step-11.3 cost control: never refit, never literal daily re-projection)."""
+    cols = models["_feature_cols"]
+    frames = []
+    for T in dates:
+        sub = gl_s[gl_s["_date"] <= T]
+        ew = asof.ewma_features(sub, T, half_lives) if half_lives else None
+        feats = asof._row_frame(preseason, asof.std_features(sub, T), ew)
+        for c in cols:
+            if c not in feats.columns:
+                feats[c] = np.nan
+        mpg = np.clip(models["y_ros_mpg"].predict(feats[cols]), 0.0, 48.0)
+        frames.append(pd.DataFrame({"date": T, "PLAYER_ID": feats["PLAYER_ID"].to_numpy(),
+                                    "mpg": mpg}))
+    return pd.concat(frames, ignore_index=True)
+
+
+def _grid_mpg_naive(t0_board: pd.DataFrame, gl_s: pd.DataFrame,
+                    dates: list[pd.Timestamp], k: float = NAIVE_K) -> pd.DataFrame:
+    """The naive comparator's MPG on the same grid: ``(n×STD + K×T₀)/(n+K)``."""
+    t0 = t0_board.drop_duplicates("PLAYER_ID").set_index("PLAYER_ID")["mpg"]
+    frames = []
+    for T in dates:
+        played = gl_s[gl_s["_date"] <= T]
+        g = played.groupby("PLAYER_ID")
+        n = g.size()
+        std_mpg = g["MIN"].sum() / n
+        ids = t0.index.union(n.index)
+        nn = n.reindex(ids).fillna(0.0)
+        w = nn / (nn + k)
+        blended = (w * std_mpg.reindex(ids).fillna(t0.reindex(ids))
+                   + (1 - w) * t0.reindex(ids).fillna(std_mpg.reindex(ids)))
+        frames.append(pd.DataFrame({"date": T, "PLAYER_ID": ids.to_numpy(),
+                                    "mpg": blended.to_numpy()}))
+    return pd.concat(frames, ignore_index=True)
+
+
+def _bucket_table(m: pd.DataFrame) -> pd.DataFrame:
+    """Pooled per-bucket rows (same arithmetic as ``run_mover_eval``'s per-bucket block)."""
+    g = m.groupby("bucket", observed=False)
+    return pd.DataFrame({
+        "bucket": BUCKET_LABELS,
+        "n": g.size().reindex(BUCKET_LABELS).values,
+        "level_MAE": g["err"].apply(lambda e: e.abs().mean()).reindex(BUCKET_LABELS).values,
+        "signed_bias": g["err"].mean().reindex(BUCKET_LABELS).values,
+        "mean_actual_delta": g["actual_delta"].mean().reindex(BUCKET_LABELS).values,
+        "mean_proj_delta": g["proj_delta"].mean().reindex(BUCKET_LABELS).values,
+    })
+
+
+def run_exp019(args, season_stats, bio, gl, cfg, params) -> None:
+    """Step 11: the three EXP-019 diagnostics + the league-horizon sensitivity."""
+    bounds_df = asof.season_date_bounds(gl)
+    starts = bounds_df.set_index("SEASON")["start"]
+    ends = bounds_df.set_index("SEASON")["end"]
+    league = load_league()
+    off_weeks = int(league.get("league_end_offset_weeks") or 0)
+    half_lives = asof.FROZEN_HALF_LIVES
+    print(f"[exp019] EWMA config, frozen half-lives {half_lives}; "
+          f"league horizon = NBA finale − {off_weeks} weeks", flush=True)
+
+    pools: dict[tuple[str, int], list[pd.DataFrame]] = {}
+    mae_rows, recall_rows, lead_rows = [], [], []
+
+    for season in args.seasons:
+        ty = _season_start(season)
+        train_ss = season_stats[season_stats["SEASON"].map(_season_start) < ty]
+        train_bio = bio[bio["SEASON"].map(_season_start) < ty]
+        train_gl = gl[gl["SEASON"].map(_season_start) < ty]
+
+        panel = asof.build_asof_panel(train_ss, train_gl, train_bio, half_lives=half_lives)
+        models = asof._fit_asof_models(panel, params, use_ewma=True)
+        t0_board = project_models(season, season_stats, bio, cfg, seed=args.seed)["learned"]
+        gl_s = gl[gl["SEASON"] == season]
+        league_end = ends[season] - pd.Timedelta(weeks=off_weeks)
+        prior = _actual(season_stats, _season_before(season), cfg,
+                        min_minutes=MIN_PRIOR_MINUTES)[["PLAYER_ID", "act_fpts_pg"]]
+        prior = prior.rename(columns={"act_fpts_pg": "prior_fpts_pg"})
+        preseason_block = asof._preseason_block(
+            season_stats, bio, season, 3, asof.DEFAULT_WEIGHTS, asof.DEFAULT_REG_MINUTES)
+
+        for off in args.cutpoints:
+            T = starts[season] + pd.Timedelta(days=off)
+            feats = asof.asof_features(gl, season_stats, bio, season, T, half_lives=half_lives)
+            boards = {
+                "asof": asof.predict_board(models, feats, cfg, season),
+                "frozen_t0": t0_board,
+                "naive": _rank_board(naive_board(t0_board, gl_s, T, cfg)),
+            }
+            act_full = ros_actual_scored(gl_s, T, cfg)
+            act_lh = ros_actual_scored(gl_s, T, cfg, end=league_end)
+            for name, b in boards.items():
+                m = pool_frame(b, prior, act_full, args.top_n)
+                pools.setdefault((name, off), []).append(m.assign(season=season))
+                m_lh = pool_frame(b, prior, act_lh, args.top_n)
+                mae_rows.append({"season": season, "cutpoint": off, "model": name,
+                                 "full": float(m["err"].abs().mean()),
+                                 "league_horizon": float(m_lh["err"].abs().mean())})
+
+            # 2. early-riser recall (the waiver question) at the +30d cutpoint.
+            if off == 30:
+                r = act_full[act_full["act_ros_gp"] >= RISER_MIN_ROS_GP].merge(prior, on="PLAYER_ID")
+                risers = r[r["act_fpts_pg"] - r["prior_fpts_pg"] >= RISER_EDGE]
+                top = boards["asof"].nsmallest(args.top_n, "rank")[["PLAYER_ID", "fpts_pg"]]
+                hit = risers.merge(top, on="PLAYER_ID", how="left")
+                captured = hit[hit["fpts_pg"].notna()]
+                recall_rows.append({
+                    "season": season, "n_risers": len(risers),
+                    "recall@150": len(captured) / len(risers) if len(risers) else np.nan,
+                    "mean_realized_delta": float((risers["act_fpts_pg"] - risers["prior_fpts_pg"]).mean()),
+                    "mean_proj_delta_captured": float((captured["fpts_pg"] - captured["prior_fpts_pg"]).mean())
+                    if len(captured) else np.nan,
+                })
+            print(f"[{season} +{off}d] pooled", flush=True)
+
+        # 3. lead-time on the weekly grid (fit once per fold; cheap predicts per date).
+        events = role_change_events(gl_s)
+        dates = [starts[season] + pd.Timedelta(days=d)
+                 for d in range(GRID_STEP_DAYS, GRID_MAX_DAYS + 1, GRID_STEP_DAYS)]
+        grids = {
+            "asof": _grid_mpg_asof(models, preseason_block, gl_s, dates, half_lives),
+            "naive": _grid_mpg_naive(t0_board, gl_s, dates),
+        }
+        for name, grid in grids.items():
+            lt = lead_time_table(events, grid, frac=LEAD_FRAC)
+            det = lt[lt["detected"]]
+            lead_rows.append({
+                "season": season, "model": name, "n_events": len(events),
+                "detected": float(lt["detected"].mean()) if len(lt) else np.nan,
+                "median_lead_days": float(det["lead_days"].median()) if len(det) else np.nan,
+                "iqr_lo": float(det["lead_days"].quantile(0.25)) if len(det) else np.nan,
+                "iqr_hi": float(det["lead_days"].quantile(0.75)) if len(det) else np.nan,
+            })
+        print(f"[{season}] lead-time: {len(events)} confirmed role changes", flush=True)
+
+    # ---- 1. in-season mover eval: pooled per-bucket tables + per-cutpoint floors ----
+    print("\n=== EXP-019.1 in-season mover eval (pooled, per cutpoint) ===")
+    for off in args.cutpoints:
+        floor = None
+        for name in ("asof", "naive", "frozen_t0"):
+            m = pd.concat(pools[(name, off)], ignore_index=True)
+            tbl = _bucket_table(m)
+            if name == "asof":
+                floor = floor_sim.selection_floor(m, seed=args.seed)
+                tbl = tbl.merge(floor[["bucket", "floor_bias"]], on="bucket")
+                tbl["reducible_gap"] = tbl["signed_bias"] - tbl["floor_bias"]
+            print(f"\n[+{off}d] {name}")
+            print(tbl.round(3).to_string(index=False))
+        dir_rows = []
+        for name in ("asof", "naive", "frozen_t0"):
+            m = pd.concat(pools[(name, off)], ignore_index=True)
+            dir_rows.append({
+                "model": name, "pool_n": len(m),
+                "level_MAE": m["err"].abs().mean(), "level_bias": m["err"].mean(),
+                "delta_corr": m["proj_delta"].corr(m["actual_delta"]),
+                "dir_sign_acc": (np.sign(m["proj_delta"]) == np.sign(m["actual_delta"])).mean(),
+            })
+        print(f"\n[+{off}d] directional")
+        print(pd.DataFrame(dir_rows).round(3).to_string(index=False))
+
+    # ---- 2. early-riser recall ----
+    print("\n=== EXP-019.2 early-riser recall at +30d (asof top-150 ROS board) ===")
+    R = pd.DataFrame(recall_rows)
+    print(R.round(3).to_string(index=False))
+    if len(R):
+        n = R["n_risers"].sum()
+        pooled = (R["recall@150"] * R["n_risers"]).sum() / n if n else np.nan
+        print(f"pooled recall@150: {pooled:.3f} over {int(n)} realized in-season big risers")
+
+    # ---- 3. lead-time ----
+    print("\n=== EXP-019.3 lead-time (weekly grid, >=50% of realized MPG change) ===")
+    L = pd.DataFrame(lead_rows)
+    print(L.round(2).to_string(index=False))
+    pooled = L.groupby("model")[["detected", "median_lead_days"]].mean()
+    print("\nper-model means across seasons (positive lead = moved before confirmation):")
+    print(pooled.round(2).to_string())
+
+    # ---- 4. league-horizon sensitivity (amendment D1.3b) ----
+    print("\n=== EXP-019.4 league-horizon sensitivity (ROS MAE, labels cut at league end) ===")
+    M = pd.DataFrame(mae_rows)
+    wide = M.pivot_table(index=["season", "cutpoint"], columns="model",
+                         values=["full", "league_horizon"])
+    print(wide.round(3).to_string())
+    flips = 0
+    for hz in ("full", "league_horizon"):
+        w = M.pivot_table(index=["season", "cutpoint"], columns="model", values=hz)
+        M_v = (w["asof"] < w["naive"]).rename(hz)
+        flips = M_v if hz == "full" else (flips != M_v).sum()
+    print(f"\n'asof beats naive' cells that flip under the league horizon: {int(flips)} "
+          f"of {M[['season', 'cutpoint']].drop_duplicates().shape[0]}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="EXP-018 as-of-date gate.")
     parser.add_argument("--seasons", nargs="+",
@@ -104,6 +350,13 @@ def main() -> None:
     parser.add_argument("--blend", action="store_true",
                         help="Add the naive-blend features (start from the K=20 shrinkage, "
                              "learn corrections).")
+    parser.add_argument("--exp019", action="store_true",
+                        help="Step 11 diagnostics: in-season mover eval + floors, early-riser "
+                             "recall, lead-time (weekly grid), league-horizon sensitivity. "
+                             "Runs the EWMA config with the frozen half-lives.")
+    parser.add_argument("--fit-half-lives", action="store_true",
+                        help="Re-fit EWMA half-lives per fold instead of the frozen constants "
+                             "(rates→40, MPG→10 — identical in all four folds; slow).")
     args = parser.parse_args()
 
     season_stats = storage.read("player_season_stats")
@@ -111,6 +364,10 @@ def main() -> None:
     gl = asof._with_dates(storage.read("player_game_logs"))
     cfg = load_scoring(args.scoring)
     params = {**asof.DEFAULT_LGBM_PARAMS, "random_state": args.seed}
+
+    if args.exp019:
+        run_exp019(args, season_stats, bio, gl, cfg, params)
+        return
 
     bounds = asof.season_date_bounds(gl).set_index("SEASON")["start"]
     rows = []
@@ -120,10 +377,14 @@ def main() -> None:
         train_bio = bio[bio["SEASON"].map(_season_start) < ty]
         train_gl = gl[gl["SEASON"].map(_season_start) < ty]
 
-        # fit once per season fold (half-lives, when used, also fit on the training slice only)
-        half_lives = asof.fit_half_lives(train_gl) if args.ewma else None
-        if half_lives:
-            print(f"[{season}] fitted half-lives: {half_lives}", flush=True)
+        # fit once per season fold; half-lives default to the frozen constants (they fit
+        # identically in all four folds — addendum 2026-07-09 item 3) unless a re-check
+        # is requested via --fit-half-lives (then fit on the training slice only).
+        half_lives = None
+        if args.ewma:
+            half_lives = asof.fit_half_lives(train_gl) if args.fit_half_lives else asof.FROZEN_HALF_LIVES
+            print(f"[{season}] half-lives ({'fitted' if args.fit_half_lives else 'frozen'}): "
+                  f"{half_lives}", flush=True)
         panel = asof.build_asof_panel(train_ss, train_gl, train_bio, half_lives=half_lives,
                                       use_blend=args.blend)
         models = asof._fit_asof_models(panel, params, use_ewma=args.ewma, use_blend=args.blend)

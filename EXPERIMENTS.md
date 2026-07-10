@@ -927,6 +927,54 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
 - **Skeptic pass (build-time):** no leakage possible yet (no overrides exist); the freeze's
   git timestamp is the no-hindsight proof; application arithmetic is unit-tested and pure.
 
+### EXP-019 — in-season mover eval + lead-time metric  ·  Status: **adopted (diagnostics; seed-0 baselines recorded)**
+- **Date:** 2026-07-10  ·  **Commit:** this commit  ·  **Step:** implementation-plan Step 11
+- **What:** the metrics that judge the Phase-3 engine on the question it exists for — catch a
+  riser early — printed from one command: `python scripts/eval_asof.py --seasons 2022-23
+  2023-24 2024-25 2025-26 --cutpoints 30 60 90 --exp019`. Runs the EWMA configuration (the
+  EXP-018 pooled winner) with half-lives **frozen as documented constants**
+  (`asof.FROZEN_HALF_LIVES`: every rate → 40 games, MPG → 10 — identical in all four folds;
+  addendum item 3; `--fit-half-lives` re-checks). Comparators: the naive K=20 updater and
+  frozen-T₀. Pool = each model's own top-150 by projected ROS total;
+  `actual_delta_ros = act_ros_pg − prior_full_season_pg`, standard bucket edges; floors
+  recomputed **per cutpoint** on ROS residuals (`floor_sim` on the pooled asof pool).
+- **19.1 In-season mover eval (pooled 4 seasons):** asof's reducible gap is ≈ 0 at +30d
+  (big faller +0.17 · riser +0.10 · **big riser −0.02**) and ≤ 0.6 at +60/+90d — *in-season,
+  against per-cutpoint floors, the engine's bucket bias is nearly all selection artifact*
+  (the EXP-011 preseason verdict restated in-season, now with the machinery to keep it
+  honest). asof beats naive on big-riser signed bias at every cutpoint (−4.25/−4.27/−4.54
+  vs −6.09/−5.56/−5.79) and on delta_corr (0.67/0.70/0.68 vs 0.61/0.68/0.68); frozen-T₀ is
+  far behind everywhere (delta_corr 0.33–0.36). Level MAE: asof ≤ naive at all three
+  cutpoints pooled (3.65/3.56/3.94 vs 3.74/3.65/4.04) — consistent with EXP-018's parked
+  cell-gate (parity-ish on MAE) while the mover/directional views show where the learned
+  engine earns its keep.
+- **19.2 Early-riser recall @ +30d (the waiver question):** pooled **51.7%** of the 174
+  realized in-season big risers (`act_ros_pg ≥ prior + 6`, ≥ 20 ROS games) are inside the
+  asof top-150 ROS board at +30d (by season: 56.8/48.8/56.2/45.7). Captured risers are
+  projected at ~half their realized move (mean proj Δ +5.0 vs realized +9.6) — the standing
+  baseline for every later in-season improvement.
+- **19.3 Lead-time (event-anchored, weekly grid — addendum item 2; never daily refit):**
+  193 confirmed role changes (trailing-10 MPG ≥ +6 over baseline, sustained 15 games).
+  asof moves ≥ 50% of the realized MPG change before confirmation on **99%** of events,
+  median lead **52 days**; naive detects only **70%**. Caveat logged: the per-model median
+  lead conditions on that model's own detected subset (naive's 67-day median is computed on
+  the 70% it catches, and both models' leads are inflated by events whose T₀ projection
+  already sat above the threshold) — when this metric later gates a tuning decision, pair
+  it on the common detected set. Standing target: detection ≥ naive, median lead ≥ naive.
+- **19.4 League-horizon sensitivity (amendment D1.3b):** with ROS labels truncated at the
+  league-end analogue (NBA finale − 3 weeks, `league.yaml` placeholder), 2 of 12
+  asof-beats-naive MAE cells flip ⇒ **verdicts move — both views print going forward**
+  (the `--exp019` runner computes both unconditionally).
+- **Verdict:** adopted as diagnostics (the EXP-006 pattern). Numbers are **seed-0
+  baselines**; nothing was tuned against them — re-run under rule 8 (seeds {0,1,2} + CI)
+  before any adopt/reject decision leans on a delta between models.
+- **Skeptic pass:** (leakage) fold models train on strictly-prior seasons; the weekly-grid
+  projections use logs ≤ each grid date; frozen half-lives were fitted on training slices
+  in EXP-018 and are constants here. (selection) pools are each model's own top-150 —
+  identical construction across models; floors are computed per cutpoint on the same pools;
+  the 19.3 conditioning caveat is written above. (season concentration) 19.1/19.3 verdicts
+  hold in every season; 19.2 recall ranges 46–57% with no outlier season.
+
 _Next experiments — numbering reserved by [`docs/implementation-plan.md`](docs/implementation-plan.md)
 (the execution spec; run in its Step order, as re-routed by the dated notes in its tracker — latest:
 the **2026-07-09 draft-focus re-route + gap-closer addendum**). Done: EXP-011…014 (Phase 0+1),

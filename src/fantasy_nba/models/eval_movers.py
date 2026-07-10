@@ -262,6 +262,88 @@ def run_mover_eval(
     return per_bucket, directional, per_pred_bucket
 
 
+def role_change_events(
+    gl_season: pd.DataFrame,
+    min_rise: float = 6.0,
+    confirm_games: int = 15,
+    window: int = 10,
+    min_baseline_games: int = 10,
+) -> pd.DataFrame:
+    """Confirmed in-season role changes from one season's game logs (EXP-019 lead-time).
+
+    Per player, games in date order: at game ``i``, ``trail`` = mean MIN of his last
+    ``window`` games and ``baseline`` = mean MIN of all games before that window. The
+    **onset** is the first ``i`` (with ≥ ``min_baseline_games`` baseline games) where
+    ``trail − baseline ≥ min_rise``; it is **confirmed** iff the trailing window stays
+    ``≥ baseline + min_rise`` (baseline fixed at onset) for each of the next
+    ``confirm_games`` games. One event per player (the first confirmed onset).
+
+    Columns: ``PLAYER_ID, onset_date, confirm_date, baseline_mpg, realized_change``
+    (realized_change = mean MIN of the onset-through-confirmation games − baseline —
+    the "eventual realized change" the lead-time detection threshold is scaled by).
+    ``gl_season`` needs ``PLAYER_ID, MIN`` and a parsed ``_date`` column.
+    """
+    rows = []
+    for pid, g in gl_season.sort_values("_date").groupby("PLAYER_ID"):
+        mins = g["MIN"].to_numpy(dtype=float)
+        dates = g["_date"].to_numpy()
+        n = len(mins)
+        if n < min_baseline_games + window + confirm_games:
+            continue
+        csum = np.concatenate([[0.0], np.cumsum(mins)])
+        trail = (csum[window:] - csum[:-window]) / window          # trail[j] ends at game j+window-1
+        for i in range(min_baseline_games + window - 1, n - confirm_games):
+            baseline = csum[i - window + 1] / (i - window + 1)     # games 0..i-window
+            if trail[i - window + 1] - baseline < min_rise:
+                continue
+            later = trail[i - window + 2: i - window + 2 + confirm_games]
+            if len(later) < confirm_games or (later - baseline < min_rise).any():
+                continue
+            realized = (csum[i + confirm_games + 1] - csum[i]) / (confirm_games + 1) - baseline
+            rows.append({
+                "PLAYER_ID": pid,
+                "onset_date": pd.Timestamp(dates[i]),
+                "confirm_date": pd.Timestamp(dates[i + confirm_games]),
+                "baseline_mpg": baseline,
+                "realized_change": realized,
+            })
+            break
+    return pd.DataFrame(rows, columns=["PLAYER_ID", "onset_date", "confirm_date",
+                                       "baseline_mpg", "realized_change"])
+
+
+def lead_time_table(
+    events: pd.DataFrame,
+    proj_mpg: pd.DataFrame,
+    frac: float = 0.5,
+) -> pd.DataFrame:
+    """Lead time of a projection series against confirmed role changes (EXP-019.3).
+
+    ``events`` = :func:`role_change_events` output; ``proj_mpg`` = the model's ROS MPG
+    per (grid ``date``, ``PLAYER_ID``) — a weekly grid per the 2026-07-09 addendum
+    (never literal daily re-projection). For each event, ``first_move_date`` is the
+    first grid date whose projection has moved ≥ ``frac`` of the eventual realized
+    change off the event's baseline. ``lead_days = confirm_date − first_move_date``
+    (positive = the model moved before the on-court confirmation completed; negative =
+    after; NaN + ``detected=False`` = never moved that far on the grid).
+    """
+    rows = []
+    for e in events.itertuples(index=False):
+        p = proj_mpg[proj_mpg["PLAYER_ID"] == e.PLAYER_ID].sort_values("date")
+        thresh = e.baseline_mpg + frac * e.realized_change
+        hit = p[p["mpg"] >= thresh]
+        if hit.empty:
+            rows.append({"PLAYER_ID": e.PLAYER_ID, "confirm_date": e.confirm_date,
+                         "first_move_date": pd.NaT, "lead_days": np.nan, "detected": False})
+        else:
+            first = hit["date"].iloc[0]
+            rows.append({"PLAYER_ID": e.PLAYER_ID, "confirm_date": e.confirm_date,
+                         "first_move_date": first,
+                         "lead_days": float((e.confirm_date - first).days), "detected": True})
+    return pd.DataFrame(rows, columns=["PLAYER_ID", "confirm_date", "first_move_date",
+                                       "lead_days", "detected"])
+
+
 def bootstrap_bias_delta_ci(
     pool_a: pd.DataFrame,
     pool_b: pd.DataFrame,

@@ -192,7 +192,7 @@ so we use the market as a **benchmark and disagreement-finder**, not a crutch. (
 the session; key ones: darko.app, Bruin/Dartmouth breakout studies, Athlon trade-effect pieces,
 `nbainjuries` / prosportstransactions for injury data.)
 
-#### 7.0 — Draftable-pool accuracy eval, mover-segmented  ← **KEYSTONE (preseason form DONE; in-season engine DONE — its eval metrics are Step 11)**
+#### 7.0 — Draftable-pool accuracy eval, mover-segmented  ← **KEYSTONE (preseason form DONE; in-season engine DONE; in-season eval metrics DONE — EXP-019)**
 Universe: the **top ~100–150** (draftable) pool — players outside it won't be drafted, so we
 don't care about them. Goal (user, 2026-07): get each player's projected **production level**
 right, *especially the movers* — if a player goes 35→40, we want the projection to say ~40 so he's
@@ -215,7 +215,17 @@ level accuracy that doesn't fall apart on players whose level changed.
       measured.** vs the naive K=20 blend: parity (best config −0.07 pooled; per-season cell gate met
       only by 2025-26 → gate parked). Fitted EWMA half-lives: all rates → 40 games, MPG → 10 (EXP-001
       restated in-season). Re-gate after Step 7 (live OUT-tonight/vacated minutes) + D1 (schedule).
-      Done-pending-Step-11 (the in-season mover eval + lead-time metric itself).
+- [x] **In-season mover eval + lead-time metric (EXP-019, Step 11, 2026-07-10):**
+      `eval_asof.py --exp019` — one command prints (1) the per-cutpoint pooled mover tables
+      **with per-cutpoint selection floors**: asof's in-season reducible gap is ≈ 0 at +30d
+      (big riser −0.02) and ≤ 0.6 everywhere, and asof beats the naive updater on big-riser
+      bias at every cutpoint (−4.2/−4.3/−4.5 vs −6.1/−5.6/−5.8); (2) **early-riser recall**
+      51.7% pooled (174 realized +30d big risers; captured risers projected at ~half their
+      realized move); (3) the **lead-time metric** (weekly grid, event-anchored): asof
+      detects 99% of confirmed role changes at a median 52-day lead vs naive's 70% detection;
+      (4) league-horizon sensitivity: 2/12 asof-vs-naive MAE cells flip when labels cut at
+      league end ⇒ both views print going forward. EWMA half-lives frozen as constants
+      (`asof.FROZEN_HALF_LIVES`). Adopted as diagnostics (seed-0 baselines).
 - [x] First run doubles as measuring the *current* model's mover bias — baseline the disease (EXP-006). ✔
 - [x] Wire into `models/backtest.py` (no-leakage; shared `project_models` path). Across-season
       walk-forward done; within-season folds come with the in-season eval above.

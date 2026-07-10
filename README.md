@@ -52,6 +52,9 @@ scripts/
   eval_quantiles.py  EXP-013c quantile-head eval: pinball loss vs baselines + per-bucket coverage
   tune_learned.py  EXP-013d nested walk-forward LGBM tuner (grid on folds <= 2021-22 only)
   eval_asof.py     EXP-018 in-season gate: project_asof vs frozen-T0 vs naive updater (--ewma, --blend)
+                   + EXP-019 diagnostics (--exp019): in-season mover eval w/ per-cutpoint floors,
+                   early-riser recall, weekly-grid lead-time, league-horizon sensitivity
+                   (--fit-half-lives re-checks the frozen EWMA constants)
   pull_injuries.py prosportstransactions scraper (injuries + transactions; drives the real
                    Edge/Chrome via Playwright — a browser window opens; incremental by date)
   eval_gp.py       EXP-015 judgments: GP point estimate (learned_inj) + Monte-Carlo GP tails

@@ -963,3 +963,69 @@ def test_severe_returnees_windows_on_spell_end():
     })
     out = analyst.severe_returnees(spells, "2026-10-01")
     assert out == {1}  # 2 ended outside 18m; 3 isn't severe
+
+
+# ---------------------------------------------------------------------------
+# EXP-019 (Step 11): role-change detection + lead-time arithmetic
+# ---------------------------------------------------------------------------
+
+def _role_change_log(pre=(20.0, 20), post=(30.0, 30), pid=1, start="2024-10-20"):
+    """One player's season log: `pre` games at one MPG level, then `post` at another,
+    one game every 2 days."""
+    mins = [pre[0]] * pre[1] + [post[0]] * post[1]
+    dates = pd.date_range(start, periods=len(mins), freq="2D")
+    return pd.DataFrame({"PLAYER_ID": pid, "MIN": mins, "_date": dates})
+
+
+def test_role_change_detected_with_correct_baseline_and_change():
+    from fantasy_nba.models.eval_movers import role_change_events
+
+    ev = role_change_events(_role_change_log())
+    assert len(ev) == 1
+    e = ev.iloc[0]
+    # Baseline is the pre-jump level; realized change ~ +10 (well past the +6 edge).
+    assert e["baseline_mpg"] == pytest.approx(20.0, abs=0.5)
+    assert e["realized_change"] == pytest.approx(10.0, abs=1.0)
+    # Onset: first game where the trailing-10 window clears baseline + 6 -> inside the
+    # post-jump run; confirmation completes 15 games later.
+    assert e["onset_date"] > pd.Timestamp("2024-10-20")
+    assert (e["confirm_date"] - e["onset_date"]).days == pytest.approx(30, abs=2)
+
+
+def test_role_change_ignores_small_or_unsustained_rises():
+    from fantasy_nba.models.eval_movers import role_change_events
+
+    small = role_change_events(_role_change_log(pre=(20.0, 20), post=(24.0, 30)))
+    assert small.empty  # +4 < the +6 edge
+    # A 10-game spike that falls back is never confirmed for 15 further games.
+    mins = [20.0] * 20 + [30.0] * 10 + [20.0] * 25
+    log = pd.DataFrame({"PLAYER_ID": 1, "MIN": mins,
+                        "_date": pd.date_range("2024-10-20", periods=len(mins), freq="2D")})
+    assert role_change_events(log).empty
+
+
+def test_lead_time_table_first_move_and_sign():
+    from fantasy_nba.models.eval_movers import lead_time_table
+
+    events = pd.DataFrame({
+        "PLAYER_ID": [1, 2],
+        "onset_date": pd.to_datetime(["2024-12-01", "2024-12-01"]),
+        "confirm_date": pd.to_datetime(["2024-12-31", "2024-12-31"]),
+        "baseline_mpg": [20.0, 20.0],
+        "realized_change": [10.0, 10.0],   # threshold = 20 + 0.5*10 = 25
+    })
+    grid = pd.date_range("2024-12-10", periods=5, freq="7D")  # 12-10 .. 2025-01-07
+    proj = pd.concat([
+        # player 1 crosses 25 on the 2nd grid date (12-17): lead = 31-17 = +14
+        pd.DataFrame({"date": grid, "PLAYER_ID": 1, "mpg": [22.0, 26.0, 27.0, 28.0, 28.0]}),
+        # player 2 only crosses after confirmation (01-07): negative lead
+        pd.DataFrame({"date": grid, "PLAYER_ID": 2, "mpg": [21.0, 21.0, 22.0, 23.0, 26.0]}),
+    ])
+    lt = lead_time_table(events, proj)
+    p1 = lt[lt["PLAYER_ID"] == 1].iloc[0]
+    assert p1["detected"] and p1["lead_days"] == pytest.approx(14.0)
+    p2 = lt[lt["PLAYER_ID"] == 2].iloc[0]
+    assert p2["detected"] and p2["lead_days"] == pytest.approx(-7.0)
+    # never crossing -> undetected, NaN lead
+    lt0 = lead_time_table(events.assign(realized_change=100.0), proj)
+    assert (~lt0["detected"]).all() and lt0["lead_days"].isna().all()
