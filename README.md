@@ -73,6 +73,9 @@ scripts/
   apply_analyst.py D2.2 analyst overrides (config/analyst_overrides.yaml): board A -> board B,
                    deterministic + audited; board A's file is never touched
   darko_report.py  DARKO overlay: minutes/rank disagreement report (pull_darko.py fetches)
+  update_daily.py  Step-12 nightly pipeline: refresh logs + incremental injury/transaction
+                   pulls + DARKO/market archives + the as-of ROS board with status overrides
+                   (config/overrides.yaml) and the naive-updater benchmark line
   explore.py       local interactive Streamlit explorer
 data/              raw/ and processed/ caches (gitignored)
   manual/          hand-curated datasets — committed (the gitignore's manual-data exception):
@@ -107,6 +110,25 @@ python scripts/project.py --target 2026-27 --rank-by safe --breakout --preseason
 # Explore data + projections interactively in the browser
 python -m streamlit run scripts/explore.py
 ```
+
+## Nightly in-season run (Step 12)
+
+One command, safe to cron, from opening night onward:
+
+```bash
+python scripts/update_daily.py
+```
+
+It (1) re-fetches the current season's game logs (replace-in-cache keyed on SEASON —
+history preserved), (2) incrementally extends the injuries/transactions scrapes,
+(3) accumulates the date-stamped DARKO + market archives (what makes EXP-017b/020
+backtestable next season), and (4) writes the as-of ROS board to the append-only
+`data/processed/ros_board/<date>.parquet` — with `config/overrides.yaml` status caps
+applied (availability only: "out until X" caps ROS games; rates/minutes untouched) and
+the naive-updater benchmark emitted alongside (`naive_fpts_pg`/`naive_rank` + a
+disagreement report — the daily gap between them is itself a signal). Each pull is
+fault-isolated; an existing board for the date is never silently overwritten.
+Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season date>`.
 
 ## Interactive explorer
 

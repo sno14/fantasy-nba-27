@@ -166,3 +166,114 @@ def test_asof_panel_walk_forward_no_leakage():
     panel = asof.build_asof_panel(train_ss, train_gl, train_bio)
     assert "2021-22" not in set(panel["season"])
     assert set(panel["cutpoint_offset"]) <= set(asof.CUTPOINT_OFFSETS)
+
+
+# ---------------------------------------------------------------------------
+# Step 12: manual status overrides (config/overrides.yaml) + nightly refresh
+# ---------------------------------------------------------------------------
+
+def _status_board():
+    return pd.DataFrame({
+        "rank": [1, 2, 3],
+        "PLAYER_ID": [1, 2, 3],
+        "PLAYER_NAME": ["Jayson Tatum", "Other Guy", "Third Man"],
+        "gp": [60.0, 60.0, 60.0],
+        "mpg": [35.0, 30.0, 25.0],
+        "fpts_pg": [45.0, 35.0, 25.0],
+        "ros_gp_max": [60.0, 60.0, 60.0],
+        "fpts_total": [2700.0, 2100.0, 1500.0],
+    })
+
+
+def test_load_status_overrides_parses_and_validates(tmp_path):
+    p = tmp_path / "overrides.yaml"
+    p.write_text(
+        "overrides:\n"
+        "  - name: Jayson Tatum\n    out_until: 2027-01-15\n"
+        "  - name: Other Guy\n    out_for_season: true\n",
+        encoding="utf-8")
+    ov = asof.load_status_overrides(p)
+    assert len(ov) == 2
+    assert ov[0]["out_until"] == pd.Timestamp("2027-01-15") and not ov[0]["out_for_season"]
+    assert ov[1]["out_for_season"] and ov[1]["out_until"] is None
+
+    assert asof.load_status_overrides(tmp_path / "missing.yaml") == []
+
+    for bad in (
+        "overrides:\n  - name: X\n",                                        # neither key
+        "overrides:\n  - name: X\n    out_until: 2027-01-01\n    out_for_season: true\n",
+    ):
+        p.write_text(bad, encoding="utf-8")
+        with pytest.raises(ValueError):
+            asof.load_status_overrides(p)
+
+
+def test_status_override_out_for_season_zeroes_availability_only():
+    out = asof.apply_status_overrides(
+        _status_board(), [{"name": "Jayson Tatum", "out_until": None, "out_for_season": True}],
+        T="2026-12-01")
+    row = out[out["PLAYER_ID"] == 1].iloc[0]
+    assert row["gp"] == 0.0 and row["fpts_total"] == 0.0
+    assert row["fpts_pg"] == 45.0 and row["mpg"] == 35.0          # never touches the rates
+    assert row["status_override"].startswith("out_for_season")
+    assert (out.loc[out["PLAYER_ID"] != 1, "gp"] == 60.0).all()   # others untouched
+
+
+def test_status_override_proportional_cap_and_past_date_noop():
+    # T -> season_end = 100 days; out until day 50 -> cap = 60 * 50/100 = 30.
+    ov = [{"name": "Jayson Tatum", "out_until": pd.Timestamp("2027-01-20"),
+           "out_for_season": False}]
+    out = asof.apply_status_overrides(_status_board(), ov, T="2026-12-01",
+                                      season_end="2027-03-11")
+    assert out.loc[out["PLAYER_ID"] == 1, "gp"].iloc[0] == pytest.approx(30.0)
+    assert out.loc[out["PLAYER_ID"] == 1, "fpts_total"].iloc[0] == pytest.approx(45.0 * 30.0)
+
+    # A return date already behind T caps at the full remaining schedule: no-op.
+    past = [{"name": "Jayson Tatum", "out_until": pd.Timestamp("2026-11-01"),
+             "out_for_season": False}]
+    out2 = asof.apply_status_overrides(_status_board(), past, T="2026-12-01",
+                                       season_end="2027-03-11")
+    assert out2.loc[out2["PLAYER_ID"] == 1, "gp"].iloc[0] == 60.0
+
+
+def test_status_override_uses_schedule_when_given():
+    # Two teams, 6 regular-season games each; 4 of them after the return date.
+    dates = pd.date_range("2027-01-01", periods=6, freq="7D")
+    schedule = pd.DataFrame({
+        "game_date": dates, "home": "AAA", "away": "BBB", "regular_season": True,
+    })
+    ov = [{"name": "Jayson Tatum", "out_until": pd.Timestamp("2027-01-10"),
+           "out_for_season": False}]
+    out = asof.apply_status_overrides(_status_board(), ov, T="2027-01-01",
+                                      season_end="2027-02-05", schedule=schedule)
+    # games strictly after 01-10: 01-15, 01-22, 01-29, 02-05 -> 4 per team
+    assert out.loc[out["PLAYER_ID"] == 1, "gp"].iloc[0] == pytest.approx(4.0)
+
+
+def test_status_override_unmatched_name_raises():
+    with pytest.raises(ValueError, match="matches 0 board rows"):
+        asof.apply_status_overrides(
+            _status_board(), [{"name": "Nobody", "out_until": None, "out_for_season": True}],
+            T="2026-12-01")
+
+
+def test_refresh_season_replaces_only_that_season(monkeypatch, tmp_path):
+    from fantasy_nba.data import ingest, storage as storage_mod
+
+    cache = {"player_game_logs": pd.DataFrame({
+        "SEASON": ["2025-26", "2025-26", "2026-27"], "PTS": [10, 11, 12]})}
+    monkeypatch.setattr(storage_mod, "exists", lambda name, layer="raw": name in cache)
+    monkeypatch.setattr(storage_mod, "read", lambda name, layer="raw": cache[name])
+
+    def _write(df, name, layer="raw"):
+        cache[name] = df
+        return tmp_path / f"{name}.parquet"
+    monkeypatch.setattr(storage_mod, "write", _write)
+    monkeypatch.setitem(ingest._DATASETS, "player_game_logs",
+                        lambda season: pd.DataFrame({"SEASON": [season] * 4, "PTS": [1, 2, 3, 4]}))
+
+    out = ingest.refresh_season("player_game_logs", "2026-27")
+    assert (out[out["SEASON"] == "2026-27"]["PTS"] == [1, 2, 3, 4]).all()
+    assert len(out[out["SEASON"] == "2025-26"]) == 2          # history preserved
+    with pytest.raises(ValueError):
+        ingest.refresh_season("draft_history", "2026-27")     # static dataset refused

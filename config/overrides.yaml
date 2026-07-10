@@ -1,0 +1,21 @@
+# Manual player-status overrides (Step 12) — the zero-scraping news channel.
+#
+# Player status the box scores can't know yet ("ruled out 6 weeks", "done for the year").
+# Applied by project_asof / update_daily to AVAILABILITY ONLY: the ROS games-played
+# prediction is capped at the games physically remaining after the return date
+# (schedule-aware when the season's schedule pull exists, calendar-fraction fallback
+# otherwise). Rates and minutes are NEVER touched — if the news is about role, that is
+# the analyst layer (config/analyst_overrides.yaml), not this file.
+#
+# Names are matched via the shared normalizer + alias map; an unmatched name fails loudly.
+# Entries are edited freely (this is live operational state, not an audited experiment
+# artifact) — remove a player once he is back.
+#
+# Schema:
+# overrides:
+#   - name: "Jayson Tatum"
+#     out_until: 2027-01-15
+#   - name: "Some Player"
+#     out_for_season: true
+
+overrides: []

@@ -103,7 +103,7 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | D2 | 2.5 | Analyst pass + dual-board freeze | EXP-029 | ☑ (overrides schema + `apply_analyst.py` + trigger generator, tested 2026-07-10) | ◐ pending (pass + dual freeze calendar-locked: last ~2 wks pre-draft / pre-opening-night; scores Apr 2027) |
 | 10 | 3 | As-of-date projection function | EXP-018 | ☑ | ☑ (foundation adopted; naive gate parked) |
 | 11 | 3 | In-season eval + lead-time metric | EXP-019 | ☑ (`eval_asof.py --exp019`; half-lives frozen) | ☑ (adopted diagnostics: +30d reducible gap ≈ 0 · riser-recall 51.7% · lead 52d @ 99% detect vs naive 70% · league-horizon flips 2/12 → both views) |
-| 12 | 3 | Nightly update pipeline + status overrides | — | ☐ | ☐ |
+| 12 | 3 | Nightly update pipeline + status overrides | — | ☑ (`update_daily.py` + `overrides.yaml` + `refresh_season`; naive line per addendum 5) | ☑ off-season dry-run clean 2026-07-10 (`--offline --asof 2026-03-01`); goes live opening night |
 | 13 | 3 | External in-season benchmarks (DARKO/ADP archives) | EXP-020 | ☐ | ☐ |
 | 14 | 4 | Distributional board (quantile ranges, GP tails, coverage) | EXP-021 | ☐ | ☐ |
 | 15 | 4 | Ship: default model switch, explorer, final doc sweep | — | ☐ | ☐ |

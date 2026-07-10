@@ -992,7 +992,10 @@ source, pick number shown alongside; re-pull `draft_history` before October for 
 scoring.yaml already matched, no re-runs**) → **EXP-029** analyst pass + dual-board freeze (Step D2 —
 **machinery built + tested 2026-07-10, opened pending above**; the pass itself + dual freeze are
 calendar-locked to the last ~2 weeks before the draft; both freeze boards regenerate with
-`learned_ps` after preseason tips; scores April 2027). **In-season, before opening night: EXP-019** (Step 11)
-· Step 12 nightly pipeline · **EXP-020** benchmarks · **EXP-021** learned ranges (input: the
-EXP-013c empirical-residual-CDF note). Deferred: **EXP-022/023/024** (they chase the ≈0 preseason
-gap) · **EXP-025** (reserved) rotation-survival hurdle._
+`learned_ps` after preseason tips; scores April 2027). **In-season: EXP-019** (Step 11) done above
+(adopted diagnostics — riser-recall 51.7% / lead 52d @ 99% are the standing baselines) ·
+**Step 12** nightly pipeline built + dry-run clean 2026-07-10 (`update_daily.py`; cron it from
+opening night — the archives it accumulates are EXP-020's input). Next in order: **EXP-020**
+benchmarks (re-arm when ≥ 1 season of date-stamped DARKO/ADP archives exists) · **EXP-021**
+learned ranges (input: the EXP-013c empirical-residual-CDF note). Deferred: **EXP-022/023/024**
+(they chase the ≈0 preseason gap) · **EXP-025** (reserved) rotation-survival hurdle._

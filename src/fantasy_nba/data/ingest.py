@@ -219,12 +219,35 @@ _STATIC_DATASETS = {
 }
 
 
+def refresh_season(name: str, season: str) -> pd.DataFrame:
+    """Re-fetch ONE season of a per-season dataset and replace it in the cache, keyed on
+    SEASON — every other season's cached rows are preserved (the Step-12 nightly refresh;
+    ``pull_seasons`` by contrast rewrites the file with only the seasons it was given).
+    The endpoint returns the whole season, so this is simple and idempotent."""
+    if name not in _DATASETS:
+        raise ValueError(f"{name!r} is not a per-season dataset ({sorted(_DATASETS)}).")
+    print(f"[{name}] refreshing {season} …")
+    fresh = _DATASETS[name](season)
+    if storage.exists(name):
+        cached = storage.read(name)
+        combined = pd.concat([cached[cached["SEASON"] != season], fresh], ignore_index=True)
+    else:
+        combined = fresh
+    path = storage.write(combined, name)
+    print(f"[{name}] {season}: {len(fresh):,} rows refreshed ({len(combined):,} total) -> {path}")
+    return combined
+
+
 def pull_seasons(
     seasons: Sequence[str],
     datasets: Sequence[str] = ("player_season_stats", "player_game_logs"),
     refresh: bool = True,
 ) -> dict[str, pd.DataFrame]:
     """Fetch the requested datasets across seasons, concatenate, and cache to Parquet.
+
+    **Storage-discipline warning (Step 12):** this rewrites each dataset file with only
+    the seasons requested — it is the bulk/backfill path. For a nightly single-season
+    update use :func:`refresh_season`, which replaces in cache keyed on SEASON.
 
     Every dataset (including ``team_rosters`` — the endpoint accepts historical seasons;
     Step 6.1) is fetched per season and concatenated. A rosters pull is 30 requests per
