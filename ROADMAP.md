@@ -146,9 +146,11 @@ special-case handling.
       injury-prone players (e.g. Giannis falls out of the top-20). Reliability context: projected
       top-100 has ~79% overlap with actual top-100, but only ~60% at top-24 (fine-grained order is
       injury-limited — the availability ceiling).
-- [ ] (Optional, higher effort) source external availability data — injury history/reports — the
-      only way to beat the R²≈0.03 box-score ceiling on games-played. **→ now tracked as Stage 7.C**
-      (same data serves both a GP point-estimate and a per-player Monte-Carlo injury tail).
+- [x] (Optional, higher effort) source external availability data — injury history/reports — the
+      only way to beat the R²≈0.03 box-score ceiling on games-played. **→ resolved via Stage 7.C
+      (EXP-015, 2026-07-09):** prosportstransactions history pulled; the (age × chronic)
+      Monte-Carlo GP tails adopted, the GP *point estimate* rejected (the ceiling held). The
+      live-news half is Step 12's `config/overrides.yaml` status caps (2026-07-10).
 
 ### Stage 7 — Catching risers & fallers (the discontinuity frontier)  ← IN PROGRESS (Phases 0–1 complete: preseason riser bias measured ≈ irreducible, EXP-011; in-season engine built + gated, EXP-018; execution order lives in docs/implementation-plan.md)
 

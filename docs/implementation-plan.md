@@ -166,6 +166,17 @@ beat the draft-pick-order baseline). The long-run gap-closer is already structur
 archives turn every season into a labeled dataset of *where the commercial systems beat us
 and on whom* — harvest it each spring.
 
+**Status note (2026-07-10 evening, post D2-build/11/12 — commits dfb4793 · 6ce813f · a141c3e):**
+every step buildable before the calendar gates is now done. What remains, in order:
+**build-now** = Step 14 (EXP-021 distributional board) → Step 15 (ship); **~mid-Aug** =
+schedule pull + ESPN matchup calendar → `league.yaml`; **~Sept** = market re-pulls (D1.5
+rookie seed goes live); **mid-Oct** = re-pull `preseason_game_logs` + `draft_history` →
+regenerate the sheet with `--model learned_ps` → `analyst_triggers.py` → the analyst pass →
+`apply_analyst.py` → **dual freeze committed before opening night** (D2.3 / rule 10a);
+**opening night** = cron `update_daily.py`; **April 2027** = score EXP-029 A-vs-B + the
+rule-10a freeze, and EXP-020 arms when its archives reach ≥ 1 season. Step 13 stays
+archive-gated — do not log it early.
+
 ---
 
 ## Step 0 — Docs alignment + data refresh
@@ -1112,6 +1123,17 @@ unlucky injury on one heavily-adjusted player can swing it; say so in the entry.
 frozen boards committed + ledger note dated before opening night; EXP-029 opened in the
 ledger with status `pending (scores April 2027)`.
 
+> **As built (2026-07-10, local — commit dfb4793; the buildable half only):**
+> `models/analyst.py` + `scripts/apply_analyst.py` (board A → board B: deterministic,
+> unit-tested, `model_rank`/`analyst_*` audit columns, board A's file never touched) +
+> `scripts/analyst_triggers.py` (D2.1 generator) + `config/analyst_overrides.yaml`
+> (schema documented, **empty — no overrides fabricated**; corrections are append-only,
+> latest-dated wins). EXP-029 opened `pending`. July smoke run: 146 triggers — inflated by
+> data vintage (July board vs July consensus); the real October run (learned_ps sheet +
+> fresh market pulls) should land near the expected ~30–50. **Remaining (calendar-locked,
+> mid-Oct):** the pass itself off the regenerated trigger list, then the D2.3 dual freeze
+> before opening night, then D2.4 scoring in April 2027.
+
 ---
 
 # PHASE 3 — the in-season as-of-date engine (Steps 10–13)
@@ -1250,6 +1272,18 @@ rest-noise weeks from the *labels* too), report both views going forward.
 (`python scripts/eval_asof.py --seasons … --cutpoints 30 60 90`); EXP-019 logged with the
 baseline numbers; ROADMAP 7.0 in-season checkbox fully ticked.
 
+> **As completed (2026-07-10, local — commit 6ce813f):** everything above prints from
+> `eval_asof.py --exp019` (EWMA config; half-lives frozen as `asof.FROZEN_HALF_LIVES`,
+> `--fit-half-lives` re-checks). Metric functions live in `eval_movers.py`
+> (`role_change_events`, `lead_time_table`; unit-tested). Baselines (seed 0, pooled 22-23…25-26,
+> full detail in EXP-019): +30d reducible gap ≈ 0 in every bucket; asof beats naive on
+> big-riser bias at all cutpoints; **early-riser recall@150 = 51.7%**; **lead-time: asof 99%
+> detection @ 52d median vs naive 70%** (medians condition on own detected subset — pair on
+> the common set before gating on this); league-horizon truncation flips 2/12 cells ⇒ both
+> views print. Both amendments handled: league-horizon ran (report-both verdict); the
+> short-horizon next-7/14-day board rides Step 12's daily output and the D1 schedule —
+> **still open, revisit when the 2026-27 schedule lands** (it needs real game dates).
+
 ## Step 12 — nightly pipeline + manual status overrides
 
 **Build:**
@@ -1275,6 +1309,20 @@ baseline numbers; ROADMAP 7.0 in-season checkbox fully ticked.
 **Done when:** `update_daily.py` runs end-to-end locally on the live season (or dry-runs
 clean off-season with cached data); overrides unit-tested (capped GP, name matching);
 README gains the nightly-run section.
+
+> **As completed (2026-07-10, local — commit a141c3e):** built + off-season dry-run clean
+> (`update_daily.py --offline --asof 2026-03-01`). Notes for the live run: pulls are
+> fault-isolated (one flaky site never kills the night's board); the game-log refresh uses
+> the new `ingest.refresh_season` (replace-in-cache keyed on SEASON — **`pull_seasons`
+> rewrites the whole file and is now documented as the bulk/backfill path only**); the board
+> write is append-only (`--force` to redo a date, never silent); the naive line (addendum 5)
+> anchors on `data/processed/learned_<season>.parquet` — regenerate/freeze it preseason or
+> pass `--t0-board`. Overrides applied inside `project_asof` (schedule-aware when the
+> season's schedule pull exists, calendar-fraction fallback; loud name-match failure).
+> The dry run itself demonstrated the need: Tatum (out for 2025-26) projected #1 with 65 ROS
+> games — precisely the hole `config/overrides.yaml` plugs. **Cron it from opening night**;
+> its date-stamped archives are Step 13's input. Storage-discipline check done (3): all
+> writers append or replace-by-key; the one rewriting writer is documented.
 
 ## Step 13 — EXP-020: external benchmarks go live-comparable
 

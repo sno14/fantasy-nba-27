@@ -150,7 +150,7 @@ gap, Phase 1c (allocation) is the headline preseason bet.
   eval-gated use = a market-prior feature — with the explicit check that it doesn't wash
   out our mover edge (the known ensemble failure mode).
 
-### Phase 3 — the in-season as-of-date engine (the actual breakthrough) ← ◐ ENGINE BUILT + GATED (2026-07-09, EXP-018: beats frozen-T₀ 12/12 — the largest lever measured; naive-parity gate parked pending Phase-2 signals; Steps 11–13 remain)
+### Phase 3 — the in-season as-of-date engine (the actual breakthrough) ← ◐ ENGINE + EVAL + PIPELINE DONE (EXP-018 2026-07-09: beats frozen-T₀ 12/12, naive gate parked; EXP-019 2026-07-10: eval + lead-time adopted as diagnostics — riser-recall 51.7%, lead 52d @ 99% detection vs naive 70%; Step-12 nightly pipeline dry-run clean, crons from opening night; only Step 13/EXP-020 remains, archive-gated to ~April 2027)
 
 The system `docs/model-foundation.md` §4 specifies, now built and evaluated:
 
