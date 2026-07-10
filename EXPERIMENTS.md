@@ -1052,4 +1052,8 @@ benchmarks (re-arm when ≥ 1 season of date-stamped DARKO/ADP archives exists) 
 scores April 2027 · EXP-021 re-arm per its note. Deferred: **EXP-022/023/024**
 (they chase the ≈0 preseason gap) · **EXP-025** (reserved) rotation-survival hurdle.
 Post-ship frontier (Step 15): rookies beyond the market seed, category scoring, an official
-injury feed, the home-grown online skill layer (model-foundation §3C)._
+injury feed, the home-grown online skill layer (model-foundation §3C). **Added 2026-07-10
+late (user direction — Phase 5 "minutes economy", build-now, specs in the implementation
+plan): EXP-030** vacated-minutes absorption + live OUT-redistribution (Step 16; adoption
+re-arms the parked EXP-018 naive gate) · **EXP-031** budget-reconciled minutes /
+allocation v2 (Step 17; honors the EXP-014 do-not-retry — GP never a divisor)._

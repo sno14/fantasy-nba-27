@@ -107,6 +107,8 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | 13 | 3 | External in-season benchmarks (DARKO/ADP archives) | EXP-020 | ☐ | ☐ |
 | 14 | 4 | Distributional board (quantile ranges, GP tails, coverage) | EXP-021 | ☑ (piecewise-CDF path + `residual_pool` + `calibrate_resid_scale` + `range_coverage` scoreboard) | ☑ (rejected — SD_PG=9 stands; re-arm post-2026-27 per ledger note) |
 | 15 | 4 | Ship: default model switch, explorer, final doc sweep | — | ☑ (`project.py` default `learned` + `--asof`; explorer: learned default, chronic GP pools, D1 columns, ROS tab) | ☑ 2026-07-10 (see as-built note under Step 15) |
+| 16 | 5 | Vacated-minutes absorption + live OUT-redistribution | EXP-030 | ☐ | ☐ |
+| 17 | 5 | Budget-reconciled minutes (allocation v2: depth features + soft reconciliation) | EXP-031 | ☐ | ☐ |
 
 *\*Phase-0 verdict (EXP-011, Decision Row 1, 2026-07-08): the model-pool riser reducible gap
 is +0.19 fpts/g (< 2) — preseason bias-chasing is near-done and the residual headroom is
@@ -180,6 +182,15 @@ regenerate the sheet with `--model learned_ps` → `analyst_triggers.py` → the
 **opening night** = cron `update_daily.py`; **April 2027** = score EXP-029 A-vs-B + the
 rule-10a freeze, and EXP-020 arms when its archives reach ≥ 1 season. Step 13 stays
 archive-gated — do not log it early.
+
+**Phase-5 note (2026-07-10 late, post-ship — user direction):** the minutes-economy pair
+(Steps 16–17, EXP-030/031) is added as the new **build-now** work: the user's standing
+conviction is that minutes are a 240-per-game constrained resource ("one ball"), and the
+EXP-014 post-mortem supports a re-entry that never routes per-game through predicted GP.
+Step 16 (OUT-redistribution) first — it is the EXP-018 re-gate's named "OUT-tonight /
+live teammate-vacated minutes" item and the open in-season frontier; Step 17 is the
+bounded-expectations preseason leg. Full specs in PHASE 5 below; the standing calendar
+is unchanged and takes precedence at its dates.
 
 ---
 
@@ -1436,6 +1447,159 @@ floor-adjusted on movers, updating nightly, benchmarked against the market — t
 
 ---
 
+# PHASE 5 — the minutes economy (Steps 16–17, added 2026-07-10 post-ship)
+
+*Origin: user direction (2026-07-10 evening) — "there are only so many minutes and one
+ball"; the 240-minute constraint is the right mental model even though EXP-014's
+implementation of it failed. Two facts govern this phase:*
+
+1. *The EXP-014 post-mortem exonerates the __structure__ and convicts the __conversion__:
+   the share model was nearly competitive at season-total minutes (pool total-MIN MAE 496
+   vs 447, −11%) — the damage was `MPG = share × team_total / pred_gp`, which routes the
+   stable quantity through the near-unpredictable one (EXP-004: GP R²≈0.03), plus
+   proportional normalization taxing stars. The ledger's do-not-retry is specific: never
+   share-of-season-total ÷ predicted GP. Both steps below honor it — GP never appears as
+   a divisor.*
+2. *Where the constraint binds is __per game, over the active roster__ — which is the
+   in-season/OUT-tonight situation, not the preseason board. Preseason reducible riser gap
+   is ≈ 0 (EXP-011, Decision Row 1); the open frontier is in-season and exogenous (EXP-019:
+   riser recall 51.7%, lead 52d; EXP-018 ledger: "the next in-season accuracy must come
+   from new information — who is OUT tonight"). So the redistribution step goes first and
+   carries the higher expectation; the preseason budget step is a bounded-expectations
+   cheap A/B.*
+
+*Outside practice (researched 2026-07-10): DARKO treats minutes as the hardest component
+and wins via daily Bayesian updating (exponential decay + Kalman filter + a GBDT combiner)
+— structurally our EWMA engine, no team constraint. DFS practice handles OUT-redistribution
+with hand-set same-position tiers (backup +12–15 min, other same-pos +3–5, adjacent +2–3;
+usage +4–6% to the next-highest-usage teammate) validated against with/without splits. Our
+edge: we can __fit__ those tiers from 17 seasons of game logs instead of hand-setting them,
+and score them walk-forward. Both steps run entirely on data already in the repo.*
+
+## Step 16 — EXP-030: vacated-minutes absorption + live OUT-redistribution
+
+**Goal:** when a player is OUT, move his minutes (and a shot-share bump) to the right
+teammates **the day the news breaks**, instead of waiting for the reactive EWMA to see the
+box scores. This is the "Step 7 OUT-tonight / live teammate-vacated minutes → asof
+features" item on the EXP-018 re-gate checklist, built as a board layer rather than a
+feature (features re-fit slowly; a layer applies instantly and is separately scoreable).
+
+**16.1 Build — the historical absorption dataset (new `src/fantasy_nba/models/absorption.py`):**
+- From `player_game_logs` (17 seasons; has `TEAM_ABBREVIATION, GAME_DATE, MIN, FGA`): per
+  (team, game-date), the **active set** = players in the box; the **absent-rotation set** =
+  players who appeared for that team within the trailing 14 days with trailing-10-game
+  MPG ≥ 15 but are not in tonight's box. (No injury feed needed for *training* — absence is
+  absence; the feed matters live, where it's forward-looking.)
+- Per (absent player o, active teammate j, game): `absorb_minutes = MIN_j − baseline_j`
+  (baseline = trailing-10 EWMA MPG, computed strictly before the game) and
+  `absorb_fga_pm = FGA_j/MIN_j − baseline`. Attribute **jointly** when several players are
+  out (regress the teammate delta on the vector of vacated MPG, never pairwise-naive) and
+  **exclude |margin| ≥ 25 games** from fitting (`team_game_logs` is pulled and unwired —
+  this is its named first use; blowout garbage time corrupts absorption weights).
+- Fit absorption weights `w(same_pos_group, depth_rank_in_pos, baseline_mpg, vacated_mpg)`
+  — start with a **constrained linear model** (weights ≥ 0, Σ_j w_j ≤ 1 per out-player;
+  the un-absorbed remainder is real — teams also just play smaller rotations), positions
+  via `allocation.pos_group_asof`. A GBM version only if the linear one leaves measurable
+  signal (rule 8 seed protocol applies the moment it's a learned model).
+- **Reality anchor (write into the ledger):** the fitted tiers should land near the DFS
+  folk numbers (same-pos backup absorbs the plurality; spillover 2–5 min to adjacent) —
+  wild divergence means a bug, not a discovery.
+
+**16.2 Build — the live layer (`redistribute_board`):**
+- `redistribute_board(board, out_events, team_map, pos_table, weights, horizon)` → a new
+  board: for each OUT player, his projected MPG × absorption weights flows to same-team
+  teammates, **prorated by overlap** — `mpg_j += w_j × mpg_o × (games_j_while_o_out /
+  ros_games_j)`; per-game stats recomposed via each teammate's own rates (+ the fitted
+  `absorb_fga_pm` bump as an optional second mode — minutes-only is mode 1, judged first);
+  re-score, re-rank. The OUT player himself keeps his `apply_status_overrides` GP cap
+  (that layer already works; this one is its missing other half).
+- Board needs a **team column as of T** (most recent game-log `TEAM_ABBREVIATION`) — the
+  as-of board currently has none (`asof.py` carries no roster context at all).
+- OUT events live = `config/overrides.yaml` + open injury spells at T; OUT events
+  backtest = spells overlapping T (`injuries.build_spells`), strictly as-of. Overlap
+  horizon from `out_until` when present, else the spell-duration median by severe/normal
+  notes class (fit on training spells; cap 120d like `UNCLOSED_SPELL_DAYS`).
+- Wire as a fourth board `"asof_redist"` in `eval_asof.py`'s boards dict (both gate mode
+  and `--exp019`) — the harness is model-agnostic past that dict; `naive_board` is the
+  template for a board-transforming board.
+
+**16.3 Run + gate:**
+- Cutpoint eval per EXP-019's grid, but judged on the **treated segment** — players on a
+  team with ≥ 1 OUT rotation player at T (redistribution is a no-op elsewhere; aggregates
+  dilute). Report: treated-segment ROS MAE + signed bias vs `asof` and `naive`;
+  **untouched-segment identity** (must be exactly 0 rows moved — a leak here is a bug);
+  riser recall@150 and lead-time vs the standing EXP-019 seed-0 baselines (51.7% /
+  52d @ 99%; pair on the common detected set before gating on a delta).
+- **Gate (adopt):** treated-segment ROS MAE improves vs `asof` with a player-clustered CI
+  excluding 0, untouched segment byte-identical, lead-time not worse. On adopt: the layer
+  runs inside `update_daily.py` after `apply_status_overrides`, and **the parked EXP-018
+  naive gate re-arms** (this is its named re-arm condition — run that re-gate in the same
+  session). On reject: log the fitted absorption table anyway (it's the Embiid-question
+  answer as a *report* even if the board wiring doesn't pay).
+- **Skeptic pass specifics:** (leakage) baselines and weights strictly pre-game; OUT sets
+  as-of T only; (selection) treated segment defined by teammate status, not outcome;
+  (concentration) check the win isn't one season's (e.g. 2023-24 load-management era).
+
+**Ledger stub:** EXP-030 with the fitted absorption tiers table (vs the DFS folk numbers),
+treated-segment results, and the EXP-018 re-gate outcome if adopted.
+
+**Done when:** EXP-030 logged; if adopted, `update_daily.py` applies it nightly and
+README's nightly section mentions the redistribution line; tracker + ROADMAP frontier
+updated.
+
+## Step 17 — EXP-031: budget-reconciled minutes (allocation v2)
+
+**Goal:** impose the 240-minute identity on the *preseason* board the honest way — MPG
+stays the regression target (the stable quantity); the budget becomes a **diagnostic and a
+soft correction**, with GP entering only as a bounded multiplicative weight, never a
+divisor.
+
+**17.1 The diagnostic first (cheap, decides everything):** on the honest Oct-1 rosters
+(`preseason_roster_map`), per target team compute the model's implied budget
+`B_team = Σ_i mpg_i × (gp_i/82) × 82 / (240 × 82)` over modeled players + the unmodeled
+reserve (reuse `allocation.rookie_reserve`, train-slice only — critique §2.8). Publish the
+distribution of `B_team` per season: the breakthrough plan claimed "teams silently sum to
+260+"; **measure it**. If overshoot is small or uncorrelated with that team's players'
+minutes errors, sub-step (b) is dead on arrival and the ledger says so for ~an hour's work.
+- *Correlation check that matters:* per team, `B_team − 1` vs the mean signed minutes
+  error of its players. No correlation ⇒ the constraint isn't where the error lives.
+
+**17.2 (a) Depth-chart features into the MPG regression** — the ledger-sanctioned re-entry
+(EXP-014 note: "a *feature* experiment, not a target change"). Add `ALLOC_FEATURES`
+(`own_prev_share`, `same_pos_returning_share`, `same_pos_vacated_share`, `depth_rank`,
+`n_same_pos`, `pf_per_min`) to the **y_mpg model only**, honest Oct-1 map, variant
+`learned_depth`. Rule-11 hygiene (permutation importance, |ρ| sweep vs EXP-016b's group —
+`same_pos_vacated_share` vs `vac_min_share_pos` will be near-duplicates; justify or drop).
+
+**17.3 (b) Soft budget reconciliation** — post-hoc, on whichever of {control, (a)} wins:
+`mpg_i ← mpg_i × f_team^λ` where `f_team = (1 − reserve) / B_team`, λ tuned on training
+folds only (λ ∈ {0, 0.25, 0.5, 1}; λ=0 is the control), and the correction applied in
+**headroom space** (scale `mpg` toward/away from a 40-min cap proportionally to
+`40 − mpg`) so 36-minute stars move less than 18-minute fringe — the direct answer to
+EXP-014's "proportional normalization taxes stars" failure.
+
+**17.4 Gate:** minutes MAE ≤ control **and** the role-change segments (team-changers,
+high-turnover teams — EXP-014's segment definitions) improve ≥ 10% with the rest ≤ 2%
+worse, judged under rule 8 + clustered CI. **Expectations bounded and written down
+up front:** the preseason reducible gap is ≈ 0 (EXP-011) and the selection-floor memory
+stands — this step is judged on **minutes MAE and recall**, never on chasing preseason
+riser bias. On reject: the diagnostic table still ships (it's the standing answer to "does
+the budget bind?") and the constraint's live home remains Step 16, where the active roster
+is known.
+
+**Ledger stub:** EXP-031 with the 17.1 diagnostic distribution, (a)/(b) sub-results, and
+the explicit EXP-014 contrast line (what changed vs what was banned).
+
+**Done when:** EXP-031 logged adopt/reject; tracker + ROADMAP updated; any adopted mode
+becomes a `project_models` default with a Step-2 floor recompute.
+
+*Ordering note: 16 before 17 (higher expected return; its fitted absorption weights are
+also 17's best prior on who inherits vacated minutes). Both are build-now and must not
+displace the standing calendar (mid-Aug schedule pull → Sept market → mid-Oct analyst
+pass/dual freeze → opening-night cron).*
+
+---
+
 ## Appendix A — gate summary (one screen)
 
 | Exp | Adopt when (all floor-adjusted where applicable) |
@@ -1463,6 +1627,8 @@ floor-adjusted on movers, updating nightly, benchmarked against the market — t
 | 019 | diagnostic — baselines recall + lead time |
 | 020 | standard riser gate + lead-time non-regression |
 | 021 | coverage ∈ [78,88]% AND big-riser coverage improves AND rank Spearman not worse |
+| 030 | treated-segment (teammate-OUT) ROS MAE improves vs asof, clustered CI excludes 0; untouched segment byte-identical; lead-time not worse. Adoption re-arms the EXP-018 naive gate |
+| 031 | 17.1 diagnostic first (budget overshoot × error correlation — no correlation ⇒ reject (b) cheaply); minutes MAE ≤ control AND role-change segments −10% with rest ≤2% worse; judged on minutes MAE/recall, never preseason riser bias |
 
 ## Appendix B — documentation consistency matrix
 

@@ -138,7 +138,10 @@ special-case handling.
       decision sheet (VOR + ADP availability + rookie market-seed), boards persist to
       `data/processed/`, and the explorer carries board/ROS/player/data tabs.
 
-**Next frontiers (post-ship, in rough return order):** score the 2026-27 dual freeze +
+**Next frontiers (post-ship, in rough return order):** **the minutes economy (Phase 5,
+build-now, added 2026-07-10: Step 16 / EXP-030 vacated-minutes absorption + live
+OUT-redistribution → Step 17 / EXP-031 budget-reconciled minutes — specs in the
+implementation plan)** · score the 2026-27 dual freeze +
 EXP-029 in April 2027 · EXP-020 external in-season benchmarks (archives accumulating
 nightly) · EXP-021 re-arm (learned range width, post-2026-27) · rookies beyond the market
 seed (college translation — EXP-028's named re-arm) · category-league scoring · an official
