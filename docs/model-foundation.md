@@ -1,6 +1,12 @@
 # Model foundation — design note & architecture decision (Stage 7)
 
-Status: **proposal for review** (2026-07, rev. 2 — now with daily in-season updating as a
+Status: **delivered — historical decision record** (marked 2026-07-10 at Step 15: the
+architecture it chose — learned decompositional foundation + as-of-date in-season engine —
+shipped as the default; §8's run order was long superseded by
+[`docs/implementation-plan.md`](implementation-plan.md), whose ledger logs the divergences:
+allocation/EXP-014 rejected, quantile heads/EXP-013c rejected, learned ranges/EXP-021
+rejected — the point-estimate architecture held, the uncertainty layer stayed empirical).
+Originally: proposal for review (2026-07, rev. 2 — with daily in-season updating as a
 first-class requirement). Companion to `ROADMAP.md` §Stage 7 and `EXPERIMENTS.md`. Answers:
 **(1) is this effort worthwhile?** and **(2) which foundational model should we build on?** — weighing
 the real alternatives rather than asserting one.

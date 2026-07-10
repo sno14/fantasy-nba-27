@@ -1,6 +1,8 @@
 # Breakthrough plan — where the accuracy actually is (Stage 7, rev. 3)
 
-Status: **proposal for review** (2026-07). Companion to `docs/model-foundation.md` and
+Status: **delivered** (2026-07-10 — every buildable phase executed and logged; Phase-3
+Step 13/EXP-020 and the EXP-029 scoring remain calendar/archive-gated; per-phase markers
+inline). Originally: proposal for review (2026-07). Companion to `docs/model-foundation.md` and
 `EXPERIMENTS.md`. Written after EXP-006…EXP-010 — i.e. after the meta-finding that **four
 feature experiments (trajectory, team-context, recency, recency+context) all improved
 aggregate MAE and none moved the riser buckets**.
@@ -170,7 +172,7 @@ The system `docs/model-foundation.md` §4 specifies, now built and evaluated:
 - DARKO date-stamped archives (EXP-010) start earning their keep here as an in-season
   benchmark/feature with real history.
 
-### Phase 4 — the distributional board (edge from the irreducible remainder)
+### Phase 4 — the distributional board (edge from the irreducible remainder) ← DONE 2026-07-10, with two divergences: (1) the quantile heads were **rejected** in EXP-013c — the range source became the walk-forward empirical residual CDF; (2) EXP-021 then rejected even that as the default — total-level dispersion rises era-over-era, so honestly-lagged learned widths under-cover; `SD_PG=9` + the EXP-015 (age × chronic) GP tails ship as the default, the learned-range machinery is opt-in (re-arm post-2026-27). The per-bucket coverage scoreboard (§4.3) landed as specced.
 
 - Quantile-learned ranges (EXP-013) replace the generic `SD_PG=9` Monte-Carlo spread;
   per-player GP tails (EXP-015) replace the age-bucket pool.

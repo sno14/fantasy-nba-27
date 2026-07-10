@@ -4,10 +4,14 @@ Run it with:
 
     python -m streamlit run scripts/explore.py
 
-Three tabs:
+Four tabs:
   * Draft Board  — projection with risk ranges; pick the target season (past seasons are
                    re-projected no-leakage and shown next to actual results), projection model
-                   (baseline / v2 / v2m), and ranking stance; search and filter.
+                   (learned — the Step-15 default — / baseline / v2 / v2m), and ranking stance;
+                   D1 decision columns (VOR, ADP) join automatically when the target's
+                   draft-sheet parquet exists; search and filter.
+  * ROS          — the in-season remaining-of-season board: latest data/processed/ros_board/
+                   nightly snapshot (update_daily.py cron) with the naive-updater disagreement.
   * Player       — drill into one player: projected line, career history, minutes trend + volatility.
   * Data         — raw dataset browser (season stats, game logs, bio, rosters).
 
@@ -21,12 +25,14 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
+from fantasy_nba.config import PROCESSED_DIR
 from fantasy_nba.data import storage
 from fantasy_nba.models._core import _season_start
 from fantasy_nba.models.aging import build_aging_curves
 from fantasy_nba.models.backtest import _actual
 from fantasy_nba.models.baseline import project_baseline
 from fantasy_nba.models.durability import build_gp_age_curve
+from fantasy_nba.models.learned import project_learned
 from fantasy_nba.models.minutes import build_minutes_age_curve
 from fantasy_nba.models.projection import project_v2
 from fantasy_nba.models.uncertainty import build_gp_pool, rank_board, simulate_ranges
@@ -38,7 +44,8 @@ DEFAULT_TARGET = "2026-27"
 # the model have said", and actual results are shown alongside.
 TARGET_SEASONS = ["2026-27", "2025-26", "2024-25", "2023-24", "2022-23"]
 MODELS = {
-    "v2m": "v2m — v2 + minutes aging (default)",
+    "learned": "learned — LightGBM decompositional (EXP-007; the shipped default)",
+    "v2m": "v2m — v2 + minutes aging",
     "v2": "v2 — empirical aging curves + durability",
     "baseline": "baseline — Marcel (recency-weighted rates)",
 }
@@ -64,6 +71,20 @@ def load_raw() -> dict[str, pd.DataFrame]:
     return out
 
 
+@st.cache_data(show_spinner=False)
+def load_injury_profile() -> tuple[pd.DataFrame | None, pd.DataFrame | None]:
+    """(spells, chronic_flag_table) for the adopted (age × chronic) GP pools (EXP-015/7.3b);
+    (None, None) when the injuries pull isn't cached."""
+    if not storage.exists("injuries"):
+        return None, None
+    from fantasy_nba.models import injuries as inj
+
+    ss = load_raw()["player_season_stats"]
+    spells, _ = inj.build_spells(storage.read("injuries"), ss)
+    chronic = inj.chronic_flag_table(spells, sorted(ss["SEASON"].unique(), key=_season_start))
+    return spells, chronic
+
+
 @st.cache_data(show_spinner="Computing projections…")
 def compute_board(target: str, model: str, scoring_path: str | None) -> pd.DataFrame:
     """No-leakage projection for ``target`` with ``model``, plus risk ranges and (for past
@@ -77,7 +98,9 @@ def compute_board(target: str, model: str, scoring_path: str | None) -> pd.DataF
     tr_ss = ss[ss["SEASON"].map(_season_start) < ty]
     tr_bio = bio[bio["SEASON"].map(_season_start) < ty]
 
-    if model == "baseline":
+    if model == "learned":
+        proj = project_learned(tr_ss, tr_bio, target_season=target, cfg=cfg)
+    elif model == "baseline":
         proj = project_baseline(tr_ss, tr_bio, target_season=target, cfg=cfg)
     else:
         curves = build_aging_curves(tr_ss, tr_bio, save=False)
@@ -86,10 +109,26 @@ def compute_board(target: str, model: str, scoring_path: str | None) -> pd.DataF
         proj = project_v2(tr_ss, tr_bio, target_season=target, cfg=cfg, curves=curves,
                           gp_curve=gpc, mpg_curve=mc, age_minutes=(model == "v2m"))
 
-    pool = build_gp_pool(tr_ss, tr_bio, max_start_year=ty)
+    # Risk ranges — SD_PG spread (EXP-021 re-affirmed it) on the adopted (age × chronic) pools.
+    spells, chronic = load_injury_profile()
+    if spells is not None:
+        from fantasy_nba.models.injuries import injury_features
+
+        flags = injury_features(spells, f"{ty}-10-01")[["PLAYER_ID", "inj_chronic_flag"]]
+        proj = proj.merge(flags, on="PLAYER_ID", how="left")
+        proj["inj_chronic_flag"] = proj["inj_chronic_flag"].fillna(0).astype(int)
+    pool = build_gp_pool(tr_ss, tr_bio, max_start_year=ty, injury_profile=chronic)
     proj = simulate_ranges(proj, pool)
     recent = tr_ss.sort_values("SEASON").drop_duplicates("PLAYER_ID", keep="last")
     proj = proj.merge(recent[["PLAYER_ID", "TEAM_ABBREVIATION"]], on="PLAYER_ID", how="left")
+
+    # D1 decision columns ride along when the target's draft sheet has been generated.
+    sheet_path = PROCESSED_DIR / f"draft_sheet_{target}.parquet"
+    if sheet_path.exists():
+        sheet = pd.read_parquet(sheet_path)
+        d1_cols = [c for c in ("vor", "vor_rank", "adp", "market_priced") if c in sheet.columns]
+        proj = proj.merge(sheet[["PLAYER_ID"] + d1_cols].drop_duplicates("PLAYER_ID"),
+                          on="PLAYER_ID", how="left")
 
     if ty <= max_year:  # season already happened — attach actuals + true finish rank
         act = _actual(ss, target, cfg, 0.0).copy()
@@ -107,7 +146,7 @@ if raw["player_season_stats"].empty:
     st.stop()
 
 cfg = load_scoring()
-board_2027 = compute_board(DEFAULT_TARGET, "v2m", None)  # canonical board for the Player tab
+board_2027 = compute_board(DEFAULT_TARGET, "learned", None)  # canonical board for the Player tab
 
 st.title("🏀 Fantasy NBA Explorer")
 st.caption(
@@ -116,7 +155,8 @@ st.caption(
     f"{raw['player_season_stats']['SEASON'].min()}–{raw['player_season_stats']['SEASON'].max()}"
 )
 
-tab_board, tab_player, tab_data = st.tabs(["📋 Draft Board", "🔍 Player", "📚 Data"])
+tab_board, tab_ros, tab_player, tab_data = st.tabs(
+    ["📋 Draft Board", "📈 ROS (in-season)", "🔍 Player", "📚 Data"])
 
 
 # ---------------------------------------------------------------------------------- draft board
@@ -155,7 +195,13 @@ with tab_board:
 
     cols = ["rank", "PLAYER_NAME", "TEAM_ABBREVIATION", "target_age", "gp", "mpg", "fpts_pg",
             "draft_value", "fpts_p10", "fpts_median", "fpts_p90", "risk"]
+    cols += [c for c in ("vor", "vor_rank", "adp") if c in board.columns]  # D1 decision columns
     col_cfg = {
+        "vor": st.column_config.NumberColumn("VOR", format="%.1f",
+                                             help="fpts/g above the league replacement level (D1.2)"),
+        "vor_rank": st.column_config.NumberColumn("VOR rank", format="%d"),
+        "adp": st.column_config.NumberColumn("ADP", format="%.0f",
+                                             help="platform ADP — draft-day availability only, not value"),
         "PLAYER_NAME": "Player",
         "TEAM_ABBREVIATION": "Team",
         "target_age": st.column_config.NumberColumn("Age", format="%.1f"),
@@ -194,9 +240,45 @@ with tab_board:
     st.altair_chart((rng + med).properties(height=max(300, n_chart * 22)), width="stretch")
 
 
+# ----------------------------------------------------------------------------------------- ROS
+with tab_ros:
+    ros_dir = PROCESSED_DIR / "ros_board"
+    snaps = sorted(ros_dir.glob("*.parquet")) if ros_dir.exists() else []
+    if not snaps:
+        st.info(
+            "No nightly ROS snapshots yet — they appear in `data/processed/ros_board/` once "
+            "`scripts/update_daily.py` crons from opening night. Each snapshot is the "
+            "as-of-date remaining-of-season board (EWMA config, status overrides) with the "
+            "naive-updater benchmark line; DARKO / market disagreement stays in the CLI "
+            "reports (`darko_report.py`, `market_report.py`)."
+        )
+    else:
+        pick = st.selectbox("Snapshot date", [p.stem for p in reversed(snaps)])
+        ros = pd.read_parquet(ros_dir / f"{pick}.parquet")
+        st.caption(f"{len(ros):,} players · as of **{pick}** (nightly `update_daily.py`)")
+        ros_cols = [c for c in ("rank", "PLAYER_NAME", "games_so_far", "gp", "mpg", "fpts_pg",
+                                "fpts_total", "naive_fpts_pg", "naive_rank", "status_override")
+                    if c in ros.columns]
+        q = st.text_input("Search player", key="ros_search")
+        view = ros[ros["PLAYER_NAME"].str.contains(q, case=False, na=False)] if q else ros
+        st.dataframe(view[ros_cols].head(300), hide_index=True, width="stretch", height=480)
+        if {"rank", "naive_rank"} <= set(ros.columns):
+            st.subheader("Model vs naive updater — biggest disagreements")
+            d = ros.dropna(subset=["naive_rank"]).copy()
+            d["rank_gap"] = d["naive_rank"] - d["rank"]
+            top_d = d.reindex(d["rank_gap"].abs().sort_values(ascending=False).index)
+            st.dataframe(
+                top_d[["PLAYER_NAME", "rank", "naive_rank", "rank_gap", "fpts_pg",
+                       "naive_fpts_pg"]].head(25),
+                hide_index=True, width="stretch",
+            )
+            st.caption("Positive gap = our as-of model is higher on the player than the naive "
+                       "shrinkage line — the standing daily disagreement signal (addendum 5).")
+
+
 # -------------------------------------------------------------------------------------- player
 with tab_player:
-    st.caption(f"Projected line for **{DEFAULT_TARGET}** (v2m).")
+    st.caption(f"Projected line for **{DEFAULT_TARGET}** (learned — the shipped default).")
     names = board_2027.sort_values("rank")["PLAYER_NAME"].tolist()
     default = names.index("Nikola Jokić") if "Nikola Jokić" in names else 0
     who = st.selectbox("Player", names, index=default)

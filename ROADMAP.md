@@ -78,7 +78,7 @@ special-case handling.
 - ⇒ **Stage 3 (minutes/role) is the highest-value work by far.** Prioritize it over further
   rate/efficiency modeling.
 
-### Stage 3 — Minutes & team-context layer  ← IN PROGRESS (highest leverage)
+### Stage 3 — Minutes & team-context layer  ← CLOSED 2026-07-10 (absorbed by Stage 7: the learned model owns minutes; v2m stays the curve-based fallback)
 - [x] **Minutes aging curve** (`models/minutes.py`) — empirical MPG-vs-age curve via the same
       delta method as the rate curves (no era de-trend needed). Applied as a *damped
       multiplicative trend* on the player's own recency-weighted MPG (`strength=0.5`), not a
@@ -106,9 +106,12 @@ special-case handling.
   - Aside: stars are NOT load-managed down (36+ MPG has the highest GP); modern rotation GP ~66-68.
   - ⇒ Point-estimate GP/rate/minutes modeling is **capped for ranking**. Next real levers are
     external availability data OR uncertainty ranges — see below. (`key-finding-availability-ceiling`.)
-- [ ] Depth-chart / roster-turnover MPG redistribution — data now available (rosters + game logs);
-      deferred because the top-100 lever is availability, not MPG-role (a smaller measured effect).
-- [ ] Pace adjustment — deferred (low measured leverage).
+- [x] Depth-chart / roster-turnover MPG redistribution — **resolved by Stage 7:** the full
+      team-constrained share model was built and **rejected** (EXP-014 — the structural bet
+      fails at the share→MPG conversion); the team-level turnover pair (EXP-009) + honest
+      preseason rosters (EXP-016) are what survived into the learned default.
+- [ ] Pace adjustment — still open, low measured leverage (Step R3 / EXP-024, deferred —
+      it chases the ≈0 preseason reducible gap). Next-frontiers item.
 
 ### Stage 4 — Special cases  ← re-scoped 2026-07-09 into the Stage-7 execution plan
 - [x] Rookie model — **EXP-028 rejected at the gate (2026-07-10):** draft slot × landing spot
@@ -120,16 +123,29 @@ special-case handling.
       Harness stays (`models/rookies.py`, `scripts/eval_rookies.py`, `draft_history`
       dataset) — re-arm when college-stat translation or accumulated market archives give
       it new inputs. College/international translation stays the later refinement.
-- [ ] Role-change / traded-player adjustment — largely absorbed by Stage 7: preseason =
-      the Step-8/8.4 dated-transactions + vacated-usage features; in-season = the as-of
-      engine's post-trade features (EXP-018) + Step-7 live availability. Keep this box until
-      those steps run, then tick with a pointer.
+- [x] Role-change / traded-player adjustment — **absorbed by Stage 7 (ticked 2026-07-10, the
+      named steps all ran):** preseason = dated transactions → honest Oct-1 rosters (EXP-016
+      adopted) + vacated-usage features (EXP-016b parked, feeds the breakout layer); in-season
+      = the as-of engine (EXP-018 adopted foundation; EXP-019 lead-time 52d @ 99% detection)
+      + the Step-12 nightly pipeline with status overrides.
 
 ### Stage 5 — Scoring & delivery
-- [ ] Category-league scoring mode (z-scores / rankings)
-- [ ] Final ranked projections + export
+- [ ] Category-league scoring mode (z-scores / rankings) — honestly open; next-frontiers item
+      (the scoring engine is swappable by design, so this is additive).
+- [x] Final ranked projections + export — **shipped (Step 15, 2026-07-10):**
+      `scripts/project.py` defaults to the learned model (risk ranges + `--rank-by`;
+      `--asof DATE` for the in-season ROS board), `scripts/draft_sheet.py` is the D1
+      decision sheet (VOR + ADP availability + rookie market-seed), boards persist to
+      `data/processed/`, and the explorer carries board/ROS/player/data tabs.
 
-### Stage 6 — Uncertainty / risk ranges  ← IN PROGRESS (the honest answer to the availability ceiling)
+**Next frontiers (post-ship, in rough return order):** score the 2026-27 dual freeze +
+EXP-029 in April 2027 · EXP-020 external in-season benchmarks (archives accumulating
+nightly) · EXP-021 re-arm (learned range width, post-2026-27) · rookies beyond the market
+seed (college translation — EXP-028's named re-arm) · category-league scoring · an official
+injury feed / news-LLM minutes override (the deferred news-signal direction) · EXP-022/023/024
+decomposition refinements if the preseason gap ever re-opens.
+
+### Stage 6 — Uncertainty / risk ranges  ← DONE 2026-07-10 (shipped: SD_PG spread — re-affirmed by EXP-021 — on the adopted (age × chronic) GP pools, EXP-015b)
 - [x] **Monte-Carlo risk ranges** (`models/uncertainty.py`) — simulate each player's season:
       games drawn from the empirical (no-leakage, modern-era, elite-tier ≥2000-min) GP
       distribution, additively re-centred on the player's projected GP (keeps the real
@@ -159,7 +175,7 @@ special-case handling.
       Monte-Carlo GP tails adopted, the GP *point estimate* rejected (the ceiling held). The
       live-news half is Step 12's `config/overrides.yaml` status caps (2026-07-10).
 
-### Stage 7 — Catching risers & fallers (the discontinuity frontier)  ← IN PROGRESS (Phases 0–1 complete: preseason riser bias measured ≈ irreducible, EXP-011; in-season engine built + gated, EXP-018; execution order lives in docs/implementation-plan.md)
+### Stage 7 — Catching risers & fallers (the discontinuity frontier)  ← BUILD COMPLETE 2026-07-10 (every buildable step of docs/implementation-plan.md ran and is logged, Steps 0–15; what remains is calendar-locked: mid-Aug schedule pull → Sept market pulls → mid-Oct analyst pass + dual freeze (EXP-029) → opening-night cron → April 2027 scoring + EXP-020/021 re-arms)
 
 **The problem statement (user, 2026-07):** we project the stable core well but **miss the risers
 and fallers** — and capitalising on those is the entire edge of a projection system. This stage

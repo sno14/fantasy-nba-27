@@ -45,7 +45,8 @@ src/fantasy_nba/
   models/          projection models (baseline first)
 scripts/
   pull_data.py     CLI to fetch and cache raw data
-  project.py       generate the projection / draft board (+ risk ranges, --rank-by)
+  project.py       generate the projection / draft board (default model: learned; + risk
+                   ranges, --rank-by; --asof DATE = one-off in-season ROS board)
   backtest.py      no-leakage backtest on a top-N draft pool
   eval_movers.py   mover-segmented Stage-7 eval (--variants, --floor, --oracles, --actual-pool,
                    --ci A B (repeatable), --seed; --ranges = EXP-021 coverage-per-bucket
@@ -102,11 +103,15 @@ python scripts/pull_injuries.py --dataset transactions
 # Score a stat line with your league config
 python -c "from fantasy_nba.scoring import load_scoring; print(load_scoring())"
 
-# Generate the 2026-27 draft board with risk ranges (safe / median / floor / ceiling)
+# Generate the 2026-27 draft board with risk ranges (safe / median / floor / ceiling).
+# Default model = learned (Step 15; switch to learned_ps once October preseason games cache).
 # --breakout adds the EXP-026 breakout_p column (informational option-value flag)
 # --preseason adds the Step-9c October-role columns (ps_mpg / ps_mpg_delta / ps_start_share)
 #   once the target season's preseason games are cached (re-pull preseason_game_logs in Oct)
 python scripts/project.py --target 2026-27 --rank-by safe --breakout --preseason --top 50
+
+# In-season: one-off remaining-of-season board as of a date (the cron path is update_daily.py)
+python scripts/project.py --asof 2027-01-15 --top 50
 
 # Explore data + projections interactively in the browser
 python -m streamlit run scripts/explore.py
@@ -133,12 +138,17 @@ Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season 
 
 ## Interactive explorer
 
-`python -m streamlit run scripts/explore.py` opens a local web app with three tabs:
+`python -m streamlit run scripts/explore.py` opens a local web app with four tabs:
 
-- **Draft Board** — the projection with floor/median/ceiling ranges; choose the target season
-  (past seasons are re-projected with no leakage and shown next to actual results, with a
-  top-N hit rate), the projection model (baseline / v2 / v2m), and a ranking stance; search
-  and filter by team.
+- **Draft Board** — the projection with floor/median/ceiling ranges (SD_PG spread on the
+  adopted age × chronic GP pools); choose the target season (past seasons are re-projected
+  with no leakage and shown next to actual results, with a top-N hit rate), the projection
+  model (**learned** default / baseline / v2 / v2m), and a ranking stance; the D1 decision
+  columns (VOR, VOR rank, ADP) join automatically when the target's draft-sheet parquet
+  exists; search and filter by team.
+- **ROS (in-season)** — the latest nightly `data/processed/ros_board/` snapshot with the
+  naive-updater disagreement table (populates once `update_daily.py` crons from opening
+  night; DARKO/market disagreement stays in `darko_report.py` / `market_report.py`).
 - **Player** — drill into one player: projected line, career per-game history, and per-game
   minutes trend/volatility from the game logs.
 - **Data** — browse the raw datasets (season stats, game logs, bio, rosters).

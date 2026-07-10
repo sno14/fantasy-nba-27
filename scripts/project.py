@@ -27,15 +27,23 @@ def main() -> None:
     parser.add_argument("--top", type=int, default=30, help="How many rows to print.")
     parser.add_argument(
         "--model",
-        default="v2m",
+        default="learned",
         choices=["baseline", "v2", "v2m", "learned", "learned_ps"],
-        help="baseline (Marcel); v2 (+ empirical aging curves & durability); "
-        "v2m (+ Stage 3 minutes aging curve); learned (LightGBM decompositional model, EXP-007 — "
-        "the Stage-7 foundation: best per-game MAE and least mean-reverting on movers); "
-        "learned_ps (+ EXP-027b preseason-October role features — the adopted pre-draft "
-        "configuration once the target's October games are cached: pools ~+9pp more eventual "
-        "big risers at better aggregate MAE). "
-        "Backtests: baseline~v2; v2m improves minutes MAE; learned improves both further.",
+        help="learned (DEFAULT since Step 15 — LightGBM decompositional model, EXP-007: best "
+        "per-game MAE and least mean-reverting on movers; every adopted Stage-7 mode is its "
+        "default configuration); learned_ps (+ EXP-027b preseason-October role features — the "
+        "adopted pre-draft configuration once the target's October games are cached: pools "
+        "~+9pp more eventual big risers at better aggregate MAE); "
+        "baseline (Marcel) / v2 (+ aging & durability) / v2m (+ minutes aging) stay selectable "
+        "as the permanent 'did we lose signal?' fallbacks.",
+    )
+    parser.add_argument(
+        "--asof", default=None, metavar="DATE",
+        help="In-season mode (Step 10/15): remaining-of-season board as of this ISO date, via "
+        "project_asof on the adopted EWMA configuration (frozen half-lives) with "
+        "config/overrides.yaml status caps and the season schedule when cached. Preseason "
+        "boards omit this flag (T0 = the --model board); the nightly cron equivalent is "
+        "scripts/update_daily.py.",
     )
     parser.add_argument(
         "--scoring", default=None, help="Path to a scoring YAML (defaults to config/scoring.yaml)."
@@ -69,6 +77,34 @@ def main() -> None:
     season_stats = storage.read("player_season_stats")
     bio = storage.read("player_bio")
     cfg = load_scoring(args.scoring)
+
+    if args.asof:
+        import pandas as pd
+
+        from fantasy_nba.models import asof
+
+        gl = asof._with_dates(storage.read("player_game_logs"))
+        T = str(args.asof)
+        season = asof._season_for_date(gl, pd.Timestamp(T))
+        overrides = asof.load_status_overrides()
+        schedule = season_end = None
+        if storage.exists(f"schedule_{season}"):
+            sched = storage.read(f"schedule_{season}")
+            reg = sched[sched["regular_season"]]
+            season_end = pd.to_datetime(reg["game_date"]).max()
+            schedule = reg[pd.to_datetime(reg["game_date"]) > pd.Timestamp(T)]
+        proj = asof.project_asof(
+            T, season_stats, gl, bio, cfg=cfg, target_season=season, use_ewma=True,
+            status_overrides=overrides, season_end=season_end, schedule=schedule,
+        )
+        path = storage.write(proj, f"asof_{T}", layer="processed")
+        print(f"ROS board as of {T} (season {season}, EWMA config, "
+              f"{len(overrides)} status override(s))")
+        print(f"Saved -> {path}\n")
+        show = [c for c in ("rank", "PLAYER_NAME", "games_so_far", "gp", "mpg",
+                            "fpts_pg", "fpts_total", "status_override") if c in proj.columns]
+        with_pd_opts(lambda: print(proj[show].head(args.top).to_string(index=False)))
+        return
 
     if args.model == "learned_ps":
         from fantasy_nba.models import preseason as pre

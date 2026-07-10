@@ -106,7 +106,7 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | 12 | 3 | Nightly update pipeline + status overrides | — | ☑ (`update_daily.py` + `overrides.yaml` + `refresh_season`; naive line per addendum 5) | ☑ off-season dry-run clean 2026-07-10 (`--offline --asof 2026-03-01`); goes live opening night |
 | 13 | 3 | External in-season benchmarks (DARKO/ADP archives) | EXP-020 | ☐ | ☐ |
 | 14 | 4 | Distributional board (quantile ranges, GP tails, coverage) | EXP-021 | ☑ (piecewise-CDF path + `residual_pool` + `calibrate_resid_scale` + `range_coverage` scoreboard) | ☑ (rejected — SD_PG=9 stands; re-arm post-2026-27 per ledger note) |
-| 15 | 4 | Ship: default model switch, explorer, final doc sweep | — | ☐ | ☐ |
+| 15 | 4 | Ship: default model switch, explorer, final doc sweep | — | ☑ (`project.py` default `learned` + `--asof`; explorer: learned default, chronic GP pools, D1 columns, ROS tab) | ☑ 2026-07-10 (see as-built note under Step 15) |
 
 *\*Phase-0 verdict (EXP-011, Decision Row 1, 2026-07-08): the model-pool riser reducible gap
 is +0.19 fpts/g (< 2) — preseason bias-chasing is near-done and the residual headroom is
@@ -168,8 +168,10 @@ and on whom* — harvest it each spring.
 
 **Status note (2026-07-10 evening, post D2-build/11/12 — commits dfb4793 · 6ce813f · a141c3e):**
 every step buildable before the calendar gates is now done. What remains, in order:
-**build-now** = Step 14 (EXP-021 distributional board) → Step 15 (ship) *(Step 14 ran
-2026-07-10 later that session — rejected, SD_PG=9 stands; see its as-completed note)*;
+**build-now** = Step 14 (EXP-021 distributional board) → Step 15 (ship) *(both ran
+2026-07-10 later that session — Step 14 rejected, SD_PG=9 stands, see its as-completed
+note; Step 15 shipped, see the as-built close-out under Step 15. **Nothing buildable
+remains — every next action is on the standing calendar below.**)*;
 **~mid-Aug** =
 schedule pull + ESPN matchup calendar → `league.yaml`; **~Sept** = market re-pulls (D1.5
 rookie seed goes live); **mid-Oct** = re-pull `preseason_game_logs` + `draft_history` →
@@ -1413,6 +1415,24 @@ note; `--ranges` output columns unchanged (downstream compatibility).
 as-of-date, allocation-aware, injury-aware projection with learned uncertainty, evaluated
 floor-adjusted on movers, updating nightly, benchmarked against the market — the
 "most accurate model" target expressed as the sum of every adopted, measured step.
+
+> **As built vs as planned (Step 15 close-out, 2026-07-10).** Shipped: `scripts/project.py`
+> defaults to **`learned`** (`learned_ps` is the documented mid-Oct switch once preseason
+> games cache; Marcel/v2/v2m stay selectable fallbacks) and gained `--asof <date>` (the
+> one-off `project_asof` ROS board on the adopted EWMA config with `overrides.yaml` caps;
+> the cron path stays `update_daily.py`). Explorer: `learned` default model choice, risk
+> ranges now on the adopted (age × chronic) GP pools, D1 decision columns (VOR/ADP) join
+> from the target's draft-sheet parquet, and a new **ROS tab** reads the latest
+> `ros_board/` nightly snapshot with the naive-disagreement table. Divergences from the
+> Step-15 sketch, one line each: **"learned uncertainty"** shipped as *machinery, not
+> default* — EXP-021 rejected learned ranges (SD_PG=9 re-affirmed; re-arm post-2026-27);
+> **allocation-aware** means the EXP-009/016 team features, not the rejected EXP-014 share
+> model; explorer **DARKO/ADP disagreement stays in the CLI reports** (`darko_report.py`,
+> `market_report.py`) rather than a tab — the ROS tab points at them; `--asof`'s general
+> `ros_gp_max` stays `= gp` until the 2026-27 schedule pull lands (mid-Aug; the
+> overrides-based caps do use the schedule). Tracker honesty: rows 13 (archive-gated,
+> ~Apr 2027) and the calendar halves of D1/D2 stay open by design — the standing calendar
+> in the 2026-07-10 status note is the remaining work, none of it buildable today.
 
 ---
 
