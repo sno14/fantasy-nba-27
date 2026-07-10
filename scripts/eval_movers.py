@@ -28,13 +28,16 @@ if hasattr(sys.stdout, "reconfigure"):
 
 import pandas as pd
 
+import numpy as np
+
 from fantasy_nba.data import storage
 from fantasy_nba.models import floor_sim
 from fantasy_nba.models.backtest import VARIANT_SPECS
-from fantasy_nba.models.eval_movers import bootstrap_bias_delta_ci, run_mover_eval
+from fantasy_nba.models.eval_movers import bootstrap_bias_delta_ci, range_coverage, run_mover_eval
 from fantasy_nba.scoring import load_scoring
 
 BUCKET_ORDER = ["big faller", "faller", "stable", "riser", "big riser"]
+SAFE_LAMBDA = 0.5  # rank_board's default safe-stance downside penalty
 
 
 def _needs_game_logs(variant_names: list[str]) -> bool:
@@ -86,6 +89,150 @@ def _pooled(per_bucket: pd.DataFrame, value_cols: list[str]) -> pd.DataFrame:
     return pooled.sort_values(["model", "bucket"])
 
 
+def _coverage_delta_ci(rows_base: pd.DataFrame, rows_new: pd.DataFrame, bucket: str | None = None,
+                       n_boot: int = 2000, seed: int = 0, alpha: float = 0.10) -> dict:
+    """Player-clustered paired bootstrap CI on the coverage delta (new − base) — rule 8's
+    noise guard applied to a proportion instead of a bias."""
+    a = rows_base[["PLAYER_ID", "season", "bucket", "covered"]].rename(columns={"covered": "cov_a"})
+    b = rows_new[["PLAYER_ID", "season", "covered"]].rename(columns={"covered": "cov_b"})
+    m = a.merge(b, on=["PLAYER_ID", "season"], how="inner")
+    if bucket is not None:
+        m = m[m["bucket"] == bucket]
+    m["_d"] = m["cov_b"].astype(float) - m["cov_a"].astype(float)
+    g = m.groupby("PLAYER_ID")["_d"].agg(["sum", "count"])
+    sums, counts = g["sum"].to_numpy(float), g["count"].to_numpy(float)
+    k = len(g)
+    rng = np.random.default_rng(seed)
+    idx = rng.integers(0, k, size=(n_boot, k))
+    boots = sums[idx].sum(axis=1) / counts[idx].sum(axis=1)
+    return {
+        "bucket": bucket or "ALL", "n": int(len(m)), "delta": float(m["_d"].mean()),
+        "ci_lo": float(np.quantile(boots, alpha / 2)),
+        "ci_hi": float(np.quantile(boots, 1 - alpha / 2)),
+    }
+
+
+def _ranges_section(args, season_stats, bio, cfg, learned_pools: list[pd.DataFrame]) -> None:
+    """Step 14 / EXP-021: learned ranges (empirical residual CDF) vs the SD_PG=9 baseline.
+
+    Both spread models share the adopted (age × chronic) GP pools (EXP-015 / 7.3b), so the
+    only difference under test is the per-game spread. Prints the coverage-per-mover-bucket
+    scoreboard (pooled), per-season top-100 board coverage + safe/ceiling Spearman, and the
+    player-clustered CI on the coverage delta.
+    """
+    from fantasy_nba.models import uncertainty as unc
+    from fantasy_nba.models._core import _season_start
+    from fantasy_nba.models.backtest import _actual
+    from fantasy_nba.models.learned import DEFAULT_LGBM_PARAMS, project_learned
+
+    from fantasy_nba.models import injuries as inj_mod
+
+    spells = chronic_table = None
+    if storage.exists("injuries"):
+        spells, _ = inj_mod.build_spells(storage.read("injuries"), season_stats)
+        chronic_table = inj_mod.chronic_flag_table(
+            spells, sorted(season_stats["SEASON"].unique(), key=_season_start))
+    else:
+        print("[ranges] no injuries pull cached — GP pools fall back to age-only buckets")
+
+    seed = args.seed if args.seed is not None else DEFAULT_LGBM_PARAMS.get("random_state", 0)
+    params = {**DEFAULT_LGBM_PARAMS, "random_state": seed}
+    board_cache: dict[str, pd.DataFrame] = {}
+
+    def _board(season: str) -> pd.DataFrame:
+        if season not in board_cache:
+            ty = _season_start(season)
+            tr_ss = season_stats[season_stats["SEASON"].map(_season_start) < ty]
+            tr_bio = bio[bio["SEASON"].map(_season_start) < ty]
+            board_cache[season] = project_learned(tr_ss, tr_bio, season, cfg=cfg, params=params)
+        return board_cache[season]
+
+    SPREADS = ("sd_pg9", "resid_cdf", "resid_cdf_cal")
+    cov_rows = {k: [] for k in SPREADS}          # per-player covered flags (for the CI)
+    cov_tables = {k: [] for k in SPREADS}        # per-season per-bucket tables
+    board_metrics = []
+    for season, pool_m in zip(args.seasons, learned_pools):
+        ty = _season_start(season)
+        board = _board(season).copy()
+        resid = unc.residual_pool(season_stats, bio, season, cfg, pool_top_n=args.top_n,
+                                  params=params, seed=seed, board_cache=board_cache)
+        scale, scale_table = unc.calibrate_resid_scale(
+            season_stats, bio, season, cfg, resid=resid, top_n=args.top_n,
+            injury_profile=chronic_table, spells=spells,
+            params=params, seed=seed, board_cache=board_cache,
+        )
+        if spells is not None:
+            flags = inj_mod.injury_features(spells, f"{ty}-10-01")[["PLAYER_ID", "inj_chronic_flag"]]
+            board = board.merge(flags, on="PLAYER_ID", how="left")
+            board["inj_chronic_flag"] = board["inj_chronic_flag"].fillna(0).astype(int)
+        tr_ss = season_stats[season_stats["SEASON"].map(_season_start) < ty]
+        tr_bio = bio[bio["SEASON"].map(_season_start) < ty]
+        gp_pool = unc.build_gp_pool(tr_ss, tr_bio, max_start_year=ty, injury_profile=chronic_table)
+        actual = _actual(season_stats, season, cfg, min_minutes=0.0)
+        qframe = unc.pg_quantile_frame(board, resid)
+        qframe_cal = unc.pg_quantile_frame(board, resid * scale)
+        print(f"[ranges] {season}: resid pool n={len(resid)}, "
+              f"resid q25/50/75/90 = {np.round(np.quantile(resid, (0.25, 0.5, 0.75, 0.9)), 2)}, "
+              f"calibrated scale = {scale} "
+              f"(walk-forward cov by scale: {dict(zip(scale_table['scale'], scale_table['coverage'].round(3)))})")
+
+        for kind, pq in (("sd_pg9", None), ("resid_cdf", qframe), ("resid_cdf_cal", qframe_cal)):
+            sim = unc.simulate_ranges(board, gp_pool, pg_quantiles=pq, seed=0)
+            table, rows = range_coverage(pool_m, sim, actual, return_rows=True)
+            table.insert(0, "season", season)
+            rows = rows.copy()
+            rows["season"] = season
+            cov_tables[kind].append(table)
+            cov_rows[kind].append(rows)
+
+            top = sim.nsmallest(100, "rank").merge(
+                actual[["PLAYER_ID", "act_fpts_total"]], on="PLAYER_ID", how="inner")
+            safe = top["fpts_median"] - SAFE_LAMBDA * (top["fpts_median"] - top["fpts_p10"])
+            board_metrics.append({
+                "season": season, "spread": kind, "n": len(top),
+                "coverage_top100": float(top["act_fpts_total"].between(top["fpts_p10"], top["fpts_p90"]).mean()),
+                "safe_spearman": float(safe.corr(top["act_fpts_total"], method="spearman")),
+                "ceiling_spearman": float(top["fpts_p90"].corr(top["act_fpts_total"], method="spearman")),
+                "median_spearman": float(top["fpts_median"].corr(top["act_fpts_total"], method="spearman")),
+            })
+
+    print("\n" + "#" * 78)
+    print("# RANGES (Step 14 / EXP-021) — learned resid-CDF spread vs SD_PG=9, shared GP pools")
+    print("#" * 78)
+    print("\n=== Coverage per actual-Δ bucket (learned pool, pooled; target: big riser ≥ 0.70, ALL in [0.78, 0.88]) ===")
+    pooled = []
+    for kind in SPREADS:
+        t = pd.concat(cov_tables[kind], ignore_index=True)
+        p = (t.assign(covered_n=t["n"] * t["coverage"])
+              .groupby("bucket", observed=False)[["n", "covered_n"]].sum().reset_index())
+        p["coverage"] = p["covered_n"] / p["n"].replace(0, np.nan)
+        p.insert(0, "spread", kind)
+        order = BUCKET_ORDER + ["ALL"]
+        p["bucket"] = pd.Categorical(p["bucket"], categories=order, ordered=True)
+        pooled.append(p.sort_values("bucket")[["spread", "bucket", "n", "coverage"]])
+    print(pd.concat(pooled, ignore_index=True).round(3).to_string(index=False))
+
+    print("\n=== Top-100 board: coverage + safe/ceiling/median Spearman (per season) ===")
+    bm = pd.DataFrame(board_metrics)
+    print(bm.round(3).to_string(index=False))
+    print("pooled means by spread:")
+    print(bm.groupby("spread")[["coverage_top100", "safe_spearman", "ceiling_spearman",
+                                "median_spearman"]].mean().round(4).to_string())
+
+    rows_base = pd.concat(cov_rows["sd_pg9"], ignore_index=True)
+    for cand in ("resid_cdf", "resid_cdf_cal"):
+        rows_new = pd.concat(cov_rows[cand], ignore_index=True)
+        ci = pd.DataFrame([
+            _coverage_delta_ci(rows_base, rows_new),
+            _coverage_delta_ci(rows_base, rows_new, bucket="big riser"),
+            _coverage_delta_ci(rows_base, rows_new, bucket="riser"),
+        ])
+        print(f"\n=== Paired player-clustered 90% CI: coverage delta ({cand} − sd_pg9) ===")
+        print(ci.round(3).to_string(index=False))
+    print("GATE (EXP-021, judged on resid_cdf_cal): ALL coverage in [0.78, 0.88] AND big-riser "
+          "coverage improves vs sd_pg9 AND safe/ceiling Spearman not worse (seeds {0,1,2}, rule 8).")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Mover-segmented draftable-pool eval.")
     parser.add_argument("--seasons", nargs="+", default=["2022-23", "2023-24", "2024-25", "2025-26"])
@@ -116,6 +263,12 @@ def main() -> None:
                         help="Override LightGBM random_state for all learned models. The "
                              "seed-stability protocol: run at 0/1/2 and average before judging "
                              "a gate.")
+    parser.add_argument("--ranges", action="store_true",
+                        help="Step 14 (EXP-021): add the coverage-per-mover-bucket scoreboard — "
+                             "learned ranges (walk-forward empirical residual CDF per-game "
+                             "spread, EXP-013c note) vs the SD_PG=9 baseline, both on the "
+                             "adopted (age × chronic) GP pools, plus top-100 safe/ceiling "
+                             "Spearman and a player-clustered CI on the coverage delta.")
     args = parser.parse_args()
 
     variants = list(dict.fromkeys(args.variants + (["learned_recency", "learned_rc"] if args.recency else [])))
@@ -237,6 +390,9 @@ def main() -> None:
             print(f"\n=== Paired bootstrap 90% CI (player-clustered): bias delta ({b} − {a}) ===")
             print(ci.round(3).to_string(index=False))
             print("(CI straddling 0 => difference unresolved at this sample size; see plan rules.)")
+
+        if args.ranges:
+            _ranges_section(args, season_stats, bio, cfg, pools_by_model["learned"])
 
         if args.actual_pool:
             ap_bucket, ap_dir, ap_pred, _ = _run_view("actual")

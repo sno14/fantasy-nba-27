@@ -475,3 +475,27 @@ def test_run_mover_eval_actual_pool_recall_view():
     assert r.notna().all() and ((r >= 0.0) & (r <= 1.0)).all()
     # The three tables still have their headline columns on the realized pool.
     assert {"model", "bucket", "signed_bias"} <= set(per_bucket.columns)
+
+
+def test_range_coverage_per_bucket_and_all_row():
+    from fantasy_nba.models.eval_movers import range_coverage
+
+    pool = pd.DataFrame({
+        "PLAYER_ID": [1, 2, 3, 4],
+        "bucket": ["big riser", "big riser", "stable", "stable"],
+    })
+    ranges = pd.DataFrame({
+        "PLAYER_ID": [1, 2, 3, 4],
+        "fpts_p10": [100.0] * 4,
+        "fpts_p90": [200.0] * 4,
+    })
+    actual = pd.DataFrame({
+        "PLAYER_ID": [1, 2, 3, 4],
+        "act_fpts_total": [150.0, 250.0, 120.0, 180.0],  # player 2 escapes the band
+    })
+    table, rows = range_coverage(pool, ranges, actual, return_rows=True)
+    t = table.set_index("bucket")
+    assert t.loc["big riser", "n"] == 2 and t.loc["big riser", "coverage"] == pytest.approx(0.5)
+    assert t.loc["stable", "n"] == 2 and t.loc["stable", "coverage"] == pytest.approx(1.0)
+    assert t.loc["ALL", "n"] == 4 and t.loc["ALL", "coverage"] == pytest.approx(0.75)
+    assert rows.set_index("PLAYER_ID")["covered"].tolist() == [True, False, True, True]

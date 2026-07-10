@@ -138,6 +138,13 @@ special-case handling.
   - **Calibrated on top-100 backtest** (2022-23..2025-26): p10–p90 coverage ~82%, p25–p75 ~48%,
     tails ~9%/10%. `SD_PG=9` is tuned to *total* coverage (absorbs breakout/role/model-bias and
     season-wide common health shocks the marginal GP pool misses), not literal per-game RMSE.
+  - **Re-affirmed by EXP-021 (Step 14, 2026-07-10):** learned ranges — the walk-forward
+    empirical residual CDF, even width-calibrated no-leakage — were **rejected**: total-level
+    dispersion is rising era-over-era, so any honestly-lagged calibration under-covers (ALL
+    0.72 vs 0.805; big-riser worse). `SD_PG=9` + the (age × chronic) GP pools stay the default;
+    the piecewise-CDF / `residual_pool` / `calibrate_resid_scale` machinery ships opt-in
+    (`simulate_ranges(pg_quantiles=…)`). Caveat: `SD_PG=9` itself broke the coverage window in
+    2025-26 (0.719) — re-arm per the EXP-021 ledger note after 2026-27 scores.
   - Sanity: Giannis flags highest-risk among top-20 (51-game history → low floor); durable
     Jokić/SGA lowest. `fpts_p10` is the draft-safety floor number.
 - [x] **Risk-adjusted ranking** (`uncertainty.rank_board`, `scripts/project.py --rank-by`) —

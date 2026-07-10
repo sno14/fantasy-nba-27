@@ -105,7 +105,7 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | 11 | 3 | In-season eval + lead-time metric | EXP-019 | ☑ (`eval_asof.py --exp019`; half-lives frozen) | ☑ (adopted diagnostics: +30d reducible gap ≈ 0 · riser-recall 51.7% · lead 52d @ 99% detect vs naive 70% · league-horizon flips 2/12 → both views) |
 | 12 | 3 | Nightly update pipeline + status overrides | — | ☑ (`update_daily.py` + `overrides.yaml` + `refresh_season`; naive line per addendum 5) | ☑ off-season dry-run clean 2026-07-10 (`--offline --asof 2026-03-01`); goes live opening night |
 | 13 | 3 | External in-season benchmarks (DARKO/ADP archives) | EXP-020 | ☐ | ☐ |
-| 14 | 4 | Distributional board (quantile ranges, GP tails, coverage) | EXP-021 | ☐ | ☐ |
+| 14 | 4 | Distributional board (quantile ranges, GP tails, coverage) | EXP-021 | ☑ (piecewise-CDF path + `residual_pool` + `calibrate_resid_scale` + `range_coverage` scoreboard) | ☑ (rejected — SD_PG=9 stands; re-arm post-2026-27 per ledger note) |
 | 15 | 4 | Ship: default model switch, explorer, final doc sweep | — | ☐ | ☐ |
 
 *\*Phase-0 verdict (EXP-011, Decision Row 1, 2026-07-08): the model-pool riser reducible gap
@@ -168,7 +168,9 @@ and on whom* — harvest it each spring.
 
 **Status note (2026-07-10 evening, post D2-build/11/12 — commits dfb4793 · 6ce813f · a141c3e):**
 every step buildable before the calendar gates is now done. What remains, in order:
-**build-now** = Step 14 (EXP-021 distributional board) → Step 15 (ship); **~mid-Aug** =
+**build-now** = Step 14 (EXP-021 distributional board) → Step 15 (ship) *(Step 14 ran
+2026-07-10 later that session — rejected, SD_PG=9 stands; see its as-completed note)*;
+**~mid-Aug** =
 schedule pull + ESPN matchup calendar → `league.yaml`; **~Sept** = market re-pulls (D1.5
 rookie seed goes live); **mid-Oct** = re-pull `preseason_game_logs` + `draft_history` →
 regenerate the sheet with `--model learned_ps` → `analyst_triggers.py` → the analyst pass →
@@ -1361,6 +1363,25 @@ ranges; update the `uncertainty.py` module docstring (its "Model" section) to de
 
 **Done when:** EXP-021 logged; Stage-6 ROADMAP items get a "superseded by learned ranges"
 note; `--ranges` output columns unchanged (downstream compatibility).
+
+> **As completed (2026-07-10, local):** all three build items shipped —
+> `simulate_ranges(pg_quantiles=…)` piecewise-CDF sampler (normal path kept, per-row
+> fallback for players missing from the frame), `residual_pool` (walk-forward out-of-sample
+> residual CDF per the EXP-013c note, board-cached) + `pg_quantile_frame`, injury-profile GP
+> pools already the default wherever ranges run, and the coverage-per-mover-bucket
+> scoreboard (`eval_movers.range_coverage`, `scripts/eval_movers.py --ranges`, with the
+> paired player-clustered coverage-delta CI). A third arm was added en route:
+> `calibrate_resid_scale` — one width multiplier calibrated walk-forward to 0.83 total
+> coverage on the pre-target seasons (the raw CDF is the honest per-game *marginal* and is
+> structurally too narrow for *total* bands). **Gate failed on every clause across seeds
+> {0,1,2}** (ALL 0.719 vs 0.805, big riser 0.598 vs 0.671, CIs exclude 0) → EXP-021
+> **rejected as the default spread**; the ROADMAP note is "re-affirmed", not "superseded".
+> Real finding: total-level dispersion rises era-over-era (walk-forward coverage at fixed
+> scale declines 0.848 → 0.694 across targets), so a lagged honest calibration always
+> trails; SD_PG=9's excess width absorbs that drift + the GP×PG covariance — but it broke
+> the window itself in 2025-26 (0.719), where the calibrated arm already matched it.
+> Re-arm named in the ledger (post-2026-27, calibration target raised toward 0.88).
+> `--ranges` output columns unchanged; default board untouched.
 
 ## Step 15 — Ship + final sweep
 

@@ -16,9 +16,23 @@ For each player we draw ``n_sims`` seasons:
   players (built no-leakage from training seasons), then scale it multiplicatively to the
   player's own projected GP (``proj_gp / pool_median``). This keeps the real, left-skewed injury
   shape (long tail of lost seasons) while letting durability projections shift a player up or
-  down. Older players optionally draw from an age-appropriate pool with a fatter left tail.
-* **Per-game value** — normal around the projected per-game fantasy points with sd ``sd_pg``
-  (the per-game projection is well-behaved, so this is the secondary source of spread).
+  down. Older players optionally draw from an age-appropriate pool with a fatter left tail;
+  with an injury profile (EXP-015 / 7.3b, adopted) the pool buckets by (age × chronic flag).
+* **Per-game value** — two paths (Step 14 / EXP-021):
+
+  - **Constant-σ default** (no ``pg_quantiles``): normal around the projected per-game
+    fantasy points with sd ``sd_pg`` (the hand-set ``SD_PG = 9`` spread). **This remains
+    the default board's spread** — EXP-021 (2026-07-10) rejected the learned replacement:
+    total-level dispersion rises era-over-era, so the honestly-lagged learned width
+    under-covers; SD_PG's excess width over the true per-game marginal is load-bearing
+    (it absorbs the GP × per-game covariance this independent Monte Carlo drops).
+  - **Learned ranges** (opt-in, pass a ``pg_quantiles`` frame; re-arm post-2026-27 per the
+    EXP-021 ledger note): draw from the piecewise-linear CDF through the player's
+    ``fpts_pg_q25/50/75/90`` columns — built by :func:`pg_quantile_frame` from the
+    **empirical residual CDF** of walk-forward out-of-sample learned-model residuals
+    (:func:`residual_pool`, width-calibrated via :func:`calibrate_resid_scale`). Tails
+    extend linearly with the adjacent segment's slope, floored at 0. Per the EXP-013c
+    replacement note this CDF — never the rejected quantile heads — is the range source.
 
 ``total = per_game_draw * games_draw``; percentiles over the sims give floor / median / ceiling.
 Games dominates the spread, exactly as the finding says it should.
@@ -30,6 +44,8 @@ import numpy as np
 import pandas as pd
 
 from ._core import _season_start
+from .quantiles import QUANTILES as PG_QUANTILES
+from .quantiles import quantile_col
 
 MODERN_FROM = 2021  # season-start year: the current lower-availability era (post-covid)
 COVID_SEASONS = ("2019-20", "2020-21")
@@ -95,6 +111,204 @@ def _age_bucket(age: np.ndarray) -> np.ndarray:
     return np.where(age <= 29, 0, np.where(age <= 33, 1, 2))
 
 
+def _learned_board(
+    season_stats: pd.DataFrame,
+    bio: pd.DataFrame,
+    season: str,
+    cfg,
+    params: dict | None,
+    seed: int,
+    board_cache: dict[str, pd.DataFrame] | None,
+) -> pd.DataFrame:
+    """Walk-forward learned board for ``season`` (training strictly before it), via the cache."""
+    board = board_cache.get(season) if board_cache is not None else None
+    if board is None:
+        from .learned import DEFAULT_LGBM_PARAMS, project_learned
+
+        sy = _season_start(season)
+        tr_ss = season_stats[season_stats["SEASON"].map(_season_start) < sy]
+        tr_bio = bio[bio["SEASON"].map(_season_start) < sy]
+        board = project_learned(
+            tr_ss, tr_bio, season, cfg=cfg,
+            params={**(params or DEFAULT_LGBM_PARAMS), "random_state": seed},
+        )
+        if board_cache is not None:
+            board_cache[season] = board
+    return board
+
+
+def _walkforward_seasons(season_stats: pd.DataFrame, target_season: str, n_seasons: int) -> list[str]:
+    """The ``n_seasons`` completed seasons immediately before ``target_season``, each with at
+    least one training season before it."""
+    ty = _season_start(target_season)
+    seasons = sorted(
+        {s for s in season_stats["SEASON"].unique() if _season_start(s) < ty},
+        key=_season_start,
+    )
+    out = [s for s in seasons[-n_seasons:] if _season_start(s) > _season_start(seasons[0])]
+    if not out:
+        raise ValueError(f"no walk-forward seasons available before {target_season}")
+    return out
+
+
+def residual_pool(
+    season_stats: pd.DataFrame,
+    bio: pd.DataFrame,
+    target_season: str,
+    cfg=None,
+    *,
+    n_seasons: int = 4,
+    pool_top_n: int = 150,
+    min_prior_minutes: float = 500.0,
+    params: dict | None = None,
+    seed: int = 0,
+    board_cache: dict[str, pd.DataFrame] | None = None,
+) -> np.ndarray:
+    """Out-of-sample per-game residuals (``actual − projected``) feeding the learned ranges.
+
+    The EXP-013c replacement note: the Step-14 range source is the **empirical residual
+    CDF**, not learned quantile heads. This collects it honestly — for each of the
+    ``n_seasons`` completed seasons immediately before ``target_season``, fit the learned
+    model on strictly-prior seasons, take its own top-``pool_top_n`` pool (the same
+    ``pool_frame`` construction as the mover eval), and keep ``act_fpts_pg − fpts_pg``.
+    Nothing dated on/after ``target_season`` is touched.
+
+    ``board_cache`` (optional ``{season: learned board}``): filled as a side effect, so an
+    eval script sweeping several targets shares the walk-forward fits instead of refitting.
+    """
+    from ..scoring import load_scoring
+    from .backtest import _actual
+    from .eval_movers import _season_before, pool_frame
+
+    cfg = cfg or load_scoring()
+    resid_seasons = _walkforward_seasons(season_stats, target_season, n_seasons)
+
+    parts: list[np.ndarray] = []
+    for s in resid_seasons:
+        board = _learned_board(season_stats, bio, s, cfg, params, seed, board_cache)
+        actual = _actual(season_stats, s, cfg, min_minutes=0.0)[
+            ["PLAYER_ID", "act_fpts_pg", "act_fpts_total"]
+        ]
+        prior = _actual(season_stats, _season_before(s), cfg, min_minutes=min_prior_minutes)[
+            ["PLAYER_ID", "act_fpts_pg"]
+        ].rename(columns={"act_fpts_pg": "prior_fpts_pg"})
+        m = pool_frame(board, prior, actual, pool_top_n)
+        parts.append((m["act_fpts_pg"] - m["fpts_pg"]).to_numpy(dtype=float))
+    return np.concatenate(parts)
+
+
+def pg_quantile_frame(
+    proj: pd.DataFrame,
+    resid: np.ndarray,
+    quantiles: tuple[float, ...] = PG_QUANTILES,
+) -> pd.DataFrame:
+    """Per-player per-game quantile columns from the empirical residual CDF.
+
+    ``fpts_pg_qXX = fpts_pg + quantile(resid, q)`` — one set of residual offsets shifts
+    every player's point estimate (a per-player heteroscedastic version was the rejected
+    EXP-013c quantile heads). Returns ``[PLAYER_ID, fpts_pg_q25, ..., fpts_pg_q90]``,
+    clipped at 0, ready for ``simulate_ranges(pg_quantiles=...)``.
+    """
+    offsets = np.quantile(np.asarray(resid, dtype=float), quantiles)
+    out = proj[["PLAYER_ID"]].copy()
+    for q, off in zip(quantiles, offsets):
+        out[quantile_col(q)] = (proj["fpts_pg"] + off).clip(lower=0.0)
+    return out
+
+
+DEFAULT_RESID_SCALES = (1.0, 1.25, 1.5, 1.75, 2.0)
+
+
+def calibrate_resid_scale(
+    season_stats: pd.DataFrame,
+    bio: pd.DataFrame,
+    target_season: str,
+    cfg=None,
+    *,
+    resid: np.ndarray,
+    scales: tuple[float, ...] = DEFAULT_RESID_SCALES,
+    target_coverage: float = 0.83,
+    n_seasons: int = 4,
+    top_n: int = 150,
+    injury_profile: pd.DataFrame | None = None,
+    spells: pd.DataFrame | None = None,
+    params: dict | None = None,
+    seed: int = 0,
+    sim_seed: int = 0,
+    board_cache: dict[str, pd.DataFrame] | None = None,
+) -> tuple[float, pd.DataFrame]:
+    """Width multiplier for the residual-CDF spread, calibrated walk-forward (EXP-021).
+
+    Why: the raw per-game residual CDF is the *honest per-game marginal*, but the Monte
+    Carlo multiplies independent per-game and GP draws — the covariance between them
+    (injury rust, role shocks moving both) plus model bias made ``SD_PG = 9`` deliberately
+    wider than the ~5.6 per-game residual spread. The learned replacement therefore keeps
+    the empirical residual *shape* (the right-tail skew the normal can't express) and
+    calibrates one width scalar so that simulated total-band [p10, p90] coverage on the
+    ``n_seasons`` seasons before ``target_season`` is closest to ``target_coverage``.
+    Every input is dated strictly before ``target_season`` — no leakage into the target.
+
+    Honest caveat (for the ledger's skeptic pass): ``resid`` is typically pooled over the
+    same calibration seasons, so each season's coverage uses a CDF that includes its own
+    residuals (~1/n_seasons of the pool). That mildly favours fit *within* the calibration
+    window but hands nothing from the target season.
+
+    Returns ``(best_scale, table)`` where ``table`` has one row per scale with its pooled
+    walk-forward coverage on each board's top-``top_n``.
+    """
+    from ..scoring import load_scoring
+    from .backtest import _actual
+
+    cfg = cfg or load_scoring()
+    cal_seasons = _walkforward_seasons(season_stats, target_season, n_seasons)
+
+    prepared = []
+    for s in cal_seasons:
+        board = _learned_board(season_stats, bio, s, cfg, params, seed, board_cache).copy()
+        sy = _season_start(s)
+        tr_ss = season_stats[season_stats["SEASON"].map(_season_start) < sy]
+        tr_bio = bio[bio["SEASON"].map(_season_start) < sy]
+        gp_pool = build_gp_pool(tr_ss, tr_bio, max_start_year=sy, injury_profile=injury_profile)
+        if spells is not None:
+            from .injuries import injury_features
+
+            flags = injury_features(spells, f"{sy}-10-01")[["PLAYER_ID", "inj_chronic_flag"]]
+            board = board.merge(flags, on="PLAYER_ID", how="left")
+            board["inj_chronic_flag"] = board["inj_chronic_flag"].fillna(0).astype(int)
+        actual = _actual(season_stats, s, cfg, min_minutes=0.0)[["PLAYER_ID", "act_fpts_total"]]
+        prepared.append((board, gp_pool, actual))
+
+    resid = np.asarray(resid, dtype=float)
+    rows = []
+    for scale in scales:
+        covered = n_total = 0
+        for board, gp_pool, actual in prepared:
+            qf = pg_quantile_frame(board, resid * scale)
+            sim = simulate_ranges(board, gp_pool, pg_quantiles=qf, seed=sim_seed)
+            m = sim.nsmallest(top_n, "rank").merge(actual, on="PLAYER_ID", how="inner")
+            covered += int(m["act_fpts_total"].between(m["fpts_p10"], m["fpts_p90"]).sum())
+            n_total += len(m)
+        rows.append({"scale": scale, "coverage": covered / n_total, "n": n_total})
+    table = pd.DataFrame(rows)
+    best = float(table.loc[(table["coverage"] - target_coverage).abs().idxmin(), "scale"])
+    return best, table
+
+
+def _piecewise_pg_draws(qv: np.ndarray, u: np.ndarray) -> np.ndarray:
+    """Inverse of the piecewise-linear CDF through (q25, q50, q75, q90) knots.
+
+    ``qv``: (n, 4) row-sorted quantile values; ``u``: (n, sims) uniforms. Between knots the
+    CDF is linear; below p=0.50 and above p=0.75 the *tail expressions double as the
+    adjacent segment* — i.e. the lower tail extends with the q25–q50 slope and the upper
+    tail with the q75–q90 slope (the Step-14 spec), floored at 0.
+    """
+    q25, q50, q75, q90 = (qv[:, i][:, None] for i in range(4))
+    lo = q50 + (u - 0.50) / 0.25 * (q50 - q25)   # u < 0.50, incl. lower tail
+    mid = q50 + (u - 0.50) / 0.25 * (q75 - q50)  # 0.50 <= u < 0.75
+    hi = q75 + (u - 0.75) / 0.15 * (q90 - q75)   # u >= 0.75, incl. upper tail
+    return np.clip(np.where(u < 0.50, lo, np.where(u < 0.75, mid, hi)), 0.0, None)
+
+
 def simulate_ranges(
     proj: pd.DataFrame,
     gp_pool: pd.DataFrame,
@@ -102,6 +316,7 @@ def simulate_ranges(
     n_sims: int = 4000,
     quantiles: tuple[float, ...] = DEFAULT_QUANTILES,
     seed: int = 0,
+    pg_quantiles: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """Add simulated total-fantasy-point ranges to a projection frame.
 
@@ -114,6 +329,12 @@ def simulate_ranges(
     chronically-injured players sample a GP pool with their own fatter left tail. A
     (age × chronic) bucket under 30 rows falls back to its age-only pool (the ``_age_bucket``
     guard pattern), then to the full pool.
+
+    ``pg_quantiles`` (Step 14 / EXP-021, the learned ranges): a ``pg_quantile_frame``-shaped
+    frame (``PLAYER_ID`` + ``fpts_pg_q25/50/75/90``). Per-game draws then come from the
+    piecewise-linear CDF through those quantiles (:func:`_piecewise_pg_draws`) instead of
+    ``normal(fpts_pg, sd_pg)``; both frames must carry ``PLAYER_ID``. Players missing from
+    the frame (or with NaN quantiles) fall back to the normal path row-by-row.
     """
     rng = np.random.default_rng(seed)
     out = proj.copy().reset_index(drop=True)
@@ -156,7 +377,17 @@ def simulate_ranges(
         shift = (proj_gp[rows] - med)[:, None]
         gp_draws[rows] = np.clip(samp + shift, 1, SEASON_GAMES)
 
-    pg_draws = np.clip(pg + rng.normal(0.0, sd_pg, size=(n, n_sims)), 0, None)
+    if pg_quantiles is not None:
+        qcols = [quantile_col(q) for q in PG_QUANTILES]
+        qm = out[["PLAYER_ID"]].merge(pg_quantiles[["PLAYER_ID"] + qcols], on="PLAYER_ID", how="left")
+        qv = np.sort(qm[qcols].to_numpy(dtype=float), axis=1)  # monotone per row by construction
+        have_q = ~np.isnan(qv).any(axis=1)
+        u = rng.random((n, n_sims))
+        normal_draws = np.clip(pg + rng.normal(0.0, sd_pg, size=(n, n_sims)), 0, None)
+        with np.errstate(invalid="ignore"):  # NaN rows are routed to the normal fallback
+            pg_draws = np.where(have_q[:, None], _piecewise_pg_draws(qv, u), normal_draws)
+    else:
+        pg_draws = np.clip(pg + rng.normal(0.0, sd_pg, size=(n, n_sims)), 0, None)
     totals = pg_draws * gp_draws
 
     qs = np.quantile(totals, quantiles, axis=1)  # shape (len(quantiles), n)

@@ -1029,3 +1029,107 @@ def test_lead_time_table_first_move_and_sign():
     # never crossing -> undetected, NaN lead
     lt0 = lead_time_table(events.assign(realized_change=100.0), proj)
     assert (~lt0["detected"]).all() and lt0["lead_days"].isna().all()
+
+
+# ---------------------------------------------------------------------------
+# Step 14 / EXP-021: learned ranges (empirical residual CDF -> piecewise CDF draws)
+# ---------------------------------------------------------------------------
+
+def test_piecewise_pg_draws_inverts_knots_and_extends_tails():
+    qv = np.array([[10.0, 20.0, 30.0, 40.0]])
+    u = np.array([[0.0, 0.25, 0.50, 0.75, 0.90, 1.0]])
+    out = uncertainty._piecewise_pg_draws(qv, u)
+    # Knots invert exactly; the lower tail extends with the q25-q50 slope down to the
+    # 0-floor, the upper tail with the q75-q90 slope.
+    assert np.allclose(out[0], [0.0, 10.0, 20.0, 30.0, 40.0, 40.0 + (0.10 / 0.15) * 10.0])
+
+
+def test_pg_quantile_frame_shifts_by_residual_quantiles_and_clips():
+    resid = np.array([-8.0, -4.0, 0.0, 4.0, 8.0])
+    proj = pd.DataFrame({"PLAYER_ID": [1, 2], "fpts_pg": [30.0, 2.0]})
+    qf = uncertainty.pg_quantile_frame(proj, resid)
+    qcols = ["fpts_pg_q25", "fpts_pg_q50", "fpts_pg_q75", "fpts_pg_q90"]
+    exp = np.quantile(resid, (0.25, 0.50, 0.75, 0.90))
+    assert np.allclose(qf.loc[0, qcols].to_numpy(dtype=float), 30.0 + exp)
+    # A low point estimate + negative residual quantile clips at 0, never negative.
+    assert float(qf.loc[1, "fpts_pg_q25"]) == 0.0
+
+
+def test_simulate_ranges_pg_quantiles_wider_cdf_wider_band_and_row_fallback():
+    proj = _proj([30.0, 30.0, 30.0], [65, 65, 65])
+    proj["PLAYER_ID"] = [1, 2, 3]
+    qf = pd.DataFrame({
+        "PLAYER_ID": [1, 2],  # player 3 missing -> falls back to the normal path
+        "fpts_pg_q25": [29.0, 20.0],
+        "fpts_pg_q50": [30.0, 30.0],
+        "fpts_pg_q75": [31.0, 40.0],
+        "fpts_pg_q90": [32.0, 48.0],
+    })
+    r1 = uncertainty.simulate_ranges(proj, _gp_pool(), pg_quantiles=qf, seed=5)
+    r2 = uncertainty.simulate_ranges(proj, _gp_pool(), pg_quantiles=qf, seed=5)
+    assert (r1["fpts_p10"] == r2["fpts_p10"]).all()  # seeded -> reproducible
+    band = r1["fpts_p90"] - r1["fpts_p10"]
+    assert band[1] > band[0]           # wider per-game CDF -> wider total band
+    assert r1["fpts_p10"].notna().all() and r1["fpts_p90"].notna().all()
+    assert band[2] > band[0]           # SD_PG=9 fallback is wider than the narrow CDF
+
+
+def test_residual_pool_walks_prior_pools_via_board_cache():
+    from fantasy_nba.models.backtest import _actual
+    from fantasy_nba.scoring import load_scoring
+
+    seasons = ["2019-20", "2020-21", "2021-22", "2022-23"]
+    ss, bio = _synthetic_league(seasons)
+    cfg = load_scoring()
+
+    # Prefill fake boards (actual + constant +1.0 bias) for the two residual seasons of a
+    # 2022-23 target -> residual_pool must consume the cache (no LightGBM fit) and return
+    # residuals of exactly -1.0 from seasons strictly before the target.
+    cache = {}
+    for s in ("2020-21", "2021-22"):
+        a = _actual(ss, s, cfg, min_minutes=0.0)
+        board = a[["PLAYER_ID", "PLAYER_NAME"]].copy()
+        board["fpts_pg"] = a["act_fpts_pg"] + 1.0
+        board["fpts_total"] = board["fpts_pg"] * a["act_gp"]
+        board = board.sort_values("fpts_total", ascending=False).reset_index(drop=True)
+        board["rank"] = range(1, len(board) + 1)
+        cache[s] = board
+
+    resid = uncertainty.residual_pool(ss, bio, "2022-23", cfg, n_seasons=2,
+                                      pool_top_n=10, board_cache=cache)
+    assert len(resid) > 0
+    assert np.allclose(resid, -1.0)
+    assert "2022-23" not in cache  # the target season itself is never projected here
+
+
+def test_calibrate_resid_scale_walkforward_monotone_and_best_pick():
+    from fantasy_nba.models.backtest import _actual
+    from fantasy_nba.scoring import load_scoring
+
+    # Pre-modern season labels so build_gp_pool's fallback pool (non-covid, < season) exists.
+    seasons = ["2012-13", "2013-14", "2014-15", "2015-16"]
+    ss, bio = _synthetic_league(seasons)
+    cfg = load_scoring()
+
+    cache = {}
+    for s in ("2013-14", "2014-15"):
+        a = _actual(ss, s, cfg, min_minutes=0.0)
+        board = a[["PLAYER_ID", "PLAYER_NAME"]].copy()
+        board["fpts_pg"] = a["act_fpts_pg"] + 3.0  # biased -> narrow bands miss some actuals
+        board["gp"] = a["act_gp"]
+        board["target_age"] = 25.0
+        board["fpts_total"] = board["fpts_pg"] * board["gp"]
+        board = board.sort_values("fpts_total", ascending=False).reset_index(drop=True)
+        board["rank"] = range(1, len(board) + 1)
+        cache[s] = board
+
+    resid = np.array([-6.0, -3.0, -1.0, 0.0, 1.0, 3.0, 6.0])
+    best, table = uncertainty.calibrate_resid_scale(
+        ss, bio, "2015-16", cfg, resid=resid, n_seasons=2, top_n=20, board_cache=cache)
+    assert list(table["scale"]) == list(uncertainty.DEFAULT_RESID_SCALES)
+    # Wider per-game CDF -> total-band coverage never decreases.
+    assert (table["coverage"].diff().dropna() >= -1e-9).all()
+    # The returned scale is the argmin of |coverage - target| (0.83 default).
+    expect = table.loc[(table["coverage"] - 0.83).abs().idxmin(), "scale"]
+    assert best == expect
+    assert "2015-16" not in cache  # target never projected during calibration

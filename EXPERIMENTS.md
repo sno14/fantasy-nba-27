@@ -975,6 +975,56 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   the 19.3 conditioning caveat is written above. (season concentration) 19.1/19.3 verdicts
   hold in every season; 19.2 recall ranges 46–57% with no outlier season.
 
+### EXP-021 — distributional board: learned ranges (empirical residual CDF) vs the hand-set SD_PG=9  ·  Status: **rejected as the default spread** (machinery ships; re-arm named below)
+- **Date:** 2026-07-10  ·  **Commit:** (Step 14 commit)  ·  **Step:** implementation-plan Step 14
+- **Hypothesis:** per the EXP-013c replacement note, drawing per-game values from the
+  **empirical walk-forward residual CDF** (piecewise-linear through q25/50/75/90, tails
+  extended with the adjacent segment's slope, floor 0) should fix the big-riser escape rate
+  (the CDF carries the right-tail skew a normal can't) while keeping overall [p10, p90]
+  season-total coverage in [78%, 88%] — replacing the hand-set `SD_PG = 9`.
+- **Method:** `uncertainty.simulate_ranges(pg_quantiles=…)` (piecewise-CDF sampler; normal
+  path kept as fallback); `residual_pool` = out-of-sample residuals of the learned model on
+  its own top-150 pools over the 4 seasons before each target (each board trains strictly
+  before its season; boards cached across targets); **both arms share the adopted
+  (age × chronic) GP pools** (EXP-015/7.3b) so only the per-game spread differs. Scoreboard:
+  `eval_movers.range_coverage` per actual-Δ bucket (`scripts/eval_movers.py --ranges`),
+  2022-23…2025-26, seeds {0,1,2}, player-clustered paired 90% CI on the coverage delta.
+  Third arm `resid_cdf_cal`: one width multiplier from {1.0…2.0} calibrated **walk-forward**
+  (target 0.83 total coverage on the pre-target seasons; zero target-season data).
+- **Result (seed means; mover-pool coverage):** `sd_pg9` ALL **0.805** / big riser **0.671**;
+  raw `resid_cdf` ALL **0.668** / big riser **0.529**; calibrated `resid_cdf_cal` ALL
+  **0.719** / big riser **0.598** (seed spreads ≤ 0.010 / 0.034 — far below the deficits).
+  CI (cal − sd_pg9): ALL ≈ −0.086 [−0.107, −0.067], big riser ≈ −0.074, CIs exclude 0 in all
+  seeds. Top-100: coverage 0.807 vs 0.741; safe-Spearman 0.517 vs 0.499 (slightly worse);
+  ceiling-Spearman 0.503 vs 0.512 (slightly better). **Gate failed on every clause.**
+- **Why (the real finding):** `SD_PG = 9`'s excess width over the honest per-game marginal
+  (residual σ ≈ 5.6, q25/q90 ≈ −4.3/+7.5) is **load-bearing** — it absorbs the GP × per-game
+  covariance the independent Monte Carlo drops, model-level bias, and **era drift**:
+  total-level dispersion is *rising*, so walk-forward coverage at scale 1.0 declines
+  monotonically across targets (0.848 → 0.822 → 0.761 → 0.694), and any honestly-lagged
+  calibration trails realized dispersion by ~9–13pp of coverage. The skew premise also
+  fails: big-riser escapes are a *width* phenomenon, not shape — the CDF's +7.5 right tail
+  is still narrower than the normal's inflated +11.5.
+- **Verdict:** rejected — `SD_PG = 9` + (age × chronic) GP pools remain the default board
+  spread. The piecewise-CDF path, `residual_pool`, and `calibrate_resid_scale` ship as
+  opt-in infrastructure (`pg_quantiles=`), documented-rejected as the default.
+- **Skeptic pass:** (leakage) none in the candidate — residuals, calibration, and GP pools
+  are all strictly pre-target; the calibration CDF's in-window caveat (each calibration
+  season contributes ~¼ of the residual pool it is scored against) *favours* the candidate,
+  which still lost. The **incumbent** carries an in-sample advantage — SD_PG was hand-tuned
+  historically to ~80% coverage on an overlapping window — but the rejection stands on the
+  baseline-free absolute clause (ALL 0.719 < 0.78) as well. (selection) pooling is the
+  model's own top-150; buckets are outcome-conditioned by design, same as every scoreboard
+  metric. (season concentration) none — the candidate trails in all four seasons.
+- **Ledger note / re-arm:** the incumbent is decaying too — `sd_pg9` itself broke the window
+  in 2025-26 (top-100 coverage 0.719), and there the calibrated arm already **matched/beat
+  it** (0.729): the adaptive instrument catches up as the stale constant falls behind.
+  Re-arm EXP-021 after the 2026-27 rule-10a freeze scores (one true out-of-sample season),
+  judging `resid_cdf_cal` with the calibration target raised toward the window's top (~0.88)
+  to hedge the measured drift; the Step-12 nightly archives eventually enable rolling
+  in-season recalibration. Do **not** revisit raw (uncalibrated) residual CDFs or the
+  EXP-013c quantile heads as the range source.
+
 _Next experiments — numbering reserved by [`docs/implementation-plan.md`](docs/implementation-plan.md)
 (the execution spec; run in its Step order, as re-routed by the dated notes in its tracker — latest:
 the **2026-07-09 draft-focus re-route + gap-closer addendum**). Done: EXP-011…014 (Phase 0+1),
@@ -995,7 +1045,11 @@ calendar-locked to the last ~2 weeks before the draft; both freeze boards regene
 `learned_ps` after preseason tips; scores April 2027). **In-season: EXP-019** (Step 11) done above
 (adopted diagnostics — riser-recall 51.7% / lead 52d @ 99% are the standing baselines) ·
 **Step 12** nightly pipeline built + dry-run clean 2026-07-10 (`update_daily.py`; cron it from
-opening night — the archives it accumulates are EXP-020's input). Next in order: **EXP-020**
-benchmarks (re-arm when ≥ 1 season of date-stamped DARKO/ADP archives exists) · **EXP-021**
-learned ranges (input: the EXP-013c empirical-residual-CDF note). Deferred: **EXP-022/023/024**
-(they chase the ≈0 preseason gap) · **EXP-025** (reserved) rotation-survival hurdle._
+opening night — the archives it accumulates are EXP-020's input). **EXP-021** learned ranges
+done above (rejected as the default spread — SD_PG=9 stands; re-arm with the raised
+calibration target after 2026-27 scores). Remaining, all calendar/archive-gated: **EXP-020**
+benchmarks (re-arm when ≥ 1 season of date-stamped DARKO/ADP archives exists) · **EXP-029**
+scores April 2027 · EXP-021 re-arm per its note. Deferred: **EXP-022/023/024**
+(they chase the ≈0 preseason gap) · **EXP-025** (reserved) rotation-survival hurdle.
+Post-ship frontier (Step 15): rookies beyond the market seed, category scoring, an official
+injury feed, the home-grown online skill layer (model-foundation §3C)._

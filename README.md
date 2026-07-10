@@ -48,7 +48,8 @@ scripts/
   project.py       generate the projection / draft board (+ risk ranges, --rank-by)
   backtest.py      no-leakage backtest on a top-N draft pool
   eval_movers.py   mover-segmented Stage-7 eval (--variants, --floor, --oracles, --actual-pool,
-                   --ci A B (repeatable), --seed)
+                   --ci A B (repeatable), --seed; --ranges = EXP-021 coverage-per-bucket
+                   scoreboard: learned resid-CDF spreads vs SD_PG=9 — rejected, SD_PG stands)
   eval_quantiles.py  EXP-013c quantile-head eval: pinball loss vs baselines + per-bucket coverage
   tune_learned.py  EXP-013d nested walk-forward LGBM tuner (grid on folds <= 2021-22 only)
   eval_asof.py     EXP-018 in-season gate: project_asof vs frozen-T0 vs naive updater (--ewma, --blend)

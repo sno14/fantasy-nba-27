@@ -262,6 +262,39 @@ def run_mover_eval(
     return per_bucket, directional, per_pred_bucket
 
 
+def range_coverage(
+    pool: pd.DataFrame,
+    ranges: pd.DataFrame,
+    actual: pd.DataFrame,
+    return_rows: bool = False,
+):
+    """Coverage per mover bucket — the Step-14 (EXP-021) scoreboard column.
+
+    Per actual-Δ bucket (+ an ``ALL`` row), the fraction of realized season totals inside
+    the simulated ``[fpts_p10, fpts_p90]`` band. Big risers are the systematic escapees of
+    the hand-set spread; the Step-14 target is ≥ 70% in that bucket with overall in
+    [78%, 88%].
+
+    ``pool`` = a :func:`pool_frame` output (defines the players and their buckets);
+    ``ranges`` = a ``simulate_ranges`` output; ``actual`` needs ``act_fpts_total``.
+    ``return_rows=True`` also returns the per-player merged frame (with a ``covered``
+    flag) for paired bootstrap CIs between two spread models.
+    """
+    m = (
+        pool[["PLAYER_ID", "bucket"]]
+        .merge(ranges[["PLAYER_ID", "fpts_p10", "fpts_p90"]], on="PLAYER_ID", how="inner")
+        .merge(actual[["PLAYER_ID", "act_fpts_total"]], on="PLAYER_ID", how="inner")
+    )
+    m["covered"] = m["act_fpts_total"].between(m["fpts_p10"], m["fpts_p90"])
+    g = m.groupby("bucket", observed=False)["covered"]
+    table = pd.DataFrame({
+        "bucket": list(BUCKET_LABELS) + ["ALL"],
+        "n": list(g.size().reindex(BUCKET_LABELS).fillna(0).astype(int)) + [len(m)],
+        "coverage": list(g.mean().reindex(BUCKET_LABELS)) + [float(m["covered"].mean())],
+    })
+    return (table, m) if return_rows else table
+
+
 def role_change_events(
     gl_season: pd.DataFrame,
     min_rise: float = 6.0,
