@@ -326,6 +326,134 @@ def predict_shares(model, feats: pd.DataFrame, reserve: float) -> pd.DataFrame:
     return normalize_shares(out, reserve)
 
 
+# ------------------------------------------------- Step 17 (EXP-031): the budget layer
+#
+# The honest re-entry after EXP-014: MPG stays the regression target (the stable quantity);
+# the 240-minute identity returns as (a) depth-chart *features* into the y_mpg model — the
+# ledger-sanctioned path — and (b) a soft post-hoc reconciliation in HEADROOM space, where
+# predicted GP enters only as a bounded multiplicative weight, never a divisor.
+
+TEAM_BUDGET_MIN = 240.0 * 82          # a team-season's player-minutes supply
+MPG_HEADROOM_CAP = 40.0               # headroom anchor: stars near it barely move
+DEPTH_FEATURES = ALLOC_FEATURES + ["pf_per_min"]
+
+
+def depth_feature_table(
+    season_stats: pd.DataFrame,
+    transactions: pd.DataFrame,
+    team_rosters: pd.DataFrame,
+    seasons: list[str] | None = None,
+) -> pd.DataFrame:
+    """SEASON-keyed ``[SEASON, PLAYER_ID] + DEPTH_FEATURES`` — the EXP-031(a) feature group.
+
+    Per season: the honest Oct-1 roster map (``rosters.preseason_roster_map``) + as-of
+    position groups + prior-season minutes → ``allocation_features`` depth-chart math, plus
+    ``pf_per_min`` (critique §5.3's mechanical minutes cap) from the prior season. Same
+    SEASON-keyed contract as ``rosters.vacated_feature_table`` (build once, slice per fold);
+    players off the Oct-1 map get no row — unsigned on draft day is honest missingness.
+    """
+    from .rosters import preseason_roster_map
+
+    pos_table = position_table(team_rosters)
+    all_seasons = sorted(season_stats["SEASON"].unique(), key=_season_start)
+    seasons = list(seasons) if seasons is not None else all_seasons[1:]
+    frames = []
+    for s in seasons:
+        prev_s = season_before(s)
+        if prev_s not in all_seasons:
+            continue
+        rmap = preseason_roster_map(season_stats, transactions, s)[["PLAYER_ID", "team"]].copy()
+        rmap["pos_group"] = rmap["PLAYER_ID"].map(pos_group_asof(pos_table, s))
+        rmap = rmap.dropna(subset=["pos_group"])
+        feats = allocation_features(season_stats, rmap, prev_s)
+        prev = season_stats[season_stats["SEASON"] == prev_s].groupby("PLAYER_ID", as_index=False).agg(
+            _pf=("PF", "sum"), _min=("MIN", "sum"))
+        prev["pf_per_min"] = prev["_pf"] / prev["_min"].replace(0, np.nan)
+        feats = feats.merge(prev[["PLAYER_ID", "pf_per_min"]], on="PLAYER_ID", how="left")
+        feats["pf_per_min"] = feats["pf_per_min"].fillna(0.0)  # no prior season = no foul rate
+        feats.insert(0, "SEASON", s)
+        frames.append(feats)
+    if not frames:
+        raise ValueError("depth_feature_table: no season with a predecessor in season_stats.")
+    return pd.concat(frames, ignore_index=True)
+
+
+def budget_table(board: pd.DataFrame, roster_map: pd.DataFrame, reserve: float) -> pd.DataFrame:
+    """The 17.1 diagnostic: each target team's implied share of its minutes supply.
+
+    ``B_team = Σ_i mpg_i × gp_i / (240 × 82)`` over the board's players mapped to the team —
+    predicted GP enters multiplicatively (bounded 0–1 as a fraction of 82), never as a
+    divisor. ``target = 1 − reserve`` (the unmodeled/rookie headroom is real supply we don't
+    project). Returns ``[team, n, B_team, target, overshoot]`` — the breakthrough plan's
+    "teams silently sum to 260+" claim, finally measured.
+    """
+    m = board.merge(roster_map[["PLAYER_ID", "team"]], on="PLAYER_ID", how="inner")
+    g = m.groupby("team").apply(
+        lambda x: pd.Series({"n": len(x), "B_team": float((x["mpg"] * x["gp"]).sum()) / TEAM_BUDGET_MIN}),
+        include_groups=False,
+    ).reset_index()
+    g["n"] = g["n"].astype(int)
+    g["target"] = 1.0 - reserve
+    g["overshoot"] = g["B_team"] - g["target"]
+    return g
+
+
+def reconcile_minutes(
+    board: pd.DataFrame,
+    roster_map: pd.DataFrame,
+    reserve: float,
+    lam: float,
+    cfg=None,
+) -> pd.DataFrame:
+    """EXP-031(b): soft budget reconciliation of a projection board, in headroom space.
+
+    Per team, the expected budget gap ``G = (1 − reserve) × 240 × 82 − Σ mpg_i × gp_i`` is
+    distributed as ``Δmpg_i = λ × G × h_i / Σ_j h_j × gp_j`` with headroom
+    ``h_i = max(MPG_HEADROOM_CAP − mpg_i, 0)`` — fringe minutes flex, 36-minute stars barely
+    move (the direct answer to EXP-014's proportional-normalization star tax), and GP is
+    only ever a multiplicative weight. ``λ = 0`` is the identity (the A/B control); off-map
+    players are untouched. Per-game stats rescale with the minutes ratio and ``fpts_pg``
+    re-scores through ``cfg`` when given (bonuses are non-linear); MPG clips to [0, 42].
+    Adds a ``recon_mpg`` audit column (the applied Δ, 0 elsewhere).
+    """
+    from ..scoring import score_frame
+
+    out = board.copy()
+    out["recon_mpg"] = 0.0
+    if lam == 0.0:
+        return out
+    team_of = roster_map.set_index("PLAYER_ID")["team"]
+    teams = out["PLAYER_ID"].map(team_of)
+    mpg = out["mpg"].to_numpy(dtype=float)
+    gp = out["gp"].to_numpy(dtype=float)
+    h = np.maximum(MPG_HEADROOM_CAP - mpg, 0.0)
+    delta = np.zeros(len(out))
+    for team, idx in out.groupby(teams).groups.items():
+        loc = out.index.get_indexer(idx)
+        denom = float((h[loc] * gp[loc]).sum())
+        if denom <= 0:
+            continue
+        gap = (1.0 - reserve) * TEAM_BUDGET_MIN - float((mpg[loc] * gp[loc]).sum())
+        delta[loc] = lam * gap * h[loc] / denom
+    new_mpg = np.clip(mpg + delta, 0.0, 42.0)
+    touched = ~np.isclose(new_mpg, mpg)
+    if touched.any():
+        ratio = np.where(mpg > 0, new_mpg / np.where(mpg > 0, mpg, 1.0), 1.0)
+        from ._core import COUNTING
+        for canon in COUNTING:
+            out.loc[touched, canon] = (out.loc[touched, canon].astype(float)
+                                       * ratio[touched]).round(2)
+        out.loc[touched, "recon_mpg"] = np.round(new_mpg[touched] - mpg[touched], 2)
+        out.loc[touched, "mpg"] = np.round(new_mpg[touched], 1)
+        if cfg is not None:
+            out.loc[touched, "fpts_pg"] = score_frame(out.loc[touched], cfg).round(2)
+            out.loc[touched, "fpts_total"] = (out.loc[touched, "fpts_pg"]
+                                              * out.loc[touched, "gp"]).round(1)
+            out = out.sort_values("fpts_total", ascending=False).reset_index(drop=True)
+            out["rank"] = range(1, len(out) + 1)
+    return out
+
+
 def mean_team_total_minutes(season_stats: pd.DataFrame) -> float:
     """Average team-season total minutes over the given (training) seasons — the scale that
     converts a normalized share into projected season minutes."""

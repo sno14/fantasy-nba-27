@@ -1081,6 +1081,58 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   (FGA-bump) second mode is fitted but **unjudged** — arm it only after the April 2027
   short-horizon scoring says the minutes mode holds.
 
+### EXP-031 — budget-reconciled minutes (allocation v2)  ·  Status: **rejected (both wirings) · the 17.1 budget diagnostic adopted** (the budget violation is real and error-linked — but correcting it centers errors without shrinking them)
+- **Date:** 2026-07-11  ·  **Commit:** (this commit)  ·  **Step:** implementation-plan Step 17 (Phase 5)
+- **Hypothesis:** the 240-minute identity, re-entered per the EXP-014 ledger note (GP never
+  a divisor): (a) depth-chart features into the **y_mpg model only** (`learned_depth` =
+  `ALLOC_FEATURES` + `pf_per_min`, honest Oct-1 maps); (b) soft post-hoc reconciliation in
+  **headroom space** (`allocation.reconcile_minutes`: team budget gap distributed
+  ∝ (40 − mpg), so stars barely move — the answer to EXP-014's star tax), λ nested-tuned
+  on folds ≤ 2021-22 (rule 10b; the script refuses later folds).
+- **17.1 diagnostic (adopted — `scripts/eval_budget.py`, run before either A/B):** the
+  breakthrough-plan's "teams silently sum to 260+" is **confirmed and quantified**: on
+  honest Oct-1 rosters the learned board's modeled players consume mean **B_team =
+  1.06–1.08× of the full 240×82 supply** vs the honest target 0.89 (1 − rookie_reserve) —
+  pooled overshoot **+0.176** of supply (p10 +0.05, p90 +0.33), i.e. ~+42 phantom
+  MPG-equivalents per team-game. And it is error-linked: **corr(overshoot, team mean
+  minutes error) = +0.52 / +0.45 / +0.24 / +0.37** per season, pooled **+0.381** over 120
+  team-seasons. Sub-step (b) survived its kill test — the failure below is in the *cure*,
+  not the diagnosis.
+- **(a) `learned_depth` — rejected.** Pooled top-150 minutes MAE delta **flips sign across
+  seeds** (−0.052 / +0.045 / +0.027; mean +0.007, spread 0.097 — seed noise); moved-segment
+  improvement mean **−4.7%** (gate: −10%); the rest segment **degrades +3.5%** in 2/3 seeds
+  (gate: ≤ +2%); clustered CIs straddle 0. The mover view shows the EXP-013d pathology:
+  a **uniform downward bias shift in every bucket** — big riser **−0.70 [−0.94, −0.47]**
+  (CI excludes 0, the wrong way: the under-projected bucket gets more under-projected).
+  Depth features mostly re-price the level, not the person.
+- **(b) `recon λ=0.25` — rejected.** λ* = 0.25 in **all three seeds** (stable; λ=1
+  overcorrects badly, +9% MAE) with a real tuning-fold win (~−1%). On the eval window:
+  minutes MAE ≤ control in 3/3 seeds but **sub-noise** (mean −0.011, spread 0.024, CIs all
+  straddle); moved+turnover segments −0.5% vs the −10% bar; level MAE −0.02 (flat). The one
+  consistent effect: **pool minutes bias +0.84 → +0.30 (−65%)** — the overshoot removal
+  works exactly as designed, but *centering* errors without *shrinking* them does not
+  reorder a ranking.
+- **Verdict:** both wirings rejected; `learned` regression minutes stand unchanged. The
+  diagnostic is the keeper — `eval_budget.py` is the standing instrument for "does the
+  budget bind?", re-runnable in one command. Machinery stays (registry variant
+  `learned_depth` documented-rejected; `reconcile_minutes`/`budget_table` importable).
+- **Skeptic pass:** (leakage) honest Oct-1 maps throughout; `rookie_reserve` train-slice
+  only; λ selected on folds ≤ 2021-22 (enforced by the script); depth features =
+  prior-season minutes + roster facts. (selection) segments defined by roster facts
+  (moved / team turnover), never outcomes; pools are each model's own top-150. (season
+  concentration) (a)'s rest-segment degradation appears in 2/3 seeds — the rejection is
+  not one season's; (b)'s effects are uniform.
+- **Ledger note — the Phase-5 shape, now seen twice (EXP-030/031):** budget/OUT
+  information **centers** minutes errors (bias −65% here; treated bias −85% in EXP-030)
+  but does not **shrink** them at season horizons — per-player minutes noise dominates the
+  systematic component the constraint removes. Do not re-run (a)/(b) hoping for MAE wins
+  at this horizon. Legitimate re-arm points only: (i) the EXP-014 note's other sanctioned
+  path — allocate **season totals for total-based decisions** (VOR replacement levels,
+  GP-weighted totals); (ii) a future default model whose overshoot-error correlation
+  strengthens materially (re-run the diagnostic each adopted-model change); (iii) bias-
+  sensitive consumers (calibrated ranges, EXP-021's re-arm) that benefit from centered
+  minutes even without MAE gains.
+
 _Next experiments — numbering reserved by [`docs/implementation-plan.md`](docs/implementation-plan.md)
 (the execution spec; run in its Step order, as re-routed by the dated notes in its tracker — latest:
 the **2026-07-09 draft-focus re-route + gap-closer addendum**). Done: EXP-011…014 (Phase 0+1),
@@ -1109,8 +1161,10 @@ scores April 2027 · EXP-021 re-arm per its note. Deferred: **EXP-022/023/024**
 (they chase the ≈0 preseason gap) · **EXP-025** (reserved) rotation-survival hurdle.
 Post-ship frontier (Step 15): rookies beyond the market seed, category scoring, an official
 injury feed, the home-grown online skill layer (model-foundation §3C). **Phase 5 (added
-2026-07-10, user direction — "minutes economy"): EXP-030** OUT-redistribution **done above
-(adopted-tentative 2026-07-11** — nightly layer live in `update_daily.py`; naive gate
-re-ran and stays parked at 1–2/4 seasons; re-affirm at short horizons April 2027) →
-**next build-now: EXP-031** budget-reconciled minutes / allocation v2 (Step 17; honors the
-EXP-014 do-not-retry — GP never a divisor; 17.1 diagnostic first)._
+2026-07-10, user direction — "minutes economy") is COMPLETE 2026-07-11: EXP-030**
+OUT-redistribution adopted-tentative (nightly layer live in `update_daily.py`; naive gate
+re-ran, stays parked; re-affirm at short horizons April 2027) · **EXP-031** rejected (both
+wirings) with the **17.1 budget diagnostic adopted** (`eval_budget.py` — overshoot +0.18 of
+supply, error-corr +0.38; re-run at every adopted-model change). Nothing buildable remains
+before the standing calendar (mid-Aug schedule → Sept market → mid-Oct analyst pass + dual
+freeze → opening-night cron → April 2027 scoring + re-arms)._

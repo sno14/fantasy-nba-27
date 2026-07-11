@@ -62,6 +62,10 @@ scripts/
   pull_injuries.py prosportstransactions scraper (injuries + transactions; drives the real
                    Edge/Chrome via Playwright — a browser window opens; incremental by date)
   eval_gp.py       EXP-015 judgments: GP point estimate (learned_inj) + Monte-Carlo GP tails
+  eval_budget.py   EXP-031 judgment: 17.1 team-budget diagnostic (B_team vs 1-reserve target
+                   + overshoot-error correlation; the standing "does the budget bind?"
+                   instrument) + learned_depth / soft-reconciliation A/Bs (--depth,
+                   --reconcile; λ nested on folds <= 2021-22, both rejected)
   eval_breakout.py EXP-026 judgment: breakout board policy vs learned, recall@150 + above-market
   eval_rookies.py  EXP-028 judgment (rejected): rookie model vs pick-order, Spearman gate +
                    archived-market comparison; draft_history dataset feeds it

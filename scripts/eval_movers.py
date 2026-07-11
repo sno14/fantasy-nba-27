@@ -71,6 +71,10 @@ def _needs_preseason(variant_names: list[str]) -> bool:
     return any(VARIANT_SPECS[v].get("use_preseason") for v in variant_names)
 
 
+def _needs_depth(variant_names: list[str]) -> bool:
+    return any(VARIANT_SPECS[v].get("use_depth") for v in variant_names)
+
+
 def _pooled(per_bucket: pd.DataFrame, value_cols: list[str]) -> pd.DataFrame:
     """n-weighted mean of per-bucket metrics across seasons, ordered faller -> riser."""
     pooled = (
@@ -326,6 +330,16 @@ def main() -> None:
         print(f"[preseason] table rows={len(preseason_table):,} over "
               f"{preseason_table['SEASON'].nunique()} seasons")
 
+    depth_table = None
+    if _needs_depth(variants):
+        from fantasy_nba.models import allocation as alloc_mod
+
+        depth_table = alloc_mod.depth_feature_table(
+            season_stats, storage.read("transactions"), storage.read("team_rosters"),
+        )
+        print(f"[depth] table rows={len(depth_table):,} over "
+              f"{depth_table['SEASON'].nunique()} seasons (honest Oct-1 maps)")
+
     def _run_view(pool_kind: str):
         per_bucket_frames, dir_frames, pred_frames = [], [], []
         pools_by_model: dict[str, list[pd.DataFrame]] = {}
@@ -336,7 +350,7 @@ def main() -> None:
                 seed=args.seed, return_pools=True, pool=pool_kind, rosters=rosters,
                 injuries=injuries, vacated_table=vacated_table, transactions=transactions,
                 breakout_table=breakout_table, coach_table=coach_table,
-                preseason_table=preseason_table,
+                preseason_table=preseason_table, depth_table=depth_table,
             )
             for frame in (per_bucket, directional, per_pred):
                 frame.insert(0, "season", season)

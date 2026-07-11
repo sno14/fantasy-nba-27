@@ -162,6 +162,7 @@ def run_mover_eval(
     breakout_table: pd.DataFrame | None = None,
     coach_table: pd.DataFrame | None = None,
     preseason_table: pd.DataFrame | None = None,
+    depth_table: pd.DataFrame | None = None,
 ):
     """Mover-segmented level accuracy for one target season.
 
@@ -188,7 +189,7 @@ def run_mover_eval(
         game_logs=game_logs, variants=variants, seed=seed, rosters=rosters,
         injuries=injuries, vacated_table=vacated_table, transactions=transactions,
         breakout_table=breakout_table, coach_table=coach_table,
-        preseason_table=preseason_table,
+        preseason_table=preseason_table, depth_table=depth_table,
     )
     if oracles:
         lines = _actual_lines(season_stats, target_season)

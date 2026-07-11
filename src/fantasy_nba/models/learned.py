@@ -56,6 +56,12 @@ FEATURES = BASE_FEATURES  # back-compat default (Marcel-equivalent); see feature
 # They're therefore not part of feature_columns(); _fit_models appends them per-target.
 GP_EXTRA_FEATURES = inj.INJURY_FEATURES
 
+# Depth-chart features (EXP-031a, Step 17) feed the **y_mpg model only** — the EXP-014
+# ledger's sanctioned allocation re-entry ("depth-chart features as *inputs* to the existing
+# regression — a feature experiment, not a target change"). Same per-target pattern as
+# GP_EXTRA_FEATURES; the list lives in allocation.DEPTH_FEATURES (imported lazily below to
+# keep the module import graph flat).
+
 # Team-context / vacated-minutes features (EXP-009) live in models.context.CONTEXT_FEATURES.
 
 # One regression target per decomposition layer. Labels are prefixed ``y_`` so they never
@@ -195,6 +201,7 @@ def _features_for(
     breakout_feats: pd.DataFrame | None = None,
     coach_feats: pd.DataFrame | None = None,
     preseason_feats: pd.DataFrame | None = None,
+    depth_feats: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """Marcel aggregates (+ trajectory / team-context / recency / injury features) for ``target_season``.
 
@@ -248,6 +255,10 @@ def _features_for(
         feats = feats.merge(preseason_feats, on="PLAYER_ID", how="left")
         # No preseason appearance stays NaN on purpose: it means "role unknown" (rested vet,
         # camp cut, overseas), never "played 0 minutes" — LightGBM handles NaN natively.
+    if depth_feats is not None:
+        feats = feats.merge(depth_feats, on="PLAYER_ID", how="left")
+        # Off the Oct-1 map stays NaN on purpose: unsigned on draft day = depth chart
+        # genuinely unknown, never "bottom of a stack" — LightGBM handles NaN natively.
     return feats
 
 
@@ -263,6 +274,7 @@ def build_panel(
     breakout_table: pd.DataFrame | None = None,
     coach_table: pd.DataFrame | None = None,
     preseason_table: pd.DataFrame | None = None,
+    depth_table: pd.DataFrame | None = None,
     min_prior_seasons: int = 2,
     min_label_minutes: float = 200.0,
     n_seasons: int = 3,
@@ -317,10 +329,16 @@ def build_panel(
             preseason_table.loc[preseason_table["SEASON"] == s, ["PLAYER_ID"] + pre.PRESEASON_FEATURES]
             if preseason_table is not None else None
         )
+        depth_feats = None
+        if depth_table is not None:
+            from .allocation import DEPTH_FEATURES
+
+            depth_feats = depth_table.loc[depth_table["SEASON"] == s,
+                                          ["PLAYER_ID"] + DEPTH_FEATURES]
         feats = _features_for(
             prior, prior_bio, s, use_trajectory, n_seasons, weights, reg_minutes,
             context_feats, recency_feats, injury_feats, vacated_feats, breakout_feats,
-            coach_feats, preseason_feats,
+            coach_feats, preseason_feats, depth_feats,
         )
         labels = _labels(season_stats, s, min_label_minutes)
         merged = feats.merge(labels, on="PLAYER_ID", how="inner")
@@ -362,16 +380,22 @@ def _fit_models(
     weight_mode: str | None = None,
     weight_alpha: float = 1.0,
     gp_extra_cols: list[str] | None = None,
+    mpg_extra_cols: list[str] | None = None,
 ) -> dict:
     """One LightGBM per target. ``gp_extra_cols`` (EXP-015 injury features) extend the
-    feature set of the **y_gp model only** — the other targets never see them."""
+    feature set of the **y_gp model only**; ``mpg_extra_cols`` (EXP-031a depth-chart
+    features) the **y_mpg model only** — the other targets never see either."""
     if target_mode not in ("level", "delta"):
         raise ValueError(f"target_mode must be 'level' or 'delta', got {target_mode!r}")
     from lightgbm import LGBMRegressor
 
     models = {}
     for target in TARGETS:
-        cols = feature_cols + (gp_extra_cols or []) if target == "y_gp" else feature_cols
+        cols = feature_cols
+        if target == "y_gp" and gp_extra_cols:
+            cols = feature_cols + gp_extra_cols
+        elif target == "y_mpg" and mpg_extra_cols:
+            cols = feature_cols + mpg_extra_cols
         label = panel[target]
         if target_mode == "delta" and target in DELTA_ANCHORS:
             label = label - panel[DELTA_ANCHORS[target]]  # train on change from own anchor
@@ -421,6 +445,8 @@ def project_learned(
     weight_alpha: float = 1.0,
     minutes_mode: str = "regression",
     rosters: pd.DataFrame | None = None,
+    use_depth: bool = False,
+    depth_table: pd.DataFrame | None = None,
     min_label_minutes: float = 200.0,
     n_seasons: int = 3,
     weights: tuple[float, ...] = DEFAULT_WEIGHTS,
@@ -479,6 +505,9 @@ def project_learned(
     if minutes_mode == "allocation" and (rosters is None or target_team_map is None):
         raise ValueError("minutes_mode='allocation' needs rosters (team_rosters frame) and "
                          "target_team_map ([PLAYER_ID, team]).")
+    if use_depth and depth_table is None:
+        raise ValueError("use_depth needs depth_table (allocation.depth_feature_table — "
+                         "SEASON-keyed, must cover the training seasons and the target).")
     feature_cols = feature_columns(use_trajectory, use_context, use_recency, use_trade_split,
                                    use_vacated, use_breakout, use_coach, use_preseason)
 
@@ -490,6 +519,12 @@ def project_learned(
         recency_table = rec.season_recency_table(game_logs, skip_last=recency_skip_last)
         trade_table = rec.trade_split_table(game_logs) if use_trade_split else None
 
+    depth_cols: list[str] = []
+    if use_depth:
+        from . import allocation as _alloc
+
+        depth_cols = list(_alloc.DEPTH_FEATURES)
+
     panel = build_panel(
         season_stats, bio, use_trajectory=use_trajectory, use_context=use_context,
         recency_table=recency_table, trade_table=trade_table,
@@ -498,6 +533,7 @@ def project_learned(
         breakout_table=breakout_table if use_breakout else None,
         coach_table=coach_table if use_coach else None,
         preseason_table=preseason_table if use_preseason else None,
+        depth_table=depth_table if use_depth else None,
         min_label_minutes=min_label_minutes,
         n_seasons=n_seasons, weights=weights, reg_minutes=reg_minutes,
     )
@@ -505,6 +541,7 @@ def project_learned(
         panel, params, feature_cols,
         target_mode=target_mode, weight_mode=weight_mode, weight_alpha=weight_alpha,
         gp_extra_cols=GP_EXTRA_FEATURES if use_injuries else None,
+        mpg_extra_cols=depth_cols if use_depth else None,
     )
 
     context_feats = None
@@ -559,15 +596,25 @@ def project_learned(
                              "the target's October games must exist (live use: after preseason "
                              "tips off).")
 
+    depth_feats = None
+    if use_depth:
+        depth_feats = depth_table.loc[
+            depth_table["SEASON"] == target_season, ["PLAYER_ID"] + depth_cols
+        ]
+        if depth_feats.empty:
+            raise ValueError(f"depth_table has no rows for target season {target_season!r} — "
+                             "build it with the target season included.")
+
     agg = _features_for(
         season_stats, bio, target_season, use_trajectory, n_seasons, weights, reg_minutes,
         context_feats, recency_feats, injury_feats, vacated_feats, breakout_feats,
-        coach_feats, preseason_feats,
+        coach_feats, preseason_feats, depth_feats,
     )
     X = agg[feature_cols]
     X_gp = agg[feature_cols + GP_EXTRA_FEATURES] if use_injuries else X
+    X_mpg = agg[feature_cols + depth_cols] if use_depth else X
 
-    pred_mpg = np.clip(_predict_target(models, "y_mpg", X, agg, target_mode), 0.0, 48.0)
+    pred_mpg = np.clip(_predict_target(models, "y_mpg", X_mpg, agg, target_mode), 0.0, 48.0)
     pred_gp = np.clip(_predict_target(models, "y_gp", X_gp, agg, target_mode), 1.0, 82.0)
 
     if minutes_mode == "allocation":

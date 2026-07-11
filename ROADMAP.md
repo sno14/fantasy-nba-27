@@ -138,11 +138,12 @@ special-case handling.
       decision sheet (VOR + ADP availability + rookie market-seed), boards persist to
       `data/processed/`, and the explorer carries board/ROS/player/data tabs.
 
-**Next frontiers (post-ship, in rough return order):** **the minutes economy (Phase 5,
-added 2026-07-10: Step 16 / EXP-030 OUT-redistribution ✅ adopted-tentative 2026-07-11 —
-nightly layer live, treated bias −0.15→−0.01, lead-time +5–8d, re-affirm Apr 2027 at short
-horizons → Step 17 / EXP-031 budget-reconciled minutes, the remaining build-now step —
-specs in the implementation plan)** · score the 2026-27 dual freeze +
+**Next frontiers (post-ship, in rough return order):** **the minutes economy (Phase 5) is
+COMPLETE 2026-07-11** — Step 16 / EXP-030 OUT-redistribution adopted-tentative (nightly
+layer live; treated bias −0.15→−0.01, lead-time +5–8d; re-affirm Apr 2027 at short
+horizons) · Step 17 / EXP-031 rejected both wirings, **17.1 budget diagnostic adopted**
+(`eval_budget.py`: overshoot +0.18 of supply, error-corr +0.38 — re-run at every
+adopted-model change) · score the 2026-27 dual freeze +
 EXP-029 in April 2027 · EXP-020 external in-season benchmarks (archives accumulating
 nightly) · EXP-021 re-arm (learned range width, post-2026-27) · rookies beyond the market
 seed (college translation — EXP-028's named re-arm) · category-league scoring · an official

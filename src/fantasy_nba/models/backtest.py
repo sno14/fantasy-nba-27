@@ -92,6 +92,8 @@ VARIANT_SPECS: dict[str, dict] = {
     # coach_table / preseason_table):
     "learned_coach": {"use_coach": True},
     "learned_ps": {"use_preseason": True},
+    # EXP-031a (Step 17) — depth-chart features into the y_mpg model only (needs depth_table):
+    "learned_depth": {"use_depth": True},
 }
 
 
@@ -110,6 +112,7 @@ def project_models(
     breakout_table: pd.DataFrame | None = None,
     coach_table: pd.DataFrame | None = None,
     preseason_table: pd.DataFrame | None = None,
+    depth_table: pd.DataFrame | None = None,
 ) -> dict[str, pd.DataFrame]:
     """Project ``target_season`` with every model using **only** prior-season data.
 
@@ -211,6 +214,11 @@ def project_models(
                     raise ValueError(f"Variant {name!r} needs preseason_table "
                                      "(preseason.preseason_feature_table).")
                 kw["preseason_table"] = preseason_table
+            if kw.get("use_depth"):
+                if depth_table is None:
+                    raise ValueError(f"Variant {name!r} needs depth_table "
+                                     "(allocation.depth_feature_table).")
+                kw["depth_table"] = depth_table
             models[name] = project_learned(train_ss, train_bio, target_season, cfg=cfg, **kw)
     return models
 

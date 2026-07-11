@@ -499,3 +499,94 @@ def test_range_coverage_per_bucket_and_all_row():
     assert t.loc["stable", "n"] == 2 and t.loc["stable", "coverage"] == pytest.approx(1.0)
     assert t.loc["ALL", "n"] == 4 and t.loc["ALL", "coverage"] == pytest.approx(0.75)
     assert rows.set_index("PLAYER_ID")["covered"].tolist() == [True, False, True, True]
+
+
+# ------------------------------------------------- Step 17 (EXP-031): the budget layer
+
+def test_budget_table_arithmetic():
+    board = pd.DataFrame({
+        "PLAYER_ID": [1, 2, 9],
+        "mpg": [30.0, 20.0, 25.0],
+        "gp": [82.0, 41.0, 82.0],
+    })
+    rmap = pd.DataFrame({"PLAYER_ID": [1, 2], "team": ["AAA", "AAA"]})  # 9 off the map
+    t = allocation.budget_table(board, rmap, reserve=0.1).set_index("team")
+    assert t.loc["AAA", "n"] == 2
+    assert t.loc["AAA", "B_team"] == pytest.approx((30 * 82 + 20 * 41) / (240 * 82))
+    assert t.loc["AAA", "target"] == pytest.approx(0.9)
+    assert t.loc["AAA", "overshoot"] == pytest.approx(t.loc["AAA", "B_team"] - 0.9)
+
+
+def test_reconcile_minutes_headroom_space_and_identity():
+    from fantasy_nba.scoring import ScoringConfig
+
+    cfg = ScoringConfig(name="pts-only", weights={"pts": 1.0})
+    board = pd.DataFrame({
+        "rank": [1, 2],
+        "PLAYER_ID": [1, 2],
+        "PLAYER_NAME": ["star", "fringe"],
+        "gp": [82.0, 82.0],
+        "mpg": [38.0, 10.0],
+        **{c: [0.0, 0.0] for c in COUNTING},
+    })
+    board["pts"] = [30.0, 8.0]
+    board["fpts_pg"] = board["pts"]
+    board["fpts_total"] = board["fpts_pg"] * board["gp"]
+    rmap = pd.DataFrame({"PLAYER_ID": [1, 2], "team": ["AAA", "AAA"]})
+
+    # lambda = 0 is the identity (the A/B control).
+    out0 = allocation.reconcile_minutes(board, rmap, reserve=0.1, lam=0.0, cfg=cfg)
+    assert (out0["mpg"] == board["mpg"]).all() and (out0["recon_mpg"] == 0).all()
+
+    # Mild undershoot (consumed 0.20 of supply vs target 0.22): the exact headroom split is
+    # delta_i = gap * h_i / sum(h_j * gp_j) with h = (40 - mpg): the fringe player (h=30)
+    # takes 15x the star's (h=2) share.
+    reserve = 0.78
+    gap = (1 - reserve) * 240 * 82 - (38.0 + 10.0) * 82
+    d_star = gap * 2 / ((2 + 30) * 82)
+    d_fringe = gap * 30 / ((2 + 30) * 82)
+    out1 = allocation.reconcile_minutes(board, rmap, reserve=reserve, lam=1.0, cfg=cfg)
+    o = out1.set_index("PLAYER_ID")
+    assert o.loc[1, "recon_mpg"] == pytest.approx(d_star, abs=0.01)
+    assert o.loc[2, "recon_mpg"] == pytest.approx(d_fringe, abs=0.01)
+    assert (o["mpg"] <= 42.0).all()
+    # Stats rescale with the ratio and fpts re-scores through the config.
+    ratio = o.loc[2, "mpg"] / 10.0
+    assert o.loc[2, "pts"] == pytest.approx(round(8.0 * ratio, 2), abs=0.05)
+    assert o.loc[2, "fpts_pg"] == pytest.approx(o.loc[2, "pts"])
+
+    # Half strength moves exactly half as far (no caps in play here).
+    out_h = allocation.reconcile_minutes(board, rmap, reserve=reserve, lam=0.5, cfg=cfg)
+    h = out_h.set_index("PLAYER_ID")
+    assert h.loc[2, "recon_mpg"] == pytest.approx(d_fringe * 0.5, abs=0.02)
+
+    # A massive gap (reserve 0.1 on a 2-man roster) is cap-limited: mpg never exceeds 42
+    # and the audit column reflects the clipped delta.
+    out_cap = allocation.reconcile_minutes(board, rmap, reserve=0.1, lam=1.0, cfg=cfg)
+    assert (out_cap["mpg"] <= 42.0).all()
+    assert out_cap.set_index("PLAYER_ID").loc[2, "recon_mpg"] == pytest.approx(32.0, abs=0.1)
+
+
+def test_depth_feature_table_honest_map_and_pf():
+    ss = pd.DataFrame({
+        "SEASON": ["2022-23"] * 3 + ["2023-24"] * 3,
+        "PLAYER_ID": [1, 2, 3, 1, 2, 3],
+        "PLAYER_NAME": ["a", "b", "c"] * 2,
+        "TEAM_ABBREVIATION": ["AAA", "AAA", "AAA"] * 2,
+        "MIN": [2000.0, 1000.0, 1500.0] * 2,
+        "PF": [100.0, 80.0, 150.0] * 2,
+    })
+    rosters = pd.DataFrame({
+        "PLAYER_ID": [1, 2, 3],
+        "SEASON": ["2022-23"] * 3,
+        "POSITION": ["G", "G", "C"],
+    })
+    tx = pd.DataFrame({"date": pd.to_datetime([])})
+    dt = allocation.depth_feature_table(ss, tx, rosters)
+    # Only 2023-24 has a predecessor; the honest map keeps everyone on AAA.
+    assert set(dt["SEASON"]) == {"2023-24"}
+    d = dt.set_index("PLAYER_ID")
+    assert d.loc[1, "own_prev_share"] == pytest.approx(2000 / 4500)
+    assert d.loc[1, "pf_per_min"] == pytest.approx(100 / 2000)
+    assert d.loc[1, "depth_rank"] == 1 and d.loc[2, "depth_rank"] == 2
+    assert set(dt.columns) == {"SEASON", "PLAYER_ID", *allocation.DEPTH_FEATURES}

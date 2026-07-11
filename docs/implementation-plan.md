@@ -108,7 +108,7 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | 14 | 4 | Distributional board (quantile ranges, GP tails, coverage) | EXP-021 | ☑ (piecewise-CDF path + `residual_pool` + `calibrate_resid_scale` + `range_coverage` scoreboard) | ☑ (rejected — SD_PG=9 stands; re-arm post-2026-27 per ledger note) |
 | 15 | 4 | Ship: default model switch, explorer, final doc sweep | — | ☑ (`project.py` default `learned` + `--asof`; explorer: learned default, chronic GP pools, D1 columns, ROS tab) | ☑ 2026-07-10 (see as-built note under Step 15) |
 | 16 | 5 | Vacated-minutes absorption + live OUT-redistribution | EXP-030 | ☑ (`absorption.py` + `--exp030` + nightly wiring) | ☑ 2026-07-11 (adopted-tentative — MAE-neutral, treated bias −0.15→−0.01, lead +5–8d; naive gate re-ran, stays parked; re-affirm Apr 2027 short-horizon) |
-| 17 | 5 | Budget-reconciled minutes (allocation v2: depth features + soft reconciliation) | EXP-031 | ☐ | ☐ |
+| 17 | 5 | Budget-reconciled minutes (allocation v2: depth features + soft reconciliation) | EXP-031 | ☑ (`eval_budget.py` + `learned_depth` + `reconcile_minutes`) | ☑ 2026-07-11 (both wirings rejected; 17.1 diagnostic ADOPTED — overshoot +0.18 supply, error-corr +0.38; re-run per adopted-model change) |
 
 *\*Phase-0 verdict (EXP-011, Decision Row 1, 2026-07-08): the model-pool riser reducible gap
 is +0.19 fpts/g (< 2) — preseason bias-chasing is near-done and the residual headroom is
@@ -1606,6 +1606,21 @@ the explicit EXP-014 contrast line (what changed vs what was banned).
 
 **Done when:** EXP-031 logged adopt/reject; tracker + ROADMAP updated; any adopted mode
 becomes a `project_models` default with a Step-2 floor recompute.
+
+> **As completed (2026-07-11).** Built to spec (`allocation.depth_feature_table` /
+> `budget_table` / `reconcile_minutes`, variant `learned_depth`, `scripts/eval_budget.py`;
+> 3 unit tests). **The 17.1 diagnostic is the keeper**: overshoot confirmed (mean B_team
+> 1.06–1.08× of full supply vs the 0.89 target; pooled +0.176, p90 +0.33) and error-linked
+> (corr +0.24…+0.52 every season, pooled +0.381/120 team-seasons) — sub-step (b) survived
+> its kill test. **Both cures rejected under rule 8** (seeds {0,1,2}): (a) minutes-MAE
+> delta flips sign across seeds, moved −4.7% vs the −10% bar, rest degrades +3.5%, and the
+> mover CI shows a uniform downward bias shift deepening the big-riser hole (−0.70, CI
+> excludes 0 — the EXP-013d pathology); (b) λ*=0.25 stable and tuning-fold-real but
+> eval-window MAE sub-noise (−0.011, spread 0.024), segments −0.5%; its one consistent
+> effect is pool minutes bias +0.84→+0.30. **The Phase-5 lesson, seen twice:** constraint
+> information centers minutes errors without shrinking them at season horizons. Re-arms in
+> the ledger note (total-based decisions; re-run the diagnostic each adopted-model change;
+> bias-sensitive consumers like the EXP-021 re-arm).
 
 *Ordering note: 16 before 17 (higher expected return; its fitted absorption weights are
 also 17's best prior on who inherits vacated minutes). Both are build-now and must not
