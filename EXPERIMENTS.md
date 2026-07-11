@@ -1025,6 +1025,62 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   in-season recalibration. Do **not** revisit raw (uncalibrated) residual CDFs or the
   EXP-013c quantile heads as the range source.
 
+### EXP-030 — vacated-minutes absorption + live OUT-redistribution  ·  Status: **adopted-tentative** (rule 8: the decisive CI straddles 0; harm excluded, auxiliary wins consistent — re-affirm April 2027 from the nightly archives)
+- **Date:** 2026-07-11  ·  **Commit:** (this commit)  ·  **Step:** implementation-plan Step 16 (Phase 5)
+- **Hypothesis:** when a rotation player is OUT, flowing his projected minutes to teammates
+  by **fitted** absorption weights (instead of waiting for the EWMA to see the box scores)
+  improves treated-segment ROS accuracy and moves the board earlier on role changes — the
+  EXP-018 re-gate's named "OUT-tonight / live teammate-vacated minutes" item, built as a
+  board layer (`models/absorption.py` → `eval_asof.py --exp030` → `update_daily.py`).
+- **Method:** joint-attribution dataset from prior-season game logs per fold (171k–221k
+  teammate rows / 17k–22k team-games; absence = appeared for the team ≤ 14d prior, form
+  ≥ 15 MPG, not in tonight's box; strictly-pre-game trailing-10 baselines; |margin| ≥ 25
+  blowouts excluded via `team_game_logs` — its first wiring). Bounded LSQ (θ ∈ [0,1],
+  free intercept) over 6 cells {same/cross-pos} × {starter/rotation/fringe}; a parallel
+  head fits per-game FGA absorption. Backtest OUT-sets = spells open at T with
+  **median-estimated** return (severe ≈ 37–40d, normal = 6d, fit on training spells; the
+  recorded spell end is an oracle reserved for live use where news supplies `out_until`).
+  Eval: 4 seasons × cutpoints {+30/60/90} × seeds {0,1,2}; treated segment = touched rows
+  in the asof top-200 with ≥ 5 ROS games (n ≈ 1,450/seed).
+- **Fitted tiers (reality anchor — vs the DFS folk numbers, per 30 vacated MPG):** same-pos
+  fringe **3.2** / rotation **2.2** / starter **1.2**; cross-pos 1.5 / 0.8 / 0.6. Both
+  monotonicities right (same-pos ≈ 2× cross-pos; headroom ordering within relation); a
+  realistic roster absorbs ~17 of 30 collectively (teams also shorten rotations) — the
+  folk "backup +12–15" concentrates on one man, the cell model spreads it over the cell.
+  FGA head shows the same ordering. Tiers deterministic across seeds.
+- **Result (treated segment, pooled):** ΔMAE (redist − asof) seed-mean **+0.002** (spread
+  0.005), clustered 90% CIs all straddle 0 ([−.011,+.008] / [−.006,+.014] / [−.007,+.013])
+  — the layer is MAE-neutral at ROS horizons, and structurally so: the median non-severe
+  absence is 6 days, so honest proration averages only **0.14 MPG** of flow. But: treated
+  **signed bias −0.15 → −0.01** (the systematic under-projection of players with an OUT
+  teammate essentially removed; better at all 3 cutpoints, all seeds), **lead-time median
+  52.4→60.0 / 56.0→57.6 / 52.4→59.1 days** with detection 0.98–0.99 → 0.99–1.00 (better or
+  equal in every season, all seeds), and **untouched-row identity = 0 mismatches** (×3
+  seeds) — provably a no-op away from OUT events.
+- **Verdict:** **adopted-tentative** — exactly rule 8's category: the decisive CI straddles
+  0 (upper bound ≤ +0.014, ≈ 0.4% of MAE — harm excluded), the auxiliary wins are
+  season-consistent, and the cost is zero. Wired into `update_daily.py` (fault-isolated;
+  `--no-redist` opt-out; `redist_mpg` audit column; weights fit once per season and cached).
+  Offline dry-run 2026-07-11 clean (91 OUT, 386 teammates adjusted). Re-affirm April 2027
+  by scoring the season's nightly `ros_board/` archives — at **short horizons** (e.g.
+  next-14-day windows), where the layer's flow isn't prorated away; ROS-horizon ΔMAE is
+  settled (neutral), don't re-litigate it.
+- **EXP-018 naive re-gate (its named re-arm condition, run herewith):** asof+redist beats
+  the naive updater at ≥ 2/3 cutpoints in **1/4 · 2/4 · 2/4 seasons** (seeds 0/1/2; gate
+  needs 3/4) → **the naive gate stays parked**. Trend worth recording: 2025-26 favors the
+  model at 3/3 cutpoints (seed 0) and recent seasons lean model — recheck after 2026-27.
+- **Skeptic pass:** (leakage) absorption weights, spell-duration medians, pre-game
+  baselines, OUT-sets, and team maps are all strictly ≤ T or prior-season; backtests never
+  see a spell's recorded end. (selection) the treated segment conditions on **teammate
+  status** (treatment), never on outcomes; the untouched-identity check is the no-leak
+  proof on everyone else. (season concentration) bias and lead-time improvements appear in
+  all four seasons; MAE-neutrality is uniform.
+- **Ledger note:** the ROS horizon structurally dilutes this layer — don't retry variants
+  hoping for ROS-MAE wins (short absences prorate to ~0.1 MPG by construction). The value
+  is same-day: bias removal on treated players and ~a week of extra lead. The usage
+  (FGA-bump) second mode is fitted but **unjudged** — arm it only after the April 2027
+  short-horizon scoring says the minutes mode holds.
+
 _Next experiments — numbering reserved by [`docs/implementation-plan.md`](docs/implementation-plan.md)
 (the execution spec; run in its Step order, as re-routed by the dated notes in its tracker — latest:
 the **2026-07-09 draft-focus re-route + gap-closer addendum**). Done: EXP-011…014 (Phase 0+1),
@@ -1052,8 +1108,9 @@ benchmarks (re-arm when ≥ 1 season of date-stamped DARKO/ADP archives exists) 
 scores April 2027 · EXP-021 re-arm per its note. Deferred: **EXP-022/023/024**
 (they chase the ≈0 preseason gap) · **EXP-025** (reserved) rotation-survival hurdle.
 Post-ship frontier (Step 15): rookies beyond the market seed, category scoring, an official
-injury feed, the home-grown online skill layer (model-foundation §3C). **Added 2026-07-10
-late (user direction — Phase 5 "minutes economy", build-now, specs in the implementation
-plan): EXP-030** vacated-minutes absorption + live OUT-redistribution (Step 16; adoption
-re-arms the parked EXP-018 naive gate) · **EXP-031** budget-reconciled minutes /
-allocation v2 (Step 17; honors the EXP-014 do-not-retry — GP never a divisor)._
+injury feed, the home-grown online skill layer (model-foundation §3C). **Phase 5 (added
+2026-07-10, user direction — "minutes economy"): EXP-030** OUT-redistribution **done above
+(adopted-tentative 2026-07-11** — nightly layer live in `update_daily.py`; naive gate
+re-ran and stays parked at 1–2/4 seasons; re-affirm at short horizons April 2027) →
+**next build-now: EXP-031** budget-reconciled minutes / allocation v2 (Step 17; honors the
+EXP-014 do-not-retry — GP never a divisor; 17.1 diagnostic first)._

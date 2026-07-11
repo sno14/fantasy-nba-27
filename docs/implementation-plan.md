@@ -107,7 +107,7 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | 13 | 3 | External in-season benchmarks (DARKO/ADP archives) | EXP-020 | ☐ | ☐ |
 | 14 | 4 | Distributional board (quantile ranges, GP tails, coverage) | EXP-021 | ☑ (piecewise-CDF path + `residual_pool` + `calibrate_resid_scale` + `range_coverage` scoreboard) | ☑ (rejected — SD_PG=9 stands; re-arm post-2026-27 per ledger note) |
 | 15 | 4 | Ship: default model switch, explorer, final doc sweep | — | ☑ (`project.py` default `learned` + `--asof`; explorer: learned default, chronic GP pools, D1 columns, ROS tab) | ☑ 2026-07-10 (see as-built note under Step 15) |
-| 16 | 5 | Vacated-minutes absorption + live OUT-redistribution | EXP-030 | ☐ | ☐ |
+| 16 | 5 | Vacated-minutes absorption + live OUT-redistribution | EXP-030 | ☑ (`absorption.py` + `--exp030` + nightly wiring) | ☑ 2026-07-11 (adopted-tentative — MAE-neutral, treated bias −0.15→−0.01, lead +5–8d; naive gate re-ran, stays parked; re-affirm Apr 2027 short-horizon) |
 | 17 | 5 | Budget-reconciled minutes (allocation v2: depth features + soft reconciliation) | EXP-031 | ☐ | ☐ |
 
 *\*Phase-0 verdict (EXP-011, Decision Row 1, 2026-07-08): the model-pool riser reducible gap
@@ -1546,6 +1546,20 @@ treated-segment results, and the EXP-018 re-gate outcome if adopted.
 **Done when:** EXP-030 logged; if adopted, `update_daily.py` applies it nightly and
 README's nightly section mentions the redistribution line; tracker + ROADMAP frontier
 updated.
+
+> **As completed (2026-07-11).** Built exactly to spec (`models/absorption.py`,
+> `eval_asof.py --exp030`, 7 unit tests). Verdict **adopted-tentative** (rule 8's codified
+> category — the decisive treated-ΔMAE CI straddles 0 on all seeds): MAE-neutral at ROS
+> horizons *structurally* (median non-severe absence = 6 days → mean prorated flow
+> 0.14 MPG), but treated signed bias −0.15 → −0.01 and lead-time +5–8 days, consistent
+> across all 4 seasons × 3 seeds; untouched rows byte-identical (0 mismatches ×3). Fitted
+> tiers passed the reality anchor (same-pos 2× cross-pos, headroom ordering; ~17/30
+> absorbed collectively). Nightly wiring live (fault-isolated, `--no-redist`, `redist_mpg`
+> audit column, per-season weight cache); offline dry-run clean. **The EXP-018 naive gate
+> re-ran and stays parked** (1/4 · 2/4 · 2/4 seasons at ≥2/3 cutpoints vs 3/4 needed;
+> 2025-26 leans model — recheck post-2026-27). April 2027 re-affirm must score **short
+> horizons** (next-14-day windows from the nightly archives), not ROS ΔMAE (settled
+> neutral; ledger note bans re-litigating it).
 
 ## Step 17 — EXP-031: budget-reconciled minutes (allocation v2)
 

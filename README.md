@@ -57,6 +57,8 @@ scripts/
                    + EXP-019 diagnostics (--exp019): in-season mover eval w/ per-cutpoint floors,
                    early-riser recall, weekly-grid lead-time, league-horizon sensitivity
                    (--fit-half-lives re-checks the frozen EWMA constants)
+                   + EXP-030 (--exp030): OUT-redistribution layer vs plain asof — fitted
+                   absorption tiers, treated-segment MAE + clustered CI, lead-time
   pull_injuries.py prosportstransactions scraper (injuries + transactions; drives the real
                    Edge/Chrome via Playwright — a browser window opens; incremental by date)
   eval_gp.py       EXP-015 judgments: GP point estimate (learned_inj) + Monte-Carlo GP tails
@@ -77,7 +79,9 @@ scripts/
   darko_report.py  DARKO overlay: minutes/rank disagreement report (pull_darko.py fetches)
   update_daily.py  Step-12 nightly pipeline: refresh logs + incremental injury/transaction
                    pulls + DARKO/market archives + the as-of ROS board with status overrides
-                   (config/overrides.yaml) and the naive-updater benchmark line
+                   (config/overrides.yaml), the EXP-030 OUT-redistribution layer (fitted
+                   absorption tiers; redist_mpg audit column; --no-redist to disable),
+                   and the naive-updater benchmark line
   explore.py       local interactive Streamlit explorer
 data/              raw/ and processed/ caches (gitignored)
   manual/          hand-curated datasets — committed (the gitignore's manual-data exception):
