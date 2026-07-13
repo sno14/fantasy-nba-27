@@ -62,13 +62,23 @@ def load_overrides(path: str | Path | None = None) -> list[dict]:
     path = Path(path) if path else CONFIG_DIR / "analyst_overrides.yaml"
     with open(path, encoding="utf-8") as fh:
         raw = yaml.safe_load(fh)
+    return parse_overrides(raw, source=str(path))
+
+
+def parse_overrides(raw: list | None, source: str = "<overrides>") -> list[dict]:
+    """Validate a raw YAML list of override mappings into internal entry dicts.
+
+    Shared by :func:`load_overrides` and the proposals promoter
+    (``scripts/apply_proposals.py``) so both enforce identical validation. Loud on any
+    malformed entry — a silently dropped override corrupts the April attribution.
+    """
     if raw is None:
         return []
     if not isinstance(raw, list):
-        raise ValueError(f"{path} must be a YAML list of override entries, got {type(raw).__name__}.")
+        raise ValueError(f"{source} must be a YAML list of override entries, got {type(raw).__name__}.")
     entries = []
     for i, e in enumerate(raw):
-        where = f"{path} entry {i + 1}"
+        where = f"{source} entry {i + 1}"
         if not isinstance(e, dict):
             raise ValueError(f"{where}: not a mapping.")
         missing = {"name", "date", "category", "action", "rationale"} - set(e)

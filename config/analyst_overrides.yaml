@@ -21,8 +21,11 @@
 #                                  #   an unmatched or ambiguous name fails loudly
 #     date: 2026-10-05             # the day the verdict was written
 #     category: role               # role | injury | hype | rookie | other
-#     action: none                 # or: {rank_delta: -8}   (negative = move UP 8 ranks)
-#                                  # or: {fpts_delta: 2.0}  (adjust fpts/g; total recomputed)
+#     action: none                 # or: {fpts_delta: 2.0}  (adjust fpts/g; total
+#                                  #   recomputed; ranking re-sorts as the byproduct)
+#     # WORKFLOW POLICY (2026-07-12): fpts_delta or none ONLY. rank_delta exists in the
+#     # arithmetic but our workflow never uses it - a rank shove past unrelated players
+#     # is incoherent; change the per-game belief and let rank fall out.
 #     rationale: >
 #       One paragraph. Concrete evidence a feature can't hold (beat-writer reporting,
 #       depth chart, coach statements, rehab timelines, BBM commentary + quote).

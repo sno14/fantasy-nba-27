@@ -83,6 +83,9 @@ scripts/
                    (2026-07-12): entries arrive any time via config/analyst_proposals.yaml
                    (Claude triangulates BBM transcripts x model x own judgment; user
                    approves) and also apply nightly in-season via update_daily.py
+  apply_proposals.py  workflow-v2 review tool: preview each proposal's fpts->rank board
+                   impact, then --promote approved ones into analyst_overrides.yaml
+                   (idempotent; fpts_delta/none only -- refuses rank_delta)
   darko_report.py  DARKO overlay: minutes/rank disagreement report (pull_darko.py fetches)
   update_daily.py  Step-12 nightly pipeline: refresh logs + incremental injury/transaction
                    pulls + DARKO/market archives + the as-of ROS board with status overrides
