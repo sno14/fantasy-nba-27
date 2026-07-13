@@ -3,13 +3,18 @@
 The gap-closer for what commercial systems' human staff do (camp reports, depth-chart
 judgment, injury context) — replicated **auditable** and **scored**. Two-part discipline:
 
-1. Every adjustment is written down in ``config/analyst_overrides.yaml`` *before* the
-   season, with a rationale, including explicit ``none`` verdicts ("reviewed, no change"
-   is information). Entries are append-only: a change of mind is a new, later-dated entry
-   for the same player, never an edit.
+1. Every adjustment is written down in ``config/analyst_overrides.yaml`` with a dated
+   rationale, including explicit ``none`` verdicts ("reviewed, no change" is
+   information). Entries are append-only: a change of mind is a new, later-dated entry
+   for the same player, never an edit. *(Workflow v2, 2026-07-12: entries land any time
+   via the BBM-transcript triangulation → ``analyst_proposals.yaml`` → user approval; the
+   mid-Oct pass re-reviews everything before the freeze.)*
 2. Application is **deterministic, unit-tested arithmetic** (:func:`apply_overrides`):
-   ``board A → board B``. Board A's file is never touched — the D2.3 dual freeze commits
-   both, and D2.4 grades them against each other in April.
+   ``board A → board B`` preseason, and nightly on the in-season ROS board
+   (``update_daily.py``). Board A's file is never touched — the D2.3 dual freeze commits
+   both, and D2.4 grades them in April. *(2026-07-12 user decision: the grade
+   **calibrates** the layer — magnitudes, per-source weighting — rather than deciding
+   its existence; it is a standing supplement.)*
 
 The trigger list (:func:`trigger_list`) generates *who to review* — within the top-200
 union of our board and the expert consensus: large rank gaps, EXP-026 breakout flags,

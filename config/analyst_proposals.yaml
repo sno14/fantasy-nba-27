@@ -1,0 +1,20 @@
+# Proposed analyst overrides — Claude drafts, Steven approves (workflow v2, 2026-07-12).
+#
+# Each proposal uses the analyst_overrides.yaml entry schema PLUS two proposal-only
+# fields: `status` (proposed | approved | rejected) and `triangulation` (the three-angle
+# reasoning: model view · BBM view · Claude's judgment). On approval, the entry is copied
+# into config/analyst_overrides.yaml WITHOUT the two proposal fields (that file's loader
+# validates strictly); this file keeps the full history of what was proposed and why.
+#
+# Example (delete when real proposals land):
+#   - name: Example Player
+#     date: 2026-07-15
+#     category: role            # role | injury | hype | rookie | other
+#     action: {rank_delta: -8}  # negative = up the board; or {fpts_delta: +2.0}; or none
+#     rationale: "BBM 2026-07-10: 'locked in as the starter' — model sees only bench mins"
+#     status: proposed
+#     triangulation: "Model: rank 96, mpg 19 (no role signal). BBM: strong conviction,
+#       names the mechanism (starter confirmed). Claude: mechanism is real and unpriced —
+#       depth chart behind him is empty; moderate bump, not max (no preseason games yet)."
+
+[]

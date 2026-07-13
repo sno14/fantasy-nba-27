@@ -85,7 +85,10 @@ scripts/
                    pulls + DARKO/market archives + the as-of ROS board with status overrides
                    (config/overrides.yaml), the EXP-030 OUT-redistribution layer (fitted
                    absorption tiers; redist_mpg audit column; --no-redist to disable),
-                   and the naive-updater benchmark line
+                   the analyst layer (config/analyst_overrides.yaml applied nightly with
+                   audit columns; --no-analyst to disable; fed by the BBM-transcript
+                   workflow in data/manual/bbm_transcripts/README.md), and the
+                   naive-updater benchmark line
   explore.py       local interactive Streamlit explorer
 data/              raw/ and processed/ caches (gitignored)
   manual/          hand-curated datasets — committed (the gitignore's manual-data exception):

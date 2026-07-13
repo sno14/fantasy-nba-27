@@ -1646,7 +1646,7 @@ pass/dual freeze → opening-night cron).*
 | 026 | features: standard gate. Policy: big-riser recall@150 +3pp OR above-market +5pp, aggregate MAE ≤ +1%, stable bias ±0.3 |
 | 027 | per-group standard mover gate + recall view; preseason-minutes columns ship to the draft sheet regardless of verdict |
 | 028 | rookie-cohort Spearman beats draft-pick-order baseline by ≥ 0.05 pooled, MAE not worse (rule 8); on reject the D1.5 market seed stands |
-| 029 | dual freeze before opening night is unconditional; layer verdict in April 2027 — B beats A on top-150 MAE + riser recall → keep; A beats B → delete + ledger failure categories; one-season sample ⇒ at most adopted-tentative |
+| 029 | dual freeze before opening night is unconditional; layer verdict in April 2027 — B beats A on top-150 MAE + riser recall → keep; A beats B → delete + ledger failure categories; one-season sample ⇒ at most adopted-tentative. *(Amended 2026-07-12, user decision — workflow v2: the layer is a standing supplement fed by BBM-transcript triangulation (proposals → approval → living overrides, applied preseason AND nightly in-season via update_daily); the April scoring now **calibrates** magnitudes + per-source weighting (user vs `BBM <date>:`-tagged entries) instead of deciding existence. Freeze + scoring mechanics unchanged.)* |
 | D1 | product step — no gate; ships with sanity reports (VOR reorder count, schedule spot-checks) |
 | 022 | direct beats composed on riser bias ≥25% reducible-gap (rule-8), or bucketed covariance large+positive → adopt correction/blend |
 | 023 | standard mover gate; watch age ≤ 24 cohort; rule-11 hygiene on the lag group |

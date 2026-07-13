@@ -19,7 +19,12 @@ continues, so one flaky site never kills the night's board):
    (``redist_mpg`` audit column; ``--no-redist`` to disable). Weights fit once per
    season from strictly-prior game logs and cached to
    ``data/processed/absorption_weights_<season>.json``.
-6. **The naive-updater line** (2026-07-09 addendum item 5): the K=20 shrinkage
+6. **The analyst layer** (workflow v2, 2026-07-12 — the living transcript-fed layer):
+   effective ``config/analyst_overrides.yaml`` entries apply to the nightly ROS board
+   (``analyst_action``/``model_rank`` audit columns; ``--no-analyst`` to disable). The
+   in-season ROS adjustment the user named critical: approved judgment moves the board
+   the night it lands, not at the next preseason.
+7. **The naive-updater line** (2026-07-09 addendum item 5): the K=20 shrinkage
    benchmark is computed from the frozen T₀ board and emitted next to the asof board
    (``naive_fpts_pg`` / ``naive_rank`` columns + a disagreement report) — the daily
    disagreement between them is itself a signal.
@@ -164,6 +169,32 @@ def apply_redistribution(board: pd.DataFrame, gl: pd.DataFrame, season: str, T: 
     return out
 
 
+def apply_analyst_layer(board: pd.DataFrame) -> pd.DataFrame:
+    """The in-season analyst layer (workflow v2): apply the effective
+    ``config/analyst_overrides.yaml`` entries to tonight's ROS board via the same
+    unit-tested arithmetic as the preseason board B. No file = no entries = board
+    unchanged (plus audit columns when entries exist)."""
+    from fantasy_nba.config import CONFIG_DIR
+    from fantasy_nba.models.analyst import apply_overrides, effective_overrides, load_overrides
+
+    path = CONFIG_DIR / "analyst_overrides.yaml"
+    if not path.exists():
+        return board
+    entries = load_overrides(path)
+    if not entries:
+        return board
+    out = apply_overrides(board, entries)
+    applied = out[out["analyst_action"] != ""]
+    moved = applied[applied["analyst_action"] != "none"]
+    print(f"[analyst] {len(effective_overrides(entries))} effective entrie(s); "
+          f"{len(moved)} move the board tonight:")
+    if not moved.empty:
+        with pd.option_context("display.width", 200):
+            print(moved[["PLAYER_NAME", "analyst_category", "analyst_action",
+                         "model_rank", "rank"]].to_string(index=False))
+    return out
+
+
 def naive_line(t0_board: pd.DataFrame, gl_s: pd.DataFrame, T: pd.Timestamp, cfg,
                board: pd.DataFrame) -> pd.DataFrame:
     """Attach the naive-updater benchmark to the asof board + print the disagreement."""
@@ -202,6 +233,8 @@ def main() -> None:
     parser.add_argument("--top", type=int, default=25)
     parser.add_argument("--no-redist", action="store_true",
                         help="Skip the EXP-030 OUT-redistribution layer (plain asof board).")
+    parser.add_argument("--no-analyst", action="store_true",
+                        help="Skip the analyst-overrides layer (pure model + availability).")
     args = parser.parse_args()
 
     T = pd.Timestamp(args.asof or dt.date.today().isoformat())
@@ -253,6 +286,12 @@ def main() -> None:
             print(f"[WARN] redistribution failed ({type(exc).__name__}: {exc}) — "
                   f"shipping the plain board.", flush=True)
 
+    # The analyst layer (workflow v2) — approved judgment applies nightly. NOT fault-
+    # isolated on purpose: a malformed override must fail the run loudly (a silently
+    # dropped entry is a wrong board with no audit trail — same stance as the caps).
+    if not args.no_analyst:
+        board = apply_analyst_layer(board)
+
     # The naive-updater line (addendum item 5) — needs a frozen T₀ board to anchor on.
     t0_path = Path(args.t0_board) if args.t0_board else PROCESSED_DIR / f"learned_{season}.parquet"
     if t0_path.exists():
@@ -265,7 +304,8 @@ def main() -> None:
     board.to_parquet(out_path, index=False)
     print(f"\nSaved ROS board -> {out_path}")
     show = [c for c in ("rank", "PLAYER_NAME", "games_so_far", "gp", "mpg", "redist_mpg",
-                        "fpts_pg", "fpts_total", "naive_fpts_pg", "naive_rank", "status_override")
+                        "fpts_pg", "fpts_total", "naive_fpts_pg", "naive_rank",
+                        "status_override", "analyst_action")
             if c in board.columns]
     with pd.option_context("display.width", 200):
         print(board[show].head(args.top).to_string(index=False))
