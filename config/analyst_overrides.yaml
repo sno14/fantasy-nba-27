@@ -100,3 +100,221 @@
   rationale: 'BBM 2026-06-29: ''pretty washed''; his minutes may get split with Konan
     Niederhauser, who is recovering from a March foot fracture and ''probably unlikely
     available for opening night.'''
+- name: Anthony Edwards
+  date: 2026-07-13
+  category: role
+  action:
+    fpts_delta: -1.5
+  rationale: 'BBM 2026-07-08: LaMelo Ball joins Minnesota; ''Andy Edwards probably
+    doesn''t stay as a 29 point per game guy. Maybe he''s a 27'' and his threes already
+    slid 4.1 -> 3.4 with more coming as he shares shot-creation. A usage-compression
+    fact, not a rank claim.'
+- name: Tyrese Maxey
+  date: 2026-07-13
+  category: role
+  action:
+    fpts_delta: -1.5
+  rationale: 'BBM 2026-07-08 + 2026-07-13: Jaylen Brown arrives in Philadelphia; ''Brown
+    and Maxi are not remaining top five scorers cuz if you''re playing on the same
+    team'' and Maxey''s usage comes down ''to a lesser extent'' than Brown''s.'
+- name: Coby White
+  date: 2026-07-13
+  category: role
+  action:
+    fpts_delta: 1.5
+  rationale: 'BBM 2026-07-08: Coby White is ''the starting point guard now in Charlotte''
+    and ''moves into a larger role'' — but BBM tempers it (''usage will drop'' vs
+    his Chicago numbers) and flags him as a near-zero in steals (.5) and blocks (.1).'
+- name: Mitchell Robinson
+  date: 2026-07-13
+  category: role
+  action: none
+  rationale: 'BBM 2026-07-08: ''People are going to assume that he starts for the
+    Celtics. I don''t think he will, but people will assume that'' — 5.7 ppg, 40.8%
+    FT.'
+- name: Darius Garland
+  date: 2026-07-13
+  category: role
+  action:
+    fpts_delta: 2.0
+  rationale: 'BBM 2026-07-08: ''Sexton and Garland are now both in LA, different teams''
+    and you can ''look at him doing more usage-wise in LA with Kawhi gone''; 30 ->
+    32 mpg. Also a noted, chronic bad rebounder.'
+- name: Trae Young
+  date: 2026-07-13
+  category: role
+  action: none
+  rationale: 'BBM 2026-07-08: worst rebounder in the top 200 but only ~25 mpg last
+    year; ''he''ll almost certainly play 33 to 35'' and assists could climb back toward
+    11.'
+- name: Cade Cunningham
+  date: 2026-07-13
+  category: role
+  action: none
+  rationale: 'BBM 2026-07-08: ''Could Cade Cunningham go over 10 assists considering
+    the absolute lack of creation options on that team?'' — highest potential assists/100
+    (24.7), ''meat on the bone.'''
+- name: Josh Giddey
+  date: 2026-07-13
+  category: role
+  action:
+    fpts_delta: 1.5
+  rationale: 'BBM 2026-07-08: ''Josh Giddy, who doesn''t play with Dumu or Coby White
+    — could he hit 10 [assists]?'' — vacated Chicago ball-handling (Coby White to
+    Charlotte, DeRozan gone).'
+- name: Dyson Daniels
+  date: 2026-07-13
+  category: role
+  action: none
+  rationale: 'BBM 2026-07-08: steals regression — ''more likely he goes from 3 steals
+    to 2 than that he maintains 3'' (still 4th-best in the NBA at 2).'
+- name: Walker Kessler
+  date: 2026-07-13
+  category: role
+  action:
+    fpts_delta: 7.5
+  rationale: 'BBM 2026-07-13: traded to the Lakers; ''31 minutes a night, you''d assume
+    he plays similar if not more''; ''his backups are terrible'' (Looney no pick-and-roll
+    threat) and ''if they lose Kessler they''re rooted'' — ''Kessler is going to have
+    to play a lot.'' His per-game line is 14/11/3 with elite blocks.'
+- name: Jaylen Brown
+  date: 2026-07-13
+  category: role
+  action:
+    fpts_delta: -3.0
+  rationale: 'BBM 2026-07-13: traded to Philadelphia; his 36% usage / 34 mpg Boston
+    role ''comes down maybe to 30 to 28'' sharing with Maxey and Embiid; ''look more
+    back at what Brown did alongside Tatum... maybe that''s the baseline.'' Weak passer/rebounder/3PT/FT/steals/blocks
+    means the lost scoring has little to fall back on.'
+- name: Paul George
+  date: 2026-07-13
+  category: role
+  action:
+    fpts_delta: 2.5
+  rationale: 'BBM 2026-07-13: traded to Boston; only 23 usage / 31 mpg buried behind
+    Maxey and Embiid last year; now the clear #2 behind Tatum (''taking a step back
+    behind Derek White? I doubt it''). ''Could the 23 usage become 25 again? ... I
+    think it just goes higher.'''
+- name: Naz Reid
+  date: 2026-07-13
+  category: role
+  action:
+    fpts_delta: 3.0
+  rationale: 'BBM 2026-07-13: traded to Charlotte; ''he''ll be the starting four...
+    probably play 33 minutes'' with ''a lot of usage with no LaMelo Ball or Miles
+    Bridges there.'''
+- name: Nikola Vučević
+  date: 2026-07-13
+  category: role
+  action:
+    fpts_delta: -6.0
+  rationale: 'BBM 2026-07-13: traded to Orlando; ''he will be now the backup center
+    in Orlando. So we will not be drafting him at all in any 10, 12, or maybe even
+    14 team leagues.'''
+- name: Ja Morant
+  date: 2026-07-13
+  category: role
+  action:
+    fpts_delta: -2.5
+  rationale: 'BBM 2026-07-13: traded to Portland into a jammed backcourt (Lillard,
+    Drew Holiday, Sharpe, Scoot, Abdija); ''we''re not touching him inside the top
+    50, maybe even not the top 80.'' (Consistent with Batch 1''s ''Ja gone'' from
+    Memphis.)'
+- name: Julius Randle
+  date: 2026-07-13
+  category: role
+  action:
+    fpts_delta: 2.0
+  rationale: 'BBM 2026-07-13: traded to Brooklyn; 27 usage / 33 mpg, sharing with
+    MPJ; ''could the usage jump from 27 to 29? Maybe given who else is on that team'';
+    ''five assists become six, maybe six-seven.'' 80% FT / 48% FG ''does not kill
+    your percentages.'''
+- name: Norman Powell
+  date: 2026-07-13
+  category: role
+  action:
+    fpts_delta: 2.0
+  rationale: 'BBM 2026-07-13: traded to Chicago; ''Buzelis and Caleb Wilson are low-usage
+    and Josh Giddey''s not a super high-usage guy, so it''s possible Norman Powell
+    has a pretty big impact — but he doesn''t do anything apart from score.'''
+- name: Brandon Ingram
+  date: 2026-07-13
+  category: role
+  action:
+    fpts_delta: 1.5
+  rationale: 'BBM 2026-07-13: assumed to the Clippers with Kawhi gone; ''that team
+    is not going to be good,'' making him the lead scorer by default — but ''Ingram
+    is not a picture of health himself.'''
+- name: John Collins
+  date: 2026-07-13
+  category: role
+  action:
+    fpts_delta: 1.5
+  rationale: 'BBM 2026-07-13: traded to Detroit; ''there''s more stability... he might
+    get more usage, he might play more minutes... he should be better than that,''
+    though not prime-level.'
+- name: Santi Aldama
+  date: 2026-07-13
+  category: role
+  action:
+    fpts_delta: -5.0
+  rationale: 'BBM 2026-07-13: traded to Dallas, buried behind PJ Washington / Naji
+    Marshall / Cooper Flagg / M. Johnson at the four; ''he needs to be starting and
+    playing 28 minutes to really have an impact, and there''s almost no shot this
+    season.'''
+- name: Jusuf Nurkić
+  date: 2026-07-13
+  category: role
+  action:
+    fpts_delta: 2.5
+  rationale: 'BBM 2026-07-13: Kessler''s vacated Utah center minutes are ''probably
+    filled by Ysuf Nerk'' — hedged (''I don''t know''), doubts full-time young-big
+    lineups.'
+- name: Miles Bridges
+  date: 2026-07-13
+  category: role
+  action: none
+  rationale: 'BBM 2026-07-13: traded to Phoenix; ''he should be sort of similar to
+    what he was''; gives them forward size, Dylan Brooks plays less at the four.'
+- name: Grayson Allen
+  date: 2026-07-13
+  category: role
+  action: none
+  rationale: 'BBM 2026-07-13: traded to Charlotte; ''Allen''s a bench player. He won''t
+    be a factor'' behind White/Miller/Nas Reed/Kadipple — though his 40.3% FG could
+    bounce back.'
+- name: Giannis Antetokounmpo
+  date: 2026-07-13
+  category: role
+  action: none
+  rationale: 'BBM 2026-07-13: stays Milwaukee; played only 29 mpg last year (injury);
+    ''he should be a 32-minute player at least, that''s 10% more minutes''; aggression/FG%
+    could rise.'
+- name: Kawhi Leonard
+  date: 2026-07-13
+  category: role
+  action: none
+  rationale: 'BBM 2026-07-13: traded to Toronto (official pending the investigation
+    penalties); ''I still don''t believe in the knees''; per game ''probably top 10'';
+    availability should be known by draft.'
+- name: LeBron James
+  date: 2026-07-13
+  category: role
+  action: none
+  rationale: 'BBM 2026-07-13: destination unknown (assumes Cleveland alongside Mitchell/Harden);
+    33 mpg / 21 ppg last year; role and scoring ''pretty much on par''; 41 years old,
+    ''will preserve himself through the season.'''
+- name: LaMelo Ball
+  date: 2026-07-13
+  category: role
+  action: none
+  rationale: 'BBM 2026-07-13: traded to Minnesota; only 28 mpg last year (ankle caution);
+    ''those minutes should go up''; ''usage almost certainly goes down but might improve
+    his efficiency''; Minnesota competitive so he plays.'
+- name: Tyler Herro
+  date: 2026-07-13
+  category: role
+  action: none
+  rationale: 'BBM 2026-07-13: the Milwaukee guard room is jammed (Kevin Porter, Rollins,
+    Herro, Chonas, Burries); ''he won''t be the point guard''; ''not sure that he
+    plays more minutes''; the Bucks project as a bad team.'

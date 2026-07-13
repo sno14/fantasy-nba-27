@@ -402,7 +402,12 @@ eval-only (opt-in `--recency`); the shipped board uses the plain `learned` found
       recall was *new late-arriving information* — three role-only October columns
       (`learned_ps`, big-riser capture +9.2pp, MAE better all seeds) beat every
       prior-box-score feature group tried. The pre-draft board is an **October** artifact:
-      re-pull preseason logs mid-Oct, regenerate the sheet + both freeze boards with it.
+      re-pull preseason logs **and refresh transactions/injuries** (`pull_injuries.py
+      --dataset transactions|injuries` — the summer's trades/FA only enter
+      `preseason_roster_map`, and thus the sheet's team assignments + EXP-030 redistribution +
+      depth features, once cached ≤ Oct 1) mid-Oct, then regenerate the sheet + both freeze
+      boards with it. See the standing calendar's transaction-refresh note in
+      docs/implementation-plan.md.
 
 #### 7.C — External availability / injury data  ← DONE (EXP-015, 2026-07-09: split verdict)
 - [x] Ingested: prosportstransactions injury+IL history 2009→today (`scripts/pull_injuries.py`,

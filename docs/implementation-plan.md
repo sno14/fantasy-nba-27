@@ -177,12 +177,29 @@ note; Step 15 shipped, see the as-built close-out under Step 15. **Nothing build
 remains — every next action is on the standing calendar below.**)*;
 **~mid-Aug** =
 schedule pull + ESPN matchup calendar → `league.yaml`; **~Sept** = market re-pulls (D1.5
-rookie seed goes live); **mid-Oct** = re-pull `preseason_game_logs` + `draft_history` →
-regenerate the sheet with `--model learned_ps` → `analyst_triggers.py` → the analyst pass →
-`apply_analyst.py` → **dual freeze committed before opening night** (D2.3 / rule 10a);
-**opening night** = cron `update_daily.py`; **April 2027** = score EXP-029 A-vs-B + the
-rule-10a freeze, and EXP-020 arms when its archives reach ≥ 1 season. Step 13 stays
-archive-gated — do not log it early.
+rookie seed goes live) **+ a first transaction/roster refresh** (`pull_injuries.py --dataset
+transactions`, incremental — most of the summer's FA/trades have resolved by now, so the Sept
+market board already reads the right teams); **mid-Oct** = re-pull `preseason_game_logs` +
+`draft_history` **+ refresh transactions & injuries** (`pull_injuries.py --dataset transactions`
+then `--dataset injuries`) → regenerate the sheet with `--model learned_ps` →
+`analyst_triggers.py` → the analyst pass → `apply_analyst.py` → **dual freeze committed before
+opening night** (D2.3 / rule 10a); **opening night** = cron `update_daily.py`; **April 2027** =
+score EXP-029 A-vs-B + the rule-10a freeze, and EXP-020 arms when its archives reach ≥ 1 season.
+Step 13 stays archive-gated — do not log it early.
+
+> **Why the transaction refresh is load-bearing (note 2026-07-13):** `preseason_roster_map`
+> (Step 8 / EXP-016) assigns every player to a team as *prior-season primary team + PST
+> "player movement" transactions dated ≤ Oct 1*. So a player only lands on his **new** team
+> once `data/raw/transactions.parquet` is re-pulled — and the 2026 off-season moved an unusual
+> number of rotation players (per the BBM transcripts: Kawhi→TOR, Jaylen Brown→PHI, LaMelo→MIN,
+> Kessler→LAL, Vučević→ORL, Naz Reid→CHA, Randle→BKN, Paul George→BOS, Ja Morant→POR, Ingram→LAC,
+> Norman Powell→CHI, Collins→DET, Aldama→DAL, …). The roster map feeds **team assignments on the
+> draft sheet, the EXP-030 vacated-minutes redistribution, and the depth/position features
+> (`depth_rank`, `n_same_pos`, position scarcity)** — all of which run on *last* season's rosters
+> until the refresh. Refresh transactions at the Sept gate and again at mid-Oct **before**
+> regenerating the sheet and committing the freeze; the analyst layer (per-game deltas) is a
+> separate axis and does **not** substitute for it. In-season this is automatic — `update_daily.py`
+> pulls transactions/injuries incrementally each night.
 
 **Phase-5 note (2026-07-10 late, post-ship — user direction):** the minutes-economy pair
 (Steps 16–17, EXP-030/031) is added as the new **build-now** work: the user's standing

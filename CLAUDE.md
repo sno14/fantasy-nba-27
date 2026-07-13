@@ -29,8 +29,11 @@ league). Read in this order before changing anything:
 - **In-season nightly:** `scripts/update_daily.py` (cron from opening night); concrete
   out-timelines go to `config/overrides.yaml` (availability caps), not the analyst layer.
 - **The standing calendar** (implementation-plan status notes) takes precedence at its
-  dates: mid-Aug schedule pull → Sept market re-pulls → mid-Oct preseason re-pull +
-  analyst re-review + dual board freeze → opening-night cron → April 2027 scoring.
+  dates: mid-Aug schedule pull → Sept market re-pulls (+ first transaction/roster refresh)
+  → mid-Oct preseason re-pull (logs + `draft_history` + **transactions & injuries** —
+  `preseason_roster_map` only puts players on their new teams once transactions ≤ Oct 1 are
+  cached; drives sheet team assignments, EXP-030 redistribution, depth features) + analyst
+  re-review + dual board freeze → opening-night cron → April 2027 scoring.
 
 ## Hard constraints
 
