@@ -8,6 +8,8 @@ Four tabs:
   * Draft Board  — projection with risk ranges; pick the target season (past seasons are
                    re-projected no-leakage and shown next to actual results), projection model
                    (learned — the Step-15 default — / baseline / v2 / v2m), and ranking stance;
+                   the **Analyst layer (B)** toggle applies config/analyst_overrides.yaml to
+                   the 2026-27 board (fpts_delta shifts the point estimate and its ranges);
                    D1 decision columns (VOR, ADP) join automatically when the target's
                    draft-sheet parquet exists; search and filter.
   * ROS          — the in-season remaining-of-season board: latest data/processed/ros_board/
@@ -25,7 +27,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from fantasy_nba.config import PROCESSED_DIR
+from fantasy_nba.config import CONFIG_DIR, PROCESSED_DIR
 from fantasy_nba.data import storage
 from fantasy_nba.models._core import _season_start
 from fantasy_nba.models.aging import build_aging_curves
@@ -35,10 +37,12 @@ from fantasy_nba.models.durability import build_gp_age_curve
 from fantasy_nba.models.learned import project_learned
 from fantasy_nba.models.minutes import build_minutes_age_curve
 from fantasy_nba.models.projection import project_v2
+from fantasy_nba.models.analyst import apply_overrides, load_overrides
 from fantasy_nba.models.uncertainty import build_gp_pool, rank_board, simulate_ranges
 from fantasy_nba.scoring import load_scoring
 
 DEFAULT_TARGET = "2026-27"
+ANALYST_PATH = CONFIG_DIR / "analyst_overrides.yaml"
 # Seasons you can project. Past ones are re-projected with **no leakage** (only prior-season
 # data; aging/GP/minutes curves refit on the training years) so the board is a fair "what would
 # the model have said", and actual results are shown alongside.
@@ -85,10 +89,31 @@ def load_injury_profile() -> tuple[pd.DataFrame | None, pd.DataFrame | None]:
     return spells, chronic
 
 
+def _overrides_mtime() -> float:
+    """Modification time of the analyst overrides file — passed into ``compute_board`` so
+    editing the file (or running ``apply_proposals.py --promote``) busts the projection
+    cache on the next interaction."""
+    return ANALYST_PATH.stat().st_mtime if ANALYST_PATH.exists() else 0.0
+
+
+def analyst_board(proj: pd.DataFrame) -> pd.DataFrame:
+    """Apply the effective analyst overrides (board A → board B) to a point-estimate board.
+    No file / no entries → unchanged. Adds the ``analyst_action``/``model_rank`` audit
+    columns; the fpts_delta lands on ``fpts_pg`` *before* the ranges are simulated, so the
+    floor/median/ceiling shift with the adjustment."""
+    if not ANALYST_PATH.exists():
+        return proj
+    entries = load_overrides(ANALYST_PATH)
+    return apply_overrides(proj, entries) if entries else proj
+
+
 @st.cache_data(show_spinner="Computing projections…")
-def compute_board(target: str, model: str, scoring_path: str | None) -> pd.DataFrame:
+def compute_board(target: str, model: str, scoring_path: str | None,
+                  apply_analyst: bool, ovr_mtime: float) -> pd.DataFrame:
     """No-leakage projection for ``target`` with ``model``, plus risk ranges and (for past
-    seasons) the actual outcome joined on."""
+    seasons) the actual outcome joined on. ``apply_analyst`` layers the analyst overrides
+    (board B) for the **current** season only — a 2026-07 override must not touch a
+    past-season backtest board. ``ovr_mtime`` is a cache key (see :func:`_overrides_mtime`)."""
     raw = load_raw()
     ss, bio = raw["player_season_stats"], raw["player_bio"]
     cfg = load_scoring(scoring_path)
@@ -108,6 +133,11 @@ def compute_board(target: str, model: str, scoring_path: str | None) -> pd.DataF
         mc = build_minutes_age_curve(tr_ss, tr_bio, save=False) if model == "v2m" else None
         proj = project_v2(tr_ss, tr_bio, target_season=target, cfg=cfg, curves=curves,
                           gp_curve=gpc, mpg_curve=mc, age_minutes=(model == "v2m"))
+
+    # Analyst layer (board B) — current season only, applied to the point estimate before the
+    # ranges are simulated so the floor/median/ceiling move with the fpts_delta.
+    if apply_analyst and target == DEFAULT_TARGET:
+        proj = analyst_board(proj)
 
     # Risk ranges — SD_PG spread (EXP-021 re-affirmed it) on the adopted (age × chronic) pools.
     spells, chronic = load_injury_profile()
@@ -146,7 +176,8 @@ if raw["player_season_stats"].empty:
     st.stop()
 
 cfg = load_scoring()
-board_2027 = compute_board(DEFAULT_TARGET, "learned", None)  # canonical board for the Player tab
+ovr_mtime = _overrides_mtime()
+board_2027 = compute_board(DEFAULT_TARGET, "learned", None, True, ovr_mtime)  # board B, Player tab
 
 st.title("🏀 Fantasy NBA Explorer")
 st.caption(
@@ -169,9 +200,13 @@ with tab_board:
                           help="\n".join(f"{k}: {v}" for k, v in RANK_HELP.items()))
     top_n = c4.slider("Show top", 10, 300, 60, step=10)
 
-    c5, c6 = st.columns([2, 1])
+    c5, c6, c7 = st.columns([2, 1, 1])
     search = c5.text_input("Search player", placeholder="e.g. Jokic")
-    board_src = compute_board(target, model, None)
+    show_analyst = c7.checkbox(
+        "Analyst layer (B)", value=True,
+        help="Apply config/analyst_overrides.yaml (board B). 2026-27 only; edit the file "
+             "or run apply_proposals.py --promote, then interact to refresh.")
+    board_src = compute_board(target, model, None, show_analyst, ovr_mtime)
     teams = ["All"] + sorted(board_src["TEAM_ABBREVIATION"].dropna().unique().tolist())
     team = c6.selectbox("Team", teams)
 
@@ -184,6 +219,10 @@ with tab_board:
     board = board.head(top_n)
 
     note = f"**{MODELS[model].split(' — ')[0]}** · {RANK_HELP[stance]}"
+    if show_analyst and target == DEFAULT_TARGET and "analyst_action" in board_src.columns:
+        moved = board_src["analyst_action"].fillna("")
+        n_moved = int((~moved.isin(["", "none"])).sum())
+        note += f"  ·  **analyst layer ON** (board B — {n_moved} adjusted)"
     if has_actuals:
         # How well did this board's top-N line up with who actually finished top-N?
         n = min(top_n, len(board_src))
@@ -195,8 +234,12 @@ with tab_board:
 
     cols = ["rank", "PLAYER_NAME", "TEAM_ABBREVIATION", "target_age", "gp", "mpg", "fpts_pg",
             "draft_value", "fpts_p10", "fpts_median", "fpts_p90", "risk"]
+    if "analyst_action" in board.columns and (~board["analyst_action"].fillna("").isin(["", "none"])).any():
+        cols.insert(7, "analyst_action")  # right after fpts_pg
     cols += [c for c in ("vor", "vor_rank", "adp") if c in board.columns]  # D1 decision columns
     col_cfg = {
+        "analyst_action": st.column_config.TextColumn(
+            "Analyst", help="Analyst override applied (board B); blank = pure model"),
         "vor": st.column_config.NumberColumn("VOR", format="%.1f",
                                              help="fpts/g above the league replacement level (D1.2)"),
         "vor_rank": st.column_config.NumberColumn("VOR rank", format="%d"),
