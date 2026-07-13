@@ -83,7 +83,8 @@ special-case handling.
       delta method as the rate curves (no era de-trend needed). Applied as a *damped
       multiplicative trend* on the player's own recency-weighted MPG (`strength=0.5`), not a
       blend toward a population mean. Wired into `project_v2(age_minutes=True)` → the **v2m**
-      model; it's the default in `scripts/project.py` and the `v2m_2026-27` output.
+      model; it was the `scripts/project.py` default until Step 15 flipped it to `learned`
+      (2026-07-10) — v2m stays selectable as the curve-based fallback.
   - **Backtested 2022-23…2025-26:** v2m beats v2 **and** baseline on minutes MAE in all 4
     seasons (avg MPG MAE 4.07 → 3.93) and beats v2 on per-game fpts MAE in all 4 (beats
     baseline in 3/4). Correlation improves everywhere. First change to actually move the
@@ -182,7 +183,7 @@ decomposition refinements if the preseason gap ever re-opens.
       Monte-Carlo GP tails adopted, the GP *point estimate* rejected (the ceiling held). The
       live-news half is Step 12's `config/overrides.yaml` status caps (2026-07-10).
 
-### Stage 7 — Catching risers & fallers (the discontinuity frontier)  ← BUILD COMPLETE 2026-07-11 (every buildable step of docs/implementation-plan.md ran and is logged, Steps 0–17 incl. Phase 5; the analyst layer is live as workflow v2 — living entries via proposals→approval any time; what remains is calendar-locked: mid-Aug schedule pull → Sept market pulls → mid-Oct analyst re-review + dual freeze (EXP-029) → opening-night cron → April 2027 scoring + EXP-020/021 re-arms)
+### Stage 7 — Catching risers & fallers (the discontinuity frontier)  ← BUILD COMPLETE 2026-07-11 (every buildable step of docs/implementation-plan.md ran and is logged, Steps 0–17 incl. Phase 5; the analyst layer is live as workflow v2 — living entries via proposals→approval any time; **next build = Step 18**, the analyst-delta staleness flag + optional decay, spec'd 2026-07-12 in implementation-plan Phase 6; the rest is calendar-locked: mid-Aug schedule pull → Sept market pulls → mid-Oct analyst re-review + dual freeze (EXP-029) → opening-night cron → April 2027 scoring + EXP-020/021 re-arms)
 
 **The problem statement (user, 2026-07):** we project the stable core well but **miss the risers
 and fallers** — and capitalising on those is the entire edge of a projection system. This stage

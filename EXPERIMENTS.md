@@ -1181,6 +1181,9 @@ injury feed, the home-grown online skill layer (model-foundation §3C). **Phase 
 OUT-redistribution adopted-tentative (nightly layer live in `update_daily.py`; naive gate
 re-ran, stays parked; re-affirm at short horizons April 2027) · **EXP-031** rejected (both
 wirings) with the **17.1 budget diagnostic adopted** (`eval_budget.py` — overshoot +0.18 of
-supply, error-corr +0.38; re-run at every adopted-model change). Nothing buildable remains
-before the standing calendar (mid-Aug schedule → Sept market → mid-Oct analyst pass + dual
-freeze → opening-night cron → April 2027 scoring + re-arms)._
+supply, error-corr +0.38; re-run at every adopted-model change). **Next build: Step 18**
+(implementation-plan Phase 6, spec'd 2026-07-12) — the analyst-delta staleness flag +
+optional decay, the double-count guard for the living analyst layer; product step, no EXP
+number, runnable in a fresh session. Otherwise everything waits on the standing calendar
+(mid-Aug schedule → Sept market → mid-Oct analyst re-review + dual freeze →
+opening-night cron → April 2027 scoring + re-arms)._

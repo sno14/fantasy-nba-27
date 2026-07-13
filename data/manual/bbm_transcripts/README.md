@@ -36,6 +36,9 @@ The repeatable per-transcript pass (steps 1–3 are Claude, 4 is Steven, 5–7 a
    current as information arrives between now and October.
 5. **The visible adjusted board (any time):**
        python scripts/apply_analyst.py data/processed/learned_2026-27.parquet
+   or interactively: the explorer's Draft Board tab applies the effective overrides via
+   its **Analyst layer (B)** toggle (default on; edits/promotes refresh on the next
+   interaction), and its Player tab reflects board B.
 6. **In-season (critical feature):** `update_daily.py` applies the effective overrides to
    the nightly ROS board automatically (audit columns; `--no-analyst`). Concrete
    out-timelines still go to `config/overrides.yaml` (availability caps + EXP-030

@@ -100,7 +100,7 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | 9c | 2 | Coach changes + preseason-October logs (+ win totals) | EXP-027 | ☑ | ☑ (a coach rejected · b `learned_ps` adopted-Oct, big-riser capture +9pp · c waived) |
 | 9d | 2 | Rookie model (draft slot × landing spot) | EXP-028 | ☑ | ☑ (rejected — pick-order unbeaten; D1.5 market seed stands alone) |
 | D1 | 2.5 | Decision layer: league config, VOR, schedule, rookie seed | — (product) | ◐ D1.1 ✅ · D1.2 VOR ✅ · D1.3 script ✅ (2026-27 schedule publishes ~mid-Aug) · D1.4 VOR+ADP ✅ (playoff cols await ESPN calendar) · D1.5 mechanism ✅ (2026 rookies hit the market pulls ~Sept) | ◐ (see D1 note, 2026-07-10) |
-| D2 | 2.5 | Analyst pass + dual-board freeze | EXP-029 | ☑ (overrides schema + `apply_analyst.py` + trigger generator, tested 2026-07-10; **workflow v2 2026-07-12**: proposals flow + nightly in-season hook live) | ◐ pending (living entries any time via proposals→approval; mid-Oct = re-review + dual freeze; Apr 2027 scoring now *calibrates* — amended gate, Appendix A) |
+| D2 | 2.5 | Analyst pass + dual-board freeze | EXP-029 | ☑ (overrides schema + `apply_analyst.py` + trigger generator, tested 2026-07-10; **workflow v2 2026-07-12**: proposals flow + nightly in-season hook live; explorer board-B toggle 2026-07-13) | ◐ pending (living entries any time via proposals→approval; mid-Oct = re-review + dual freeze; Apr 2027 scoring now *calibrates* — amended gate, Appendix A) |
 | 10 | 3 | As-of-date projection function | EXP-018 | ☑ | ☑ (foundation adopted; naive gate parked) |
 | 11 | 3 | In-season eval + lead-time metric | EXP-019 | ☑ (`eval_asof.py --exp019`; half-lives frozen) | ☑ (adopted diagnostics: +30d reducible gap ≈ 0 · riser-recall 51.7% · lead 52d @ 99% detect vs naive 70% · league-horizon flips 2/12 → both views) |
 | 12 | 3 | Nightly update pipeline + status overrides | — | ☑ (`update_daily.py` + `overrides.yaml` + `refresh_season`; naive line per addendum 5) | ☑ off-season dry-run clean 2026-07-10 (`--offline --asof 2026-03-01`); goes live opening night |
@@ -1129,9 +1129,14 @@ sources, local session). Output per player into `config/analyst_overrides.yaml`:
     One paragraph. Written before the season; never edited after (append a dated
     correction instead).
 ```
-`"none"` verdicts are logged too — "reviewed, no change" is information. Application:
-`scripts/apply_analyst.py board.parquet` → board B (deterministic, unit-tested arithmetic;
-never touches board A's file).
+`"none"` verdicts are logged too — "reviewed, no change" is information. *(Workflow-v2
+policy note, 2026-07-12: new entries are **`fpts_delta` or `none` only — never
+`rank_delta`** (transcripts-README hard rule 1; `apply_proposals.py --promote` refuses
+it). The engine keeps `rank_delta` support for the as-built arithmetic tests only.)*
+Application: `scripts/apply_analyst.py board.parquet` → board B (deterministic,
+unit-tested arithmetic; never touches board A's file); interactively, the explorer's
+Draft Board tab applies the same effective overrides via its **Analyst layer (B)**
+toggle (2026-07-13).
 
 **D2.3 The dual freeze (extends rule 10a):** commit **both** boards before opening night —
 `data/processed/frozen_2026-27_preseason_model.parquet` (A: pure model) and
