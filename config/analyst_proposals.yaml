@@ -17,4 +17,126 @@
 #       names the mechanism (starter confirmed). Claude: mechanism is real and unpriced —
 #       depth chart behind him is empty; moderate bump, not max (no preseason games yet)."
 
-[]
+# ============ Batch 1 — BBM 2026-06-29 free-agency episode (proposed 2026-07-12) ============
+# Source: data/manual/bbm_transcripts/2026-06-30-nba-roles.md; evidence ledger rows in
+# data/manual/bbm_notes.csv. NOTE the episode predates free agency opening — it surveys
+# uncertainty, so hedged claims land as `none` and movers are sized below their headline.
+# Cam Boozer (rookie) is deliberately NOT here: he's market-seeded only, absent from the
+# learned board, and an unmatched name fails loudly — his entry lands with the October sheet.
+
+- name: Day'Ron Sharpe
+  date: 2026-07-12
+  category: role
+  action: {fpts_delta: 3.0}
+  rationale: "BBM 2026-06-29: 'per-minute monster... if we just give him 26 a night he's
+    going to be a top 100 player' — Claxton is gone and Sharpe re-signed 2yr/$20M as the
+    presumptive starter; hedged because 'I would doubt the Nets go into the year only
+    having Sharpe and Wolf at center.'"
+  status: proposed
+  triangulation: "Model: rank 203, 20.3 mpg — the board cannot see the Claxton vacancy
+    (prior-season role in, no roster news). BBM: concrete starter mechanism, top-100 claim
+    at 26 mpg, explicitly hedged. Claude: the mechanism is real and unpriced; full credit
+    (26 mpg) would be ~+6.5 fpts/g — proposing the rubric cap +3.0 (≈23 mpg equivalent),
+    i.e. roughly half the starter scenario, weighted for the 'they'll add a body' hedge.
+    His 9-cat-inflation warning doesn't bite: we score points."
+
+- name: Ty Jerome
+  date: 2026-07-12
+  category: role
+  action: {rank_delta: -10}
+  rationale: "BBM 2026-06-29: with Ja gone, 'he's got to be the leader in that position,
+    but it's also not remotely close to being a guarantee' — probable starting PG in a
+    guard-poor Memphis."
+  status: proposed
+  triangulation: "Model: rank 152, 22.2 mpg — priced as a backup; the usage vacancy is
+    invisible to it. BBM: moderate conviction, named mechanism (starter, thin depth chart:
+    Pippen/Small/Clayton behind him). Claude: agree the vacancy is real and Jerome is the
+    plurality favorite; moderate bump −10, not max — his own 'not remotely a guarantee'
+    plus Boozer absorbing playmaking caps the upside."
+
+- name: Brandon Miller
+  date: 2026-07-12
+  category: role
+  action: {rank_delta: -8}
+  rationale: "BBM 2026-06-29: 'can Miller become a 30 plus usage guy with five assists
+    attempting six, seven free throws?' — LaMelo's 30+ usage vacated; Miller already at
+    28% usage in 30 mpg; the year-3/4 star-leap markers he watches (FT rate, assist rate)."
+  status: proposed
+  triangulation: "Model: rank 81 — solid but blind to the usage vacancy. BBM: probable
+    usage bump, though he notes the Hornets could still add a creator ('I think they
+    actually do trust that combination'). Claude: mechanism concrete and partially
+    unpriced (our mpg 31.9 already assumes a big role; the delta is usage, not minutes) —
+    moderate-mild −8."
+
+- name: Isaiah Stewart
+  date: 2026-07-12
+  category: role
+  action: {rank_delta: -5}
+  rationale: "BBM 2026-06-29: traded to Memphis, 'their perhaps starter if Edey's not
+    healthy, and backup center'; near all-defensive-team quality."
+  status: proposed
+  triangulation: "Model: rank 213 — and it independently projects Edey fragile (43 gp,
+    rank 350), which raises the value of being next man up. BBM: mild-moderate, health-
+    conditional. Claude: mild −5; the two signals point the same way but the starter path
+    is conditional."
+
+- name: Ryan Rollins
+  date: 2026-07-12
+  category: role
+  action: none
+  rationale: "BBM 2026-06-29: 'excellent player... top 50 without Giannis most of the
+    season' — but he flags real trade-asset risk ('might net them one to two firsts') and
+    a crowded creation room (Herro in, Porter back)."
+  status: proposed
+  triangulation: "Model: rank 64 — already prices most of the top-50-without-Giannis
+    world. BBM: praise + instability in the same breath. Claude: agreement = assurance;
+    no new unpriced mechanism, real downside scenario → none (recorded confidence, no move)."
+
+- name: Tyler Herro
+  date: 2026-07-12
+  category: role
+  action: none
+  rationale: "BBM 2026-06-29: 'Herro will take on some of this creation role. But does he
+    even stay on the team?' — traded into the Giannis-sized usage hole, flagged as a
+    possible re-trade piece."
+  status: proposed
+  triangulation: "Model: rank 39. BBM: role up, stability down — the two cancel. Claude:
+    none; revisit the moment the Milwaukee room settles."
+
+- name: Kon Knueppel
+  date: 2026-07-12
+  category: hype
+  action: none
+  rationale: "BBM 2026-06-29: 'probably more for Knueppel to do' — shares the LaMelo
+    vacancy with Miller/White, no mechanism specific to him."
+  status: proposed
+  triangulation: "Model: rank 15 — our board is already aggressive (sophomore leap priced
+    by the learned model's recency features). BBM: mild, generic. Claude: none — agreement
+    without mechanism on a player we already rank higher than the market likely does; if
+    anything this entry is the audit trail that we chose NOT to stack."
+
+- name: Paul Reed
+  date: 2026-07-12
+  category: role
+  action: none
+  rationale: "BBM 2026-06-29: 'per-minute beast... but there's no way Detroit goes into a
+    season with Paul Reed as their only center' — the starter fantasy dies on the expected
+    Sabonis/Duren/Robinson arrival."
+  status: proposed
+  triangulation: "Model: rank 190, 16.7 mpg — backup pricing. BBM: explicitly against the
+    naive breakout read. Claude: none — his skepticism CONFIRMS our modest rank; this
+    entry exists so October-us doesn't chase Reed hype if a slow center market leaves him
+    starting in camp."
+
+- name: Brook Lopez
+  date: 2026-07-12
+  category: role
+  action: none
+  rationale: "BBM 2026-06-29: 'pretty washed... 30 minutes is a late-round guy, but if it
+    can push to 22 because they split with Konan Niederhauser, useless' — and Konan
+    Niederhauser (broken foot, March) is unlikely for opening night."
+  status: proposed
+  triangulation: "Model: rank 261, 21.8 mpg — already the pessimistic read. BBM: value
+    band straddles our projection; short-term minutes possible while the rookie rehabs.
+    Claude: none preseason; the real action is an overrides.yaml out-window for Konan
+    Niederhauser + the EXP-030 redistribution once the season starts."

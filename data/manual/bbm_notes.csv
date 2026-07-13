@@ -1,0 +1,24 @@
+date,player,team,claim_type,direction,quote,source_file
+2026-06-29,Brandon Miller,CHA,role,up,"LaMelo (30+ usage) gone; 'can Miller become a 30 plus usage guy with five assists attempting six seven free throws' — probable usage bump, watch ast/FT-rate",2026-06-30-nba-roles.md
+2026-06-29,Coby White,CHA,role,up,"re-signed; assumed starting PG but 'White's not taking all of LaMelo's role'",2026-06-30-nba-roles.md
+2026-06-29,Kon Knueppel,CHA,role,up,"'probably more for Knueppel to do' (garbled 'Canipple' in transcript) — mild, no mechanism beyond the shared vacancy",2026-06-30-nba-roles.md
+2026-06-29,Ryan Rollins,MIL,rank,up,"'excellent... top 50 fantasy guy without Giannis there most of the season' (25 usg, 5.5 ast, 1.5 stl, 40% 3PT) — but trade-asset risk explicitly flagged",2026-06-30-nba-roles.md
+2026-06-29,Tyler Herro,MIL,role,up,"traded in; 'will take on some of this creation role. But does he even stay on the team?' — role up, stability down",2026-06-30-nba-roles.md
+2026-06-29,Kevin Porter Jr.,MIL,role,up,"back; creation share candidate; 'missed most of last season'",2026-06-30-nba-roles.md
+2026-06-29,Ty Jerome,MEM,role,up,"Ja gone; 'is it Jerome? ...he's got to be the leader in that position, but it's also not remotely close to being a guarantee' — probable starting PG",2026-06-30-nba-roles.md
+2026-06-29,Cam Boozer,MEM,role,up,"'does Boozer just take on the number one or number two playmaking role? Probably... gets an assist rate bump' (rookie — market-seeded only, NOT on the learned board; entry deferred to the Oct sheet)",2026-06-30-nba-roles.md
+2026-06-29,Isaiah Stewart,MEM,role,up,"traded to Memphis; 'their perhaps starter if Edey's not healthy and backup center'; near all-defensive",2026-06-30-nba-roles.md
+2026-06-29,Day'Ron Sharpe,BKN,role,up,"Claxton gone; re-signed 2yr/$20M; 'per-minute monster... if we just give him 26 a night he's going to be a top 100 player' — hedges: Nets may add a center; 9-cat rankings will overrate him (we are points)",2026-06-30-nba-roles.md
+2026-06-29,Danny Wolf,BKN,role,up,"same vacancy but 'pretty poor efficiency guy right across the board'",2026-06-30-nba-roles.md
+2026-06-29,Paul Reed,DET,role,mixed,"'per-minute beast... if he was the unquestioned starter, clearly fantasy draftable — but no way Detroit goes into a season with Reed as their only center' (Sabonis/Duren/Robinson arrival expected)",2026-06-30-nba-roles.md
+2026-06-29,Jalen Duren,DET,depth,mixed,"unsigned (max talks); Lakers/Kings sign-and-trade rumors; 'I'd rather have Duren than Sabonis personally'",2026-06-30-nba-roles.md
+2026-06-29,Domantas Sabonis,SAC,depth,mixed,"rumored sign-and-trade to Detroit for Duren — pure rumor at recording",2026-06-30-nba-roles.md
+2026-06-29,Keegan Murray,SAC,role,up,"conditional: 'we assume DeRozan is gone so Keegan Murray can do more' — not yet fact",2026-06-30-nba-roles.md
+2026-06-29,Brook Lopez,LAC,role,mixed,"Zubac traded away; 'pretty washed'; '30 minutes of Brook Lopez probably is okay as a late round guy, but if it can push to 22 because they want to split it with Konan Niederhauser, then he's useless'",2026-06-30-nba-roles.md
+2026-06-29,Yanic Konan Niederhauser,LAC,injury,down,"'broke his foot... in like March... probably unlikely available for opening night, and even if he is he'd be eased back slowly' — overrides.yaml candidate once the season schedule exists",2026-06-30-nba-roles.md
+2026-06-29,Isaiah Jackson,LAC,role,up,"'much like Sharpe, a per-minute beast... just not good enough to get enough minutes usually. But what if it's just him and Brook?'",2026-06-30-nba-roles.md
+2026-06-29,Kristaps Porzingis,GSW,depth,mixed,"re-signed GSW 2yr/$40M (news broke during recording); center rotation crowded (Horford back, Draymond small-ball)",2026-06-30-nba-roles.md
+2026-06-29,Neemias Queta,BOS,role,up,"'really good last season... if you don't bring anyone else in and Queta's a 29(-minute) player, then he's a draftable guy' — conditional on Boston not adding",2026-06-30-nba-roles.md
+2026-06-29,Jaden McDaniels,MIN,role,up,"'Jaden McDaniels just shifts up now, he's the starting power forward... probably true' — agreement with our board, no new mechanism",2026-06-30-nba-roles.md
+2026-06-29,Alex Sarr,WAS,role,up,"conditional on Butler-to-GSW dominoes: 'Alex Sarr is your starting center'; Kyshawn George 'gets a starting role again next to AJ Dybantsa'",2026-06-30-nba-roles.md
+2026-06-29,Kyshawn George,WAS,role,up,"conditional (same domino): starting role helps George",2026-06-30-nba-roles.md
