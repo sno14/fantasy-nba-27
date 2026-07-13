@@ -59,18 +59,57 @@ The repeatable per-transcript pass (steps 1–3 are Claude, 4 is Steven, 5–7 a
 
 ## Triangulation rubric (sizing the fpts_delta from the mechanism)
 
-- **Agreement = assurance, not addition.** BBM agrees with our board and adds no new
-  mechanism → `none` (recorded confidence; stacking agreement double-counts one fact).
-- **Agreement + a NEW unpriced mechanism** (we're high on stats-momentum, he adds "coach
-  confirmed starter") → a modest delta; the mechanism goes in the rationale.
-- **Disagreement** → sized by his mechanism's strength vs the model's evidence.
+**The sizing frame (amended 2026-07-13, user decision — magnitude matters): size the
+TARGET, not a bump.** Every proposal is a triangulated belief about the player's ROS
+fpts/g *level*; the delta is just the arithmetic remainder:
+
+    fpts_delta = (triangulated ROS fpts/g target) − (model's current base fpts/g)
+
+This one rule captures magnitude AND prevents stacking, because the model's base already
+contains whatever part of the story the model has priced:
+
+- **Assurance (`none`) is the case where the triangulated target ≈ the model's base** —
+  not merely "same direction". BBM agreeing with our *number* and adding no new mechanism
+  is recorded confidence, never an addition (stacking agreement double-counts one fact).
+- **Directional agreement with a magnitude gap IS actionable — in both directions.** The
+  model already projects a rise worth ~+2 and BBM's mechanism honestly supports ~+5 → the
+  entry is the *unpriced remainder* (+3), not +5 on top. Conversely, if the model's
+  stats-momentum implies a bigger jump than BBM's mechanism supports (role capped, crowded
+  depth chart), a NEGATIVE delta on a player everyone is "positive" about is legitimate —
+  write it, with the mechanism.
+- **Disagreement** → same arithmetic, sized by his mechanism's strength vs the model's
+  evidence.
 - **Magnitude, reasoned in fpts/g (never from his rank):**
   - *Minutes-driven:* `Δfpts ≈ Δmpg × (fpts_pg / mpg) × ~0.85` (the per-36 fade — bench
     rates dip at starter minutes), then discounted for conviction/hedging.
   - *Usage-only* (minutes already high): smaller, ±1 to ±2.
-  - Caps: **±3.0 fpts/g**; tiers mild ≈1 / moderate ≈2 / strong ≈3.
+  - Caps: **±3.0 fpts/g per single mechanism**; tiers mild ≈1 / moderate ≈2 / strong ≈3.
+    The multi-mechanism rule below is the one sanctioned way past ±3.0.
 - Concrete role/depth/injury/usage claims move numbers; generic praise/hype → `none`.
 - Every transcript-derived rationale starts with ``BBM <video-date>:`` + the quote.
+- The `triangulation` field records the model base the sizing used — the number Step 18's
+  staleness check (and the mid-Oct re-review) compares against later.
+
+## Multiple mechanisms on one player (amended 2026-07-13, user decision)
+
+The engine keeps **one effective entry per player** (`effective_overrides`: latest-dated
+wins — entries never sum mechanically), so compounding is a judgment made *inside* one
+entry, never an emergent stack:
+
+- **A new mechanism lands on an already-adjusted player → re-triangulate the WHOLE
+  player** from the model's *current* base and write one superseding entry. Never
+  `old delta + new delta`: the joint effect of "enters the starting lineup" + "becomes
+  the lead ball-handler" is a judgment about what the combination *means* — usually more
+  than either alone, but bounded by the real constraints (48 minutes, one ball; usage
+  gains partially cannibalize efficiency; the minutes leg may already contain half the
+  usage leg's value). Weigh the mechanisms' meaning, never count their number.
+- In-season the base moves nightly (the EWMA learns the role), so re-triangulating from
+  the current base automatically sheds whatever the model has since absorbed — the same
+  no-double-count logic as Step 18's staleness flag, applied at write time.
+- **Cap for genuinely compounding mechanisms: ±5.0 fpts/g** (single mechanism stays
+  ±3.0), and only with each mechanism enumerated in the rationale plus a sentence on why
+  the joint effect exceeds the largest single one. Expect these to be rare; April 2027's
+  calibration judges whether they ran hot.
 
 ## Delta lifecycle — role/hype deltas are BRIDGES (Step 18, next build)
 

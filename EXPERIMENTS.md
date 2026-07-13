@@ -940,6 +940,15 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   **calibrates** the magnitude rubric and per-source weighting instead of deciding the
   layer's existence. Freeze + scoring mechanics untouched, so the April table is produced
   either way.
+- **Rubric v2.1 addendum (2026-07-13, user decision):** sizing is **target-level** —
+  `fpts_delta = triangulated ROS fpts/g − model's current base` — so a magnitude gap under
+  directional agreement is actionable in both directions (`none` is reserved for target ≈
+  base, not merely same-direction agreement), and multiple mechanisms on one player are
+  re-triangulated **jointly** into one superseding entry from the current base (the
+  engine's latest-dated-wins dedupe already guarantees entries never sum mechanically —
+  judged on what the combination means, not the mechanism count). Caps: ±3.0 fpts/g per
+  single mechanism; ±5.0 for genuinely compounding multi-mechanism cases with each
+  mechanism enumerated. Canonical text: `data/manual/bbm_transcripts/README.md`.
 
 ### EXP-019 — in-season mover eval + lead-time metric  ·  Status: **adopted (diagnostics; seed-0 baselines recorded)**
 - **Date:** 2026-07-10  ·  **Commit:** this commit  ·  **Step:** implementation-plan Step 11
