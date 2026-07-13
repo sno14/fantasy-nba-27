@@ -17,6 +17,17 @@
 #   2. BBM's ranking/tier claims ("top 50", "top 100") are IGNORED — he plays different
 #      league settings. Only the basketball mechanism (role/minutes/usage/depth/injury)
 #      transfers; Claude sizes the fpts_delta from that mechanism, not from his rank.
+#
+# SIZING (user decision 2026-07-13 — canonical rubric in data/manual/bbm_transcripts/
+# README.md): size the TARGET level, not a bump — fpts_delta = triangulated ROS fpts/g
+# minus the model's CURRENT base. So `none` = target ≈ base (not merely same direction);
+# a magnitude gap under directional agreement is actionable both ways (the unpriced
+# remainder). Multiple mechanisms on one player: re-triangulate the whole player from the
+# current base into ONE superseding entry (the engine's latest-dated-wins dedupe means
+# entries never sum) — judge what the combination means, never add deltas. NO hard caps
+# (2026-07-13, superseding the same-day ±3/±5): the tiers mild ≈1 / moderate ≈2 /
+# strong ≈3 are anchors, not limits — judgment dictates magnitude; unusually large
+# deltas need unusually concrete, enumerated mechanisms. April 2027 calibrates.
 
 # ============ Batch 1 — BBM 2026-06-29 free-agency episode (proposed 2026-07-12) ============
 # Source: data/manual/bbm_transcripts/2026-06-30-nba-roles.md; evidence in bbm_notes.csv.

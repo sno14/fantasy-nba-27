@@ -940,6 +940,17 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   **calibrates** the magnitude rubric and per-source weighting instead of deciding the
   layer's existence. Freeze + scoring mechanics untouched, so the April table is produced
   either way.
+- **Rubric v2.1 addendum (2026-07-13, user decision):** sizing is **target-level** —
+  `fpts_delta = triangulated ROS fpts/g − model's current base` — so a magnitude gap under
+  directional agreement is actionable in both directions (`none` is reserved for target ≈
+  base, not merely same-direction agreement), and multiple mechanisms on one player are
+  re-triangulated **jointly** into one superseding entry from the current base (the
+  engine's latest-dated-wins dedupe already guarantees entries never sum mechanically —
+  judged on what the combination means, not the mechanism count). Caps removed by the
+  same-day follow-up decision: **no numeric limits** — the mild ≈1 / moderate ≈2 /
+  strong ≈3 tiers stay as calibration anchors, judgment dictates magnitude, and large
+  deltas require concrete enumerated mechanisms; April 2027 calibrates. Canonical text:
+  `data/manual/bbm_transcripts/README.md`.
 
 ### EXP-019 — in-season mover eval + lead-time metric  ·  Status: **adopted (diagnostics; seed-0 baselines recorded)**
 - **Date:** 2026-07-10  ·  **Commit:** this commit  ·  **Step:** implementation-plan Step 11
@@ -1181,6 +1192,9 @@ injury feed, the home-grown online skill layer (model-foundation §3C). **Phase 
 OUT-redistribution adopted-tentative (nightly layer live in `update_daily.py`; naive gate
 re-ran, stays parked; re-affirm at short horizons April 2027) · **EXP-031** rejected (both
 wirings) with the **17.1 budget diagnostic adopted** (`eval_budget.py` — overshoot +0.18 of
-supply, error-corr +0.38; re-run at every adopted-model change). Nothing buildable remains
-before the standing calendar (mid-Aug schedule → Sept market → mid-Oct analyst pass + dual
-freeze → opening-night cron → April 2027 scoring + re-arms)._
+supply, error-corr +0.38; re-run at every adopted-model change). **Next build: Step 18**
+(implementation-plan Phase 6, spec'd 2026-07-12) — the analyst-delta staleness flag +
+optional decay, the double-count guard for the living analyst layer; product step, no EXP
+number, runnable in a fresh session. Otherwise everything waits on the standing calendar
+(mid-Aug schedule → Sept market → mid-Oct analyst re-review + dual freeze →
+opening-night cron → April 2027 scoring + re-arms)._

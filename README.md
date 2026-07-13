@@ -20,6 +20,13 @@ See [ROADMAP.md](ROADMAP.md) for the build plan, current progress, and modeling 
 6. **[docs/implementation-plan.md](docs/implementation-plan.md)** — **the execution spec**:
    a strictly linear, step-by-step build plan with file-level specs, commands, and
    adopt/reject gates. Active work happens from this file.
+7. **[data/manual/bbm_transcripts/README.md](data/manual/bbm_transcripts/README.md)** — the
+   analyst-layer workflow contract: BBM transcript drop zone, the triangulation rubric that
+   sizes each fpts_delta (model × BBM mechanism × judgment; target-level sizing — delta =
+   triangulated target − model base — so magnitude gaps count without stacking; joint
+   re-triangulation for multi-mechanism players; uncapped, judgment-sized), the two hard
+   rules (fpts_delta/none only; ignore BBM's rank claims), and the proposals → approval →
+   overrides lifecycle.
 
 ## Setup
 
@@ -34,15 +41,35 @@ pip install -e .
 ## Layout
 
 ```
-config/            scoring weights and other configuration
-  scoring.yaml     league scoring definition (edit to match your league)
+config/            league + scoring configuration and the analyst layer's files
+  scoring.yaml     league scoring definition (confirmed ESPN default points league)
+  league.yaml      league structure (D1.1): teams, roster slots, H2H weeks, league_end
+  overrides.yaml   in-season availability caps ("out until X") applied by update_daily.py
+  analyst_proposals.yaml  workflow-v2 staging: triangulated proposals awaiting review
+                   (apply_proposals.py previews + promotes the approved ones)
+  analyst_overrides.yaml  the approved analyst layer (board A -> board B; append-only,
+                   latest-dated entry per player wins)
 src/fantasy_nba/
   config.py        paths + config loading
   scoring.py       stat line -> fantasy points engine
   data/
     storage.py     Parquet read/write helpers
     ingest.py      nba_api data pulls
-  models/          projection models (baseline first)
+  models/          the model library — one module per layer/experiment (EXPERIMENTS.md
+                   is the ledger of which are adopted / parked / rejected):
+    baseline.py, projection.py, learned.py   Marcel -> v2/v2m -> learned (the default)
+    _core.py, aging.py, minutes.py, durability.py  shared core + empirical age/GP curves
+    asof.py        in-season as-of-date ROS engine (EXP-018; frozen EWMA half-lives)
+    uncertainty.py, floor_sim.py, quantiles.py  risk ranges + eval floors + quantile heads
+    injuries.py, absorption.py  injury-history features (EXP-015) + the OUT-redistribution
+                   layer (EXP-030)
+    analyst.py     analyst overrides board A -> board B + the D2.1 trigger list (EXP-029)
+    context.py, recency.py, allocation.py, coaches.py, preseason.py, rosters.py
+                   feature groups: team context / last-N form / team-constrained minutes /
+                   coach changes / October roles / honest preseason roster maps
+    breakout.py, rookies.py, darko.py, value.py  breakout flag, rookie model (rejected),
+                   DARKO overlay, VOR
+    backtest.py, eval_movers.py  no-leakage backtest + mover-segmented eval
 scripts/
   pull_data.py     CLI to fetch and cache raw data
   project.py       generate the projection / draft board (default model: learned; + risk
@@ -86,7 +113,8 @@ scripts/
   apply_proposals.py  workflow-v2 review tool: preview each proposal's fpts->rank board
                    impact, then --promote approved ones into analyst_overrides.yaml
                    (idempotent; fpts_delta/none only -- refuses rank_delta)
-  darko_report.py  DARKO overlay: minutes/rank disagreement report (pull_darko.py fetches)
+  pull_darko.py    DARKO daily projections pull (Playwright; date-stamped append-only archive)
+  darko_report.py  DARKO overlay: minutes/rank disagreement report vs our board
   update_daily.py  Step-12 nightly pipeline: refresh logs + incremental injury/transaction
                    pulls + DARKO/market archives + the as-of ROS board with status overrides
                    (config/overrides.yaml), the EXP-030 OUT-redistribution layer (fitted
@@ -100,8 +128,13 @@ data/              raw/ and processed/ caches (gitignored)
   manual/          hand-curated datasets — committed (the gitignore's manual-data exception):
                    coach_changes.csv = opening-night head-coach changes 2009-10..2026-27,
                    curated from Basketball-Reference coach pages (interim = took over
-                   mid-prior-season or opens the season interim); feeds models/coaches.py
-tests/
+                   mid-prior-season or opens the season interim); feeds models/coaches.py.
+                   bbm_transcripts/ = the BBM video-transcript drop zone that feeds the
+                   analyst layer (workflow v2 — rubric + contract in its README);
+                   bbm_notes.csv = the extracted per-player fact ledger
+docs/              design docs (see the documentation map above)
+tests/             unit tests: scoring, model arithmetic, as-of engine, absorption,
+                   Stage-7 infra (no-leakage / determinism pins)
 ```
 
 ## Quick start
@@ -145,12 +178,17 @@ python scripts/update_daily.py
 It (1) re-fetches the current season's game logs (replace-in-cache keyed on SEASON —
 history preserved), (2) incrementally extends the injuries/transactions scrapes,
 (3) accumulates the date-stamped DARKO + market archives (what makes EXP-017b/020
-backtestable next season), and (4) writes the as-of ROS board to the append-only
+backtestable next season), (4) writes the as-of ROS board to the append-only
 `data/processed/ros_board/<date>.parquet` — with `config/overrides.yaml` status caps
-applied (availability only: "out until X" caps ROS games; rates/minutes untouched) and
-the naive-updater benchmark emitted alongside (`naive_fpts_pg`/`naive_rank` + a
-disagreement report — the daily gap between them is itself a signal). Each pull is
-fault-isolated; an existing board for the date is never silently overwritten.
+applied (availability only: "out until X" caps ROS games; rates/minutes untouched),
+(5) applies the EXP-030 OUT-redistribution layer (minutes of currently-OUT players flow
+to teammates by the fitted absorption tiers; `redist_mpg` audit column; `--no-redist`),
+(6) applies the analyst layer (effective `config/analyst_overrides.yaml` entries with
+`analyst_action`/`model_rank` audit columns; `--no-analyst`; fed by the BBM-transcript
+workflow in `data/manual/bbm_transcripts/README.md`), and (7) emits the naive-updater
+benchmark alongside (`naive_fpts_pg`/`naive_rank` + a disagreement report — the daily
+gap between them is itself a signal). Each pull is fault-isolated; an existing board
+for the date is never silently overwritten.
 Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season date>`.
 
 ## Interactive explorer
@@ -160,14 +198,18 @@ Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season 
 - **Draft Board** — the projection with floor/median/ceiling ranges (SD_PG spread on the
   adopted age × chronic GP pools); choose the target season (past seasons are re-projected
   with no leakage and shown next to actual results, with a top-N hit rate), the projection
-  model (**learned** default / baseline / v2 / v2m), and a ranking stance; the D1 decision
-  columns (VOR, VOR rank, ADP) join automatically when the target's draft-sheet parquet
-  exists; search and filter by team.
+  model (**learned** default / baseline / v2 / v2m), and a ranking stance; the **Analyst
+  layer (B)** toggle (default on) applies `config/analyst_overrides.yaml` to the current
+  season's board — the fpts_delta lands before the ranges are simulated so floor/median/
+  ceiling shift with it, an Analyst column + adjusted count appear, and past-season
+  backtest boards always stay pure model; the D1 decision columns (VOR, VOR rank, ADP)
+  join automatically when the target's draft-sheet parquet exists; search and filter by
+  team.
 - **ROS (in-season)** — the latest nightly `data/processed/ros_board/` snapshot with the
   naive-updater disagreement table (populates once `update_daily.py` crons from opening
   night; DARKO/market disagreement stays in `darko_report.py` / `market_report.py`).
-- **Player** — drill into one player: projected line, career per-game history, and per-game
-  minutes trend/volatility from the game logs.
+- **Player** — drill into one player: projected line (board B — analyst overrides applied),
+  career per-game history, and per-game minutes trend/volatility from the game logs.
 - **Data** — browse the raw datasets (season stats, game logs, bio, rosters).
 
 ## Configuring scoring
