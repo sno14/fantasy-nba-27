@@ -33,4 +33,70 @@
 # Application: python scripts/apply_analyst.py <board.parquet>  ->  board B (preseason)
 # and automatically every night in-season (update_daily.py; --no-analyst to disable).
 
-[]
+- name: Day'Ron Sharpe
+  date: 2026-07-12
+  category: role
+  action:
+    fpts_delta: 3.0
+  rationale: 'BBM 2026-06-29: Claxton (starting C) is gone and Sharpe re-signed 2yr/$20M
+    as the presumptive starter — ''a per-minute monster... if we just give him 26
+    a night'' — hedged: ''I would doubt the Nets go into the year only having Sharpe
+    and Wolf.'''
+- name: Ty Jerome
+  date: 2026-07-12
+  category: role
+  action:
+    fpts_delta: 2.5
+  rationale: 'BBM 2026-06-29: with Ja gone, ''he''s got to be the leader in that position,
+    but it''s also not remotely close to being a guarantee'' — probable starting PG
+    in a guard-poor Memphis (Pippen/Small/Clayton behind him).'
+- name: Brandon Miller
+  date: 2026-07-12
+  category: role
+  action:
+    fpts_delta: 2.0
+  rationale: 'BBM 2026-06-29: LaMelo''s 30+ usage is vacated; Miller was already ~28%
+    usage in 30 mpg. The year-3/4 leap markers BBM watches — rising free-throw rate
+    and assist rate — are the mechanism, not a rank.'
+- name: Isaiah Stewart
+  date: 2026-07-12
+  category: role
+  action:
+    fpts_delta: 1.5
+  rationale: 'BBM 2026-06-29: traded to Memphis, ''their perhaps starter if Edey''s
+    not healthy, and backup center''; near all-defensive-team quality.'
+- name: Ryan Rollins
+  date: 2026-07-12
+  category: role
+  action: none
+  rationale: 'BBM 2026-06-29: an excellent all-around guard who produced well without
+    Giannis — but real trade-asset risk (''might net them one to two firsts'') and
+    a crowded creation room (Herro in, Porter back). His tier claim is disregarded
+    (different league).'
+- name: Tyler Herro
+  date: 2026-07-12
+  category: role
+  action: none
+  rationale: 'BBM 2026-06-29: ''will take on some of this creation role. But does
+    he even stay on the team?'' — traded into the vacated Milwaukee usage, flagged
+    as a possible re-trade piece.'
+- name: Kon Knueppel
+  date: 2026-07-12
+  category: hype
+  action: none
+  rationale: 'BBM 2026-06-29: ''probably more for Knueppel to do'' — shares the LaMelo
+    vacancy with Miller/White, no mechanism specific to him.'
+- name: Paul Reed
+  date: 2026-07-12
+  category: role
+  action: none
+  rationale: 'BBM 2026-06-29: ''per-minute beast... but there''s no way Detroit goes
+    into a season with Paul Reed as their only center'' — the breakout dies on the
+    expected Sabonis/Duren/Robinson arrival.'
+- name: Brook Lopez
+  date: 2026-07-12
+  category: role
+  action: none
+  rationale: 'BBM 2026-06-29: ''pretty washed''; his minutes may get split with Konan
+    Niederhauser, who is recovering from a March foot fracture and ''probably unlikely
+    available for opening night.'''
