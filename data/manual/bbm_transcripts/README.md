@@ -83,8 +83,11 @@ contains whatever part of the story the model has priced:
   - *Minutes-driven:* `Δfpts ≈ Δmpg × (fpts_pg / mpg) × ~0.85` (the per-36 fade — bench
     rates dip at starter minutes), then discounted for conviction/hedging.
   - *Usage-only* (minutes already high): smaller, ±1 to ±2.
-  - Caps: **±3.0 fpts/g per single mechanism**; tiers mild ≈1 / moderate ≈2 / strong ≈3.
-    The multi-mechanism rule below is the one sanctioned way past ±3.0.
+  - **No hard cap** (user decision 2026-07-13, superseding the same-day ±3.0/±5.0 caps):
+    the tiers mild ≈1 / moderate ≈2 / strong ≈3 are calibration *anchors*, not limits —
+    judgment sizes the number. An unusually large delta needs unusually concrete
+    mechanisms and a sentence acknowledging its size; April 2027 calibrates whether the
+    magnitudes ran hot.
 - Concrete role/depth/injury/usage claims move numbers; generic praise/hype → `none`.
 - Every transcript-derived rationale starts with ``BBM <video-date>:`` + the quote.
 - The `triangulation` field records the model base the sizing used — the number Step 18's
@@ -106,10 +109,11 @@ entry, never an emergent stack:
 - In-season the base moves nightly (the EWMA learns the role), so re-triangulating from
   the current base automatically sheds whatever the model has since absorbed — the same
   no-double-count logic as Step 18's staleness flag, applied at write time.
-- **Cap for genuinely compounding mechanisms: ±5.0 fpts/g** (single mechanism stays
-  ±3.0), and only with each mechanism enumerated in the rationale plus a sentence on why
-  the joint effect exceeds the largest single one. Expect these to be rare; April 2027's
-  calibration judges whether they ran hot.
+- **No numeric cap here either** (user decision 2026-07-13) — compounding cases are
+  sized by judgment like everything else, with each mechanism enumerated in the
+  rationale plus a sentence on why the joint effect exceeds the largest single one.
+  Expect big joint deltas to be rare; April 2027's calibration judges whether they
+  ran hot.
 
 ## Delta lifecycle — role/hype deltas are BRIDGES (Step 18, next build)
 

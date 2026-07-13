@@ -946,9 +946,11 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   base, not merely same-direction agreement), and multiple mechanisms on one player are
   re-triangulated **jointly** into one superseding entry from the current base (the
   engine's latest-dated-wins dedupe already guarantees entries never sum mechanically —
-  judged on what the combination means, not the mechanism count). Caps: ±3.0 fpts/g per
-  single mechanism; ±5.0 for genuinely compounding multi-mechanism cases with each
-  mechanism enumerated. Canonical text: `data/manual/bbm_transcripts/README.md`.
+  judged on what the combination means, not the mechanism count). Caps removed by the
+  same-day follow-up decision: **no numeric limits** — the mild ≈1 / moderate ≈2 /
+  strong ≈3 tiers stay as calibration anchors, judgment dictates magnitude, and large
+  deltas require concrete enumerated mechanisms; April 2027 calibrates. Canonical text:
+  `data/manual/bbm_transcripts/README.md`.
 
 ### EXP-019 — in-season mover eval + lead-time metric  ·  Status: **adopted (diagnostics; seed-0 baselines recorded)**
 - **Date:** 2026-07-10  ·  **Commit:** this commit  ·  **Step:** implementation-plan Step 11

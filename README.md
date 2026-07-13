@@ -24,8 +24,9 @@ See [ROADMAP.md](ROADMAP.md) for the build plan, current progress, and modeling 
    analyst-layer workflow contract: BBM transcript drop zone, the triangulation rubric that
    sizes each fpts_delta (model × BBM mechanism × judgment; target-level sizing — delta =
    triangulated target − model base — so magnitude gaps count without stacking; joint
-   re-triangulation for multi-mechanism players; caps), the two hard rules (fpts_delta/none
-   only; ignore BBM's rank claims), and the proposals → approval → overrides lifecycle.
+   re-triangulation for multi-mechanism players; uncapped, judgment-sized), the two hard
+   rules (fpts_delta/none only; ignore BBM's rank claims), and the proposals → approval →
+   overrides lifecycle.
 
 ## Setup
 

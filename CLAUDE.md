@@ -1,0 +1,43 @@
+# fantasy-nba-27 — session orientation
+
+Fantasy NBA projection system for the 2026-27 season (ESPN 10-team weekly-H2H points
+league). Read in this order before changing anything:
+
+1. **README.md** — setup, layout, commands; its documentation map is the canonical
+   reading order for everything else.
+2. **ROADMAP.md** — build progress + key findings. **docs/implementation-plan.md** — the
+   execution spec; active work runs from its tracker, step specs, and standing calendar.
+3. **EXPERIMENTS.md** — the append-only ledger of everything tested. **Never re-run
+   anything it records as rejected / do-not-retry; never edit a past entry** (corrections
+   are dated addenda).
+
+## Standing workflows — follow the named doc exactly, don't improvise
+
+- **BBM commentary → analyst layer.** Trigger: a new transcript lands in
+  `data/manual/bbm_transcripts/` or the user shares fantasy-relevant commentary/news.
+  Contract: **`data/manual/bbm_transcripts/README.md`** (workflow steps, triangulation
+  rubric, hard rules — read it in full before drafting). Shape: extract player facts →
+  append `data/manual/bbm_notes.csv` → triangulate each flagged player (our board's
+  numbers × BBM's basketball mechanism × your own judgment) into
+  `config/analyst_proposals.yaml` as `status: proposed`. Sizing is **target-level**:
+  `fpts_delta = triangulated ROS fpts/g − model's current base` (`none` when target ≈
+  base); `fpts_delta`/`none` only, never `rank_delta`; ignore BBM's rank/tier claims;
+  one joint superseding entry per player (never sum deltas); no numeric caps — judgment
+  dictates magnitude. The user reviews; `apply_proposals.py --promote` moves approved
+  entries. **Never write into `config/analyst_overrides.yaml` directly** — every entry
+  traces to an approved proposal or the mid-Oct calendar pass.
+- **In-season nightly:** `scripts/update_daily.py` (cron from opening night); concrete
+  out-timelines go to `config/overrides.yaml` (availability caps), not the analyst layer.
+- **The standing calendar** (implementation-plan status notes) takes precedence at its
+  dates: mid-Aug schedule pull → Sept market re-pulls → mid-Oct preseason re-pull +
+  analyst re-review + dual board freeze → opening-night cron → April 2027 scoring.
+
+## Hard constraints
+
+- `data/raw` + `data/processed` are local-only caches; **stats.nba.com is blocked from
+  remote sessions** — don't attempt live pulls remotely (see EXPERIMENTS "Active
+  experiments" note).
+- Boards and overrides are never fabricated or hand-edited; overrides are append-only,
+  latest-dated entry per player wins.
+- Every experiment gets an EXPERIMENTS.md entry — adopted **or** rejected — with a
+  skeptic pass (leakage / selection / seed-stability), per the ledger's house style.

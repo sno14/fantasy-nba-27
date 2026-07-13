@@ -24,9 +24,10 @@
 # a magnitude gap under directional agreement is actionable both ways (the unpriced
 # remainder). Multiple mechanisms on one player: re-triangulate the whole player from the
 # current base into ONE superseding entry (the engine's latest-dated-wins dedupe means
-# entries never sum) — judge what the combination means, never add deltas. Caps: ±3.0 per
-# single mechanism; ±5.0 for genuinely compounding multi-mechanism cases with each
-# mechanism enumerated.
+# entries never sum) — judge what the combination means, never add deltas. NO hard caps
+# (2026-07-13, superseding the same-day ±3/±5): the tiers mild ≈1 / moderate ≈2 /
+# strong ≈3 are anchors, not limits — judgment dictates magnitude; unusually large
+# deltas need unusually concrete, enumerated mechanisms. April 2027 calibrates.
 
 # ============ Batch 1 — BBM 2026-06-29 free-agency episode (proposed 2026-07-12) ============
 # Source: data/manual/bbm_transcripts/2026-06-30-nba-roles.md; evidence in bbm_notes.csv.
