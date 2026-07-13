@@ -109,6 +109,7 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | 15 | 4 | Ship: default model switch, explorer, final doc sweep | — | ☑ (`project.py` default `learned` + `--asof`; explorer: learned default, chronic GP pools, D1 columns, ROS tab) | ☑ 2026-07-10 (see as-built note under Step 15) |
 | 16 | 5 | Vacated-minutes absorption + live OUT-redistribution | EXP-030 | ☑ (`absorption.py` + `--exp030` + nightly wiring) | ☑ 2026-07-11 (adopted-tentative — MAE-neutral, treated bias −0.15→−0.01, lead +5–8d; naive gate re-ran, stays parked; re-affirm Apr 2027 short-horizon) |
 | 17 | 5 | Budget-reconciled minutes (allocation v2: depth features + soft reconciliation) | EXP-031 | ☑ (`eval_budget.py` + `learned_depth` + `reconcile_minutes`) | ☑ 2026-07-11 (both wirings rejected; 17.1 diagnostic ADOPTED — overshoot +0.18 supply, error-corr +0.38; re-run per adopted-model change) |
+| 18 | 6 | Analyst-delta lifecycle: staleness flag + optional decay (the double-count guard) | — (product) | ☐ | ☐ (next build — spec below; runnable in a fresh session) |
 
 *\*Phase-0 verdict (EXP-011, Decision Row 1, 2026-07-08): the model-pool riser reducible gap
 is +0.19 fpts/g (< 2) — preseason bias-chasing is near-done and the residual headroom is
@@ -1648,6 +1649,56 @@ becomes a `project_models` default with a Step-2 floor recompute.
 also 17's best prior on who inherits vacated minutes). Both are build-now and must not
 displace the standing calendar (mid-Aug schedule pull → Sept market → mid-Oct analyst
 pass/dual freeze → opening-night cron).*
+
+---
+
+# PHASE 6 — the analyst layer, operationalized (Step 18, added 2026-07-12)
+
+*Context: the BBM-transcript analyst layer (workflow v2, EXP-029 amended) applies a **static**
+`fpts_delta` on top of the nightly ROS board. Preseason and early-season that delta is pure
+signal — the model can't see a role change from box scores it doesn't have yet. But
+`update_daily.py` re-projects the model every night, and its EWMA form features **learn the
+role** as games accumulate. Once the model's own base has risen to reflect (say) a player's
+new starter minutes, the static commentary delta is still stacked on top → **double-counting**.
+The role/hype deltas are "bridge the model until it can see for itself"; they must taper as the
+model catches up. This step makes that lifecycle explicit instead of relying only on the manual
+mid-Oct re-review. (Injury/availability facts are exempt — those are handled by
+`config/overrides.yaml` availability caps + EXP-030 redistribution, not fpts_deltas, and don't
+decay.)*
+
+## Step 18 — analyst-delta staleness flag + optional decay
+
+**Goal:** stop stale role/hype deltas from double-counting once the in-season model has
+absorbed the role; surface it on the nightly board; optionally auto-taper.
+
+**18.1 Staleness flag (diagnostic first — build this half, default-on as a *report*).**
+In `update_daily.py` (or a helper `models/analyst.py::staleness`), for each moved player
+compare the **model's current pre-analyst base `fpts_pg`** against the model's base **at the
+override's `date`** (recover the latter from the frozen preseason board A, or the earliest
+`ros_board/` snapshot on/after the entry date). If the base has risen by ≥ the delta's
+magnitude (the model has "caught up"), set `analyst_stale=True` + a note on the board row and
+print a "consider retiring" report line. No projection change — it's a nudge to post a
+later-dated `none`/reduced entry. **Acceptance:** on a handful of in-season `--asof` dates,
+the flag fires on players whose realized role the EWMA has clearly priced (spot-check the
+named cases into a short ledger note; this is operational, not a backtest gate).
+
+**18.2 Optional category-aware decay (build behind `--analyst-decay`, off by default).**
+Scale each *role/hype* delta by `decay(games_so_far)` — full for the first
+`DECAY_FULL_GAMES` (~10), linear taper to 0 by `DECAY_ZERO_GAMES` (~30, where the EWMA's role
+signal is reliable); `other`/`injury` categories stay full-strength. Apply inside the analyst
+layer before scoring; add a `analyst_decay_factor` audit column. **Validate before defaulting
+it on:** the taper shape is a hyperparameter — show, on 2–3 in-season dates, that decayed
+board B tracks realized ROS at least as well as the full-delta board B on the moved players
+(reuse the `eval_asof` treated-segment machinery from EXP-030). Only then flip the default.
+
+**18.3 Doc-sync:** README `update_daily`/`apply_proposals` lines; the transcripts README
+lifecycle note ("role/hype deltas are bridges — retire or let them decay as the model learns");
+this tracker + a one-line EXP-029 ledger addendum recording 18.1's spot-checks.
+
+**Done when:** the staleness report ships in `update_daily.py` (and prints in the offline
+dry-run); decay exists behind its flag with the validation note written; a fresh session can
+run 18.1 end-to-end from this spec. *Ordering: 18.1 before 18.2 — the flag is cheap and
+immediately useful; decay is only worth defaulting on if 18.1 shows staleness is common.*
 
 ---
 

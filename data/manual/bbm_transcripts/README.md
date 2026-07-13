@@ -69,6 +69,16 @@ The repeatable per-transcript pass (steps 1–3 are Claude, 4 is Steven, 5–7 a
 - Concrete role/depth/injury/usage claims move numbers; generic praise/hype → `none`.
 - Every transcript-derived rationale starts with ``BBM <video-date>:`` + the quote.
 
+## Delta lifecycle — role/hype deltas are BRIDGES (Step 18, next build)
+
+A role/hype `fpts_delta` bridges the model until it can see the role for itself. In-season,
+`update_daily.py` re-projects the model nightly and its EWMA **learns the role** from games —
+so once the model's own base has caught up, a static delta double-counts and should be
+retired (a later-dated `none`/reduced entry) or auto-decayed. Injury/availability facts don't
+decay (they live in `config/overrides.yaml`, not here). Step 18 (implementation-plan Phase 6)
+adds the staleness flag + optional decay; until then, retirement is manual (the mid-Oct
+re-review and ad-hoc as roles crystallize).
+
 ## Scoring = calibration (amended 2026-07-12)
 
 The layer is a **standing supplement** by user decision — it does not have to beat the
