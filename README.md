@@ -20,6 +20,11 @@ See [ROADMAP.md](ROADMAP.md) for the build plan, current progress, and modeling 
 6. **[docs/implementation-plan.md](docs/implementation-plan.md)** — **the execution spec**:
    a strictly linear, step-by-step build plan with file-level specs, commands, and
    adopt/reject gates. Active work happens from this file.
+7. **[data/manual/bbm_transcripts/README.md](data/manual/bbm_transcripts/README.md)** — the
+   analyst-layer workflow contract: BBM transcript drop zone, the triangulation rubric that
+   sizes each fpts_delta (model × BBM mechanism × judgment; caps, agreement = assurance),
+   the two hard rules (fpts_delta/none only; ignore BBM's rank claims), and the
+   proposals → approval → overrides lifecycle.
 
 ## Setup
 
