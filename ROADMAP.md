@@ -147,7 +147,9 @@ adopted-model change) · score the 2026-27 dual freeze +
 EXP-029 in April 2027 · EXP-020 external in-season benchmarks (archives accumulating
 nightly) · EXP-021 re-arm (learned range width, post-2026-27) · rookies beyond the market
 seed (college translation — EXP-028's named re-arm) · category-league scoring · an official
-injury feed / news-LLM minutes override (the deferred news-signal direction) · EXP-022/023/024
+injury feed · ~~news-LLM minutes override~~ **activated 2026-07-12 as the BBM-transcript
+analyst workflow v2** (living layer, nightly in-season application — see the D2 bullet
+under 7.E and `data/manual/bbm_transcripts/README.md`) · EXP-022/023/024
 decomposition refinements if the preseason gap ever re-opens.
 
 ### Stage 6 — Uncertainty / risk ranges  ← DONE 2026-07-10 (shipped: SD_PG spread — re-affirmed by EXP-021 — on the adopted (age × chronic) GP pools, EXP-015b)
@@ -180,7 +182,7 @@ decomposition refinements if the preseason gap ever re-opens.
       Monte-Carlo GP tails adopted, the GP *point estimate* rejected (the ceiling held). The
       live-news half is Step 12's `config/overrides.yaml` status caps (2026-07-10).
 
-### Stage 7 — Catching risers & fallers (the discontinuity frontier)  ← BUILD COMPLETE 2026-07-10 (every buildable step of docs/implementation-plan.md ran and is logged, Steps 0–15; what remains is calendar-locked: mid-Aug schedule pull → Sept market pulls → mid-Oct analyst pass + dual freeze (EXP-029) → opening-night cron → April 2027 scoring + EXP-020/021 re-arms)
+### Stage 7 — Catching risers & fallers (the discontinuity frontier)  ← BUILD COMPLETE 2026-07-11 (every buildable step of docs/implementation-plan.md ran and is logged, Steps 0–17 incl. Phase 5; the analyst layer is live as workflow v2 — living entries via proposals→approval any time; what remains is calendar-locked: mid-Aug schedule pull → Sept market pulls → mid-Oct analyst re-review + dual freeze (EXP-029) → opening-night cron → April 2027 scoring + EXP-020/021 re-arms)
 
 **The problem statement (user, 2026-07):** we project the stable core well but **miss the risers
 and fallers** — and capitalising on those is the entire edge of a projection system. This stage
@@ -461,6 +463,14 @@ eval-only (opt-in `--recency`); the shipped board uses the plain `learned` found
       layer must earn its place or be deleted — the discipline commercial systems' human
       layers never face. Long-run: each season's archives are a labeled map of *where the
       market beats us and on whom* — harvest every spring.
+      **Amended 2026-07-12 (workflow v2, user decision — commits 59beee2 · 724c42a):** the
+      layer is now a **living, this-season supplement** fed by BBM video transcripts
+      (`data/manual/bbm_transcripts/` → triangulated proposals in
+      `config/analyst_proposals.yaml` → user approval → living overrides), applied to the
+      preseason board **and nightly in-season** (`update_daily.py`, audit columns,
+      `--no-analyst`); mid-Oct = re-review + the unchanged dual freeze; the April scoring
+      **calibrates** magnitudes + per-source weighting (`BBM <date>:`-tagged subset split
+      out) rather than deciding existence.
 
 #### 7.F — Usage-coupled rate/efficiency  ← parked (revisit only via 7.A)
 - [ ] Per-minute rates are already well-predicted (EXP-001); direct rate/efficiency modelling was

@@ -896,7 +896,7 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   2026-27, FP adds the rookie class → the D1.5 seed goes live); mid-Oct re-pull
   `preseason_game_logs` + `draft_history`, regenerate the sheet from `--model learned_ps`.
 
-### EXP-029 — analyst pass + dual-board freeze (the graded human layer)  ·  Status: **pending (machinery built 2026-07-10 · pass calendar-locked to the last ~2 weeks pre-draft · scores April 2027)**
+### EXP-029 — analyst pass + dual-board freeze (the graded human layer)  ·  Status: **pending (machinery built 2026-07-10 · workflow-v2 amendment 2026-07-12 below: living entries any time, nightly in-season application, scoring = calibration · scores April 2027)**
 - **Date:** 2026-07-10 (build) ·  **Commit:** this commit  ·  **Step:** implementation-plan Step D2
 - **Hypothesis:** an auditable, written-down analyst pass (the human-judgment layer commercial
   systems keep opaque) adds value over the pure model board — testable only by freezing both
@@ -926,6 +926,20 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   at adopted-tentative/parked on a one-season sample.
 - **Skeptic pass (build-time):** no leakage possible yet (no overrides exist); the freeze's
   git timestamp is the no-hindsight proof; application arithmetic is unit-tested and pure.
+- **Workflow-v2 addendum (2026-07-12, user decision — commits 59beee2 · 724c42a):** the
+  layer becomes a **living, this-season supplement** fed by BBM video transcripts:
+  drop zone `data/manual/bbm_transcripts/` (rubric + contract in its README) → Claude
+  triangulates (model × BBM × own judgment; **agreement = assurance → `none`** unless a
+  new mechanism) into `config/analyst_proposals.yaml` → user approves → entries copy into
+  `analyst_overrides.yaml` (append-only, latest-dated wins keeps it current July→Oct) →
+  applied preseason (`apply_analyst.py`) **and nightly in-season** (`update_daily.py`
+  hook, audit columns, `--no-analyst`; wiring verified with a reverted test entry —
+  Tatum 1→4, audited). Mid-Oct = re-review of all effective entries + the **unchanged**
+  dual freeze. **Gate semantics amended (user: "supplement, not beat"):** D2.4's April
+  scoring — including the `BBM <date>:`-tagged subset scored separately — now
+  **calibrates** the magnitude rubric and per-source weighting instead of deciding the
+  layer's existence. Freeze + scoring mechanics untouched, so the April table is produced
+  either way.
 
 ### EXP-019 — in-season mover eval + lead-time metric  ·  Status: **adopted (diagnostics; seed-0 baselines recorded)**
 - **Date:** 2026-07-10  ·  **Commit:** this commit  ·  **Step:** implementation-plan Step 11
@@ -1148,9 +1162,11 @@ source, pick number shown alongside; re-pull `draft_history` before October for 
 **Draft-facing, calendar-critical, in order: D1** decision layer incl. the D1.5 rookie market-seed
 (product; **scoring + league confirmed 2026-07-10: ESPN default points, 10 teams, weekly H2H —
 scoring.yaml already matched, no re-runs**) → **EXP-029** analyst pass + dual-board freeze (Step D2 —
-**machinery built + tested 2026-07-10, opened pending above**; the pass itself + dual freeze are
-calendar-locked to the last ~2 weeks before the draft; both freeze boards regenerate with
-`learned_ps` after preseason tips; scores April 2027). **In-season: EXP-019** (Step 11) done above
+**machinery built + tested 2026-07-10; workflow v2 live 2026-07-12** — living entries any
+time via `analyst_proposals.yaml` → approval, applied nightly in-season too; mid-Oct =
+re-review + dual freeze; both freeze boards regenerate with
+`learned_ps` after preseason tips; April 2027 scoring now *calibrates* per the amended
+gate). **In-season: EXP-019** (Step 11) done above
 (adopted diagnostics — riser-recall 51.7% / lead 52d @ 99% are the standing baselines) ·
 **Step 12** nightly pipeline built + dry-run clean 2026-07-10 (`update_daily.py`; cron it from
 opening night — the archives it accumulates are EXP-020's input). **EXP-021** learned ranges

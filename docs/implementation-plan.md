@@ -100,7 +100,7 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | 9c | 2 | Coach changes + preseason-October logs (+ win totals) | EXP-027 | ☑ | ☑ (a coach rejected · b `learned_ps` adopted-Oct, big-riser capture +9pp · c waived) |
 | 9d | 2 | Rookie model (draft slot × landing spot) | EXP-028 | ☑ | ☑ (rejected — pick-order unbeaten; D1.5 market seed stands alone) |
 | D1 | 2.5 | Decision layer: league config, VOR, schedule, rookie seed | — (product) | ◐ D1.1 ✅ · D1.2 VOR ✅ · D1.3 script ✅ (2026-27 schedule publishes ~mid-Aug) · D1.4 VOR+ADP ✅ (playoff cols await ESPN calendar) · D1.5 mechanism ✅ (2026 rookies hit the market pulls ~Sept) | ◐ (see D1 note, 2026-07-10) |
-| D2 | 2.5 | Analyst pass + dual-board freeze | EXP-029 | ☑ (overrides schema + `apply_analyst.py` + trigger generator, tested 2026-07-10) | ◐ pending (pass + dual freeze calendar-locked: last ~2 wks pre-draft / pre-opening-night; scores Apr 2027) |
+| D2 | 2.5 | Analyst pass + dual-board freeze | EXP-029 | ☑ (overrides schema + `apply_analyst.py` + trigger generator, tested 2026-07-10; **workflow v2 2026-07-12**: proposals flow + nightly in-season hook live) | ◐ pending (living entries any time via proposals→approval; mid-Oct = re-review + dual freeze; Apr 2027 scoring now *calibrates* — amended gate, Appendix A) |
 | 10 | 3 | As-of-date projection function | EXP-018 | ☑ | ☑ (foundation adopted; naive gate parked) |
 | 11 | 3 | In-season eval + lead-time metric | EXP-019 | ☑ (`eval_asof.py --exp019`; half-lives frozen) | ☑ (adopted diagnostics: +30d reducible gap ≈ 0 · riser-recall 51.7% · lead 52d @ 99% detect vs naive 70% · league-horizon flips 2/12 → both views) |
 | 12 | 3 | Nightly update pipeline + status overrides | — | ☑ (`update_daily.py` + `overrides.yaml` + `refresh_season`; naive line per addendum 5) | ☑ off-season dry-run clean 2026-07-10 (`--offline --asof 2026-03-01`); goes live opening night |
@@ -1099,6 +1099,18 @@ against the untouched model after the season and must earn its place or be delet
 Timing: the last ~2 weeks before draft day (needs Step 9's market pull; benefits from 9c's
 preseason-October minutes and Step 7's injury history).*
 
+*(**Amended 2026-07-12, user decision — workflow v2, the living layer.** Three changes,
+canonical contract in `data/manual/bbm_transcripts/README.md`: (1) entries may land any
+time information arrives — BBM-transcript triangulation → `config/analyst_proposals.yaml`
+(Claude drafts: model view × BBM view × own judgment; agreement = assurance → `none`
+unless a new mechanism) → user approval → `analyst_overrides.yaml`; the mid-Oct pass
+becomes a full **re-review** of every effective entry before the unchanged dual freeze;
+(2) the layer also applies **nightly in-season** to the ROS board (`update_daily.py`,
+audit columns, `--no-analyst`) — the in-season ROS adjustment the user named critical;
+(3) D2.4's verdict **calibrates** the layer — magnitude rubric + per-source weighting,
+with `BBM <date>:`-tagged entries scored as their own subset — instead of deciding its
+existence: per the user, the layer is a standing supplement, "supplement, not beat".)*
+
 **D2.1 Trigger list (generated, not vibes):** within the top-200 union of our board and the
 expert consensus: (a) |our rank − consensus rank| ≥ 15; (b) every EXP-026 breakout-flag
 player; (c) every major-injury returnee (Step-7 `inj_bodypart_severe` in trailing 18 months);
@@ -1130,7 +1142,10 @@ standard metrics (top-150 level MAE, mover buckets, big-riser recall, ranking Sp
 a **per-adjustment attribution table**: for each override — model rank, adjusted rank,
 realized rank, which won. Verdicts: B > A → keep the pass, expand to in-season waivers;
 A > B → delete the layer and ledger *which rationale categories* failed (that's tuition,
-not just a loss); tie → keep as a documentation habit, not signal. **One-season sample:**
+not just a loss); tie → keep as a documentation habit, not signal. *(Verdict semantics
+superseded by the 2026-07-12 workflow-v2 amendment above: the table now calibrates
+magnitudes + per-source weighting — incl. the `BBM <date>:` subset — the delete clause no
+longer applies.)* **One-season sample:**
 whatever the outcome, the ledger status is at most `adopted-tentative` / `parked` — an
 unlucky injury on one heavily-adjusted player can swing it; say so in the entry.
 
@@ -1148,6 +1163,13 @@ ledger with status `pending (scores April 2027)`.
 > fresh market pulls) should land near the expected ~30–50. **Remaining (calendar-locked,
 > mid-Oct):** the pass itself off the regenerated trigger list, then the D2.3 dual freeze
 > before opening night, then D2.4 scoring in April 2027.
+>
+> **Workflow v2 (2026-07-12, commits 59beee2 · 724c42a):** the amendment above is live —
+> `config/analyst_proposals.yaml` (draft → approve flow), the nightly in-season hook in
+> `update_daily.py` (wiring verified end-to-end with a reverted test entry), and the
+> transcript drop zone + triangulation rubric in `data/manual/bbm_transcripts/README.md`.
+> "Remaining mid-Oct" now reads: **re-review** all effective entries off the regenerated
+> trigger list + fresh videos, then the unchanged dual freeze.
 
 ---
 

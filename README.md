@@ -79,7 +79,10 @@ scripts/
   analyst_triggers.py  D2.1 pre-draft review list: top-200 board-vs-consensus rank gaps +
                    breakout flags + severe-injury returnees (18m) + rookies
   apply_analyst.py D2.2 analyst overrides (config/analyst_overrides.yaml): board A -> board B,
-                   deterministic + audited; board A's file is never touched
+                   deterministic + audited; board A's file is never touched. Workflow v2
+                   (2026-07-12): entries arrive any time via config/analyst_proposals.yaml
+                   (Claude triangulates BBM transcripts x model x own judgment; user
+                   approves) and also apply nightly in-season via update_daily.py
   darko_report.py  DARKO overlay: minutes/rank disagreement report (pull_darko.py fetches)
   update_daily.py  Step-12 nightly pipeline: refresh logs + incremental injury/transaction
                    pulls + DARKO/market archives + the as-of ROS board with status overrides

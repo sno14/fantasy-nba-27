@@ -8,8 +8,9 @@ rows / no NBA history). Expect ~30-50 players. Generated, not vibes — the pass
 a defined population, and every reviewed player gets an ``analyst_overrides.yaml``
 entry, including explicit ``none`` verdicts.
 
-Run during the analyst pass (last ~2 weeks before the draft), after the mid-Oct
-draft-sheet regeneration:
+Run any time as workflow v2's review frame (2026-07-12: entries land whenever information
+arrives — BBM-transcript proposals → approval); the canonical run is the mid-Oct
+**re-review** of every effective entry, after the draft-sheet regeneration:
 
     python scripts/analyst_triggers.py --board data/processed/draft_sheet_2026-27.parquet
 """
