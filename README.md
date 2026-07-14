@@ -70,6 +70,12 @@ src/fantasy_nba/
     breakout.py, rookies.py, darko.py, value.py  breakout flag, rookie model (rejected),
                    DARKO overlay, VOR
     backtest.py, eval_movers.py  no-leakage backtest + mover-segmented eval
+  api/             FastAPI backend for the web UI (scripts/serve.py): boards with tier
+                   breaks, ROS snapshots, player pages, dataset browser, and the
+                   analyst-proposal review panel (same code paths as the CLI tools)
+frontend/          the web UI (React + Vite + Tailwind; light/dark). `npm run build`
+                   emits frontend/dist, which serve.py serves; `npm run dev` proxies
+                   /api for frontend development
 scripts/
   pull_data.py     CLI to fetch and cache raw data
   project.py       generate the projection / draft board (default model: learned; + risk
@@ -123,7 +129,10 @@ scripts/
                    audit columns; --no-analyst to disable; fed by the BBM-transcript
                    workflow in data/manual/bbm_transcripts/README.md), and the
                    naive-updater benchmark line
-  explore.py       local interactive Streamlit explorer
+  serve.py         serve the web app (FastAPI + built frontend, one process)
+  dev_fixtures.py  synthetic schema-faithful dev cache so the web app runs without the
+                   local-only real data (refuses to touch a real cache)
+  explore.py       legacy Streamlit explorer (superseded by the web app; still works)
 data/              raw/ and processed/ caches (gitignored)
   manual/          hand-curated datasets — committed (the gitignore's manual-data exception):
                    coach_changes.csv = opening-night head-coach changes 2009-10..2026-27,
@@ -163,8 +172,8 @@ python scripts/project.py --target 2026-27 --rank-by safe --breakout --preseason
 # In-season: one-off remaining-of-season board as of a date (the cron path is update_daily.py)
 python scripts/project.py --asof 2027-01-15 --top 50
 
-# Explore data + projections interactively in the browser
-python -m streamlit run scripts/explore.py
+# Explore data + projections interactively in the browser (see "Web app" below)
+python scripts/serve.py        # -> http://127.0.0.1:8787
 ```
 
 ## Nightly in-season run (Step 12)
@@ -191,9 +200,11 @@ gap between them is itself a signal). Each pull is fault-isolated; an existing b
 for the date is never silently overwritten.
 Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season date>`.
 
-## Interactive explorer
+## Web app
 
-`python -m streamlit run scripts/explore.py` opens a local web app with four tabs:
+`python scripts/serve.py` serves the app at http://127.0.0.1:8787 — a FastAPI backend
+(`src/fantasy_nba/api/`) wrapping the same model code the CLI uses, plus a React frontend
+(`frontend/`; light/dark, one-time `cd frontend && npm install && npm run build`). Views:
 
 - **Draft Board** — the projection with floor/median/ceiling ranges (SD_PG spread on the
   adopted age × chronic GP pools); choose the target season (past seasons are re-projected
@@ -202,15 +213,27 @@ Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season 
   layer (B)** toggle (default on) applies `config/analyst_overrides.yaml` to the current
   season's board — the fpts_delta lands before the ranges are simulated so floor/median/
   ceiling shift with it, an Analyst column + adjusted count appear, and past-season
-  backtest boards always stay pure model; the D1 decision columns (VOR, VOR rank, ADP)
-  join automatically when the target's draft-sheet parquet exists; search and filter by
-  team.
-- **ROS (in-season)** — the latest nightly `data/processed/ros_board/` snapshot with the
-  naive-updater disagreement table (populates once `update_daily.py` crons from opening
+  backtest boards always stay pure model; the D1 decision columns (VOR, ADP) join
+  automatically when the target's draft-sheet parquet exists, with **value/reach chips**
+  (ADP vs our rank) and **tier breaks** (unusually large draft-value gaps); an optional
+  range dot-plot; search / team filter / column sorting; checkboxes feed **Compare**.
+- **ROS (in-season)** — nightly `data/processed/ros_board/` snapshots with the
+  naive-updater disagreement panel (populates once `update_daily.py` crons from opening
   night; DARKO/market disagreement stays in `darko_report.py` / `market_report.py`).
-- **Player** — drill into one player: projected line (board B — analyst overrides applied),
-  career per-game history, and per-game minutes trend/volatility from the game logs.
-- **Data** — browse the raw datasets (season stats, game logs, bio, rosters).
+- **Players** — drill into one player: projected line (board B), season range, career
+  per-game history with FP/G, and per-game minutes trend/volatility from the game logs.
+- **Compare** — 2–4 players side by side: projections, ranges, careers overlaid.
+- **Analyst** — the workflow-v2 proposal review panel: each
+  `config/analyst_proposals.yaml` entry with rationale, triangulation, and its live
+  board impact; approve/reject writes only that entry's `status:` line (comments
+  preserved), **Promote** runs the `apply_proposals.py --promote` code path (idempotent).
+- **Data** — browse the raw parquet caches (season stats, game logs, bio, rosters, …).
+
+Frontend dev loop: `python scripts/serve.py` + `cd frontend && npm run dev` (Vite on
+:5173, `/api` proxied). No local data yet? `python scripts/dev_fixtures.py` writes a
+synthetic, schema-faithful cache (marked with `data/raw/FIXTURE_DATA.marker`; the UI
+shows a "synthetic data" badge; it refuses to touch a real cache). The legacy Streamlit
+explorer (`python -m streamlit run scripts/explore.py`) still works.
 
 ## Configuring scoring
 
