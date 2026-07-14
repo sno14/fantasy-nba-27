@@ -1,1 +1,0 @@
-{"root":["./src/App.tsx","./src/main.tsx","./src/components/DataTable.tsx","./src/components/charts.tsx","./src/components/ui.tsx","./src/lib/api.ts","./src/lib/format.ts","./src/views/Analyst.tsx","./src/views/Compare.tsx","./src/views/DataBrowser.tsx","./src/views/DraftBoard.tsx","./src/views/Player.tsx","./src/views/Ros.tsx"],"version":"5.6.3"}
