@@ -354,6 +354,25 @@ position *eligibility* ≠ NBA position (ESPN/Yahoo eligibility drives lineup le
 only needed if we ever optimize lineups; parked); the repo's default scoring must equal
 the real league's before draft day (§2.4 re-run under final config).
 
+> **Addendum 2026-07-16 — the eligibility call above was wrong on both halves; unparked by
+> Step 19.** *Parked:* no longer — ESPN's `eligibleSlots` arrives free with the draft feed
+> (`draft/ids.py::eligible_positions`), verified against the live league (Edwards `[SG, SF]`,
+> Giannis `[PF, C]`, Jokić `[C]`). It is the only place in the repo that knows real
+> PG/SG/SF/PF/C eligibility; `models/value.py` still uses the guard/big proxy, so the caveat in
+> *its* docstring stands for that module only.
+>
+> *"Only needed if we ever optimize lineups":* wrong, and instructively so. Eligibility turned
+> out to matter for two things this section didn't anticipate. (a) **Slot feasibility** — "can
+> my roster legally fill its starting slots, and which slot fails first" — which is the honest
+> form of "do I have too many guards" and is the draft room's most useful output; no lineup
+> optimizer involved. (b) It is the **mechanism behind the live-VOR retraction**: 201 of 353
+> ESPN players are multi-eligible, so slots rarely bind, per-slot replacement spread is only
+> ≈2.3 fpts/g, and `live_vor` ranks ~identically to fpts/g until the endgame (ρ 0.99 through
+> ~110 of 130 picks). §9's own VOR framing leans on positional scarcity that **this league does
+> not have** — see implementation-plan Step 19.3's retraction and ROADMAP Stage 5. Eligibility
+> was not a "small trap worth a flag"; it was the fact that decided whether a headline feature
+> was real.
+
 **What this section deliberately does not add:** opponent modelling of league-mates,
 auction values, dynasty/keeper valuation (config says `keeper: false`), and lineup
 optimization — all parked until the core loop (accurate ROS + VOR + schedule) is live.
