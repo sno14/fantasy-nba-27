@@ -242,6 +242,15 @@ Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season 
 - **ROS (in-season)** — nightly `data/processed/ros_board/` snapshots with the
   naive-updater disagreement panel (populates once `update_daily.py` crons from opening
   night; DARKO/market disagreement stays in `darko_report.py` / `market_report.py`).
+- **Weekly** — the streaming planner: pick an NBA week and rank players by **projected
+  FP/G × games that week**, so a 4-game week at 25 FP/G (100) beats a 3-game week at 30
+  (90) — the volume edge that drives waiver pickups. A per-day game grid shows when each
+  team plays; toggle weekdays off to re-total over only the days you'll set a lineup for,
+  and tick players to build a streaming group whose per-day game load is charted against
+  the 10 startable slots (so you can see when picks collide on the same night). Reads
+  `data/raw/schedule_<season>.parquet` (`scripts/pull_schedule.py`; the 2026-27 schedule
+  publishes ~mid-August, so the tab says so until then). Backed by `/api/weeks` +
+  `/api/weekly`.
 - **Players** — drill into one player: projected line (board B), season range, career
   per-game history with FP/G, and per-game minutes trend/volatility from the game logs.
 - **Compare** — 2–4 players side by side: projections, ranges, careers overlaid.

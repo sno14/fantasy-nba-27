@@ -4,6 +4,7 @@ Routes (all JSON, under /api):
   meta                     scoring/league config, seasons, models, data status
   board                    draft board: target x model x stance x analyst layer, with tiers
   ros / ros/{date}         nightly remaining-of-season snapshots (update_daily.py output)
+  weeks / weekly           weekly planner: NBA-week index + per-player FP/G × games that week
   player/{id}              one player: board-B row, career per-game history, minutes logs
   datasets / datasets/{n}  raw parquet browser (paged, filterable)
   proposals                analyst-proposal review panel (+ status PATCH + promote POST)
@@ -152,6 +153,95 @@ def ros_snapshot(date: str) -> dict:
     if {"rank", "naive_rank"} <= set(out.columns):
         out["rank_gap"] = out["naive_rank"] - out["rank"]
     return {"date": date, "rows": _records(out)}
+
+
+# ------------------------------------------------------------------------------ weekly plan
+def _week_days(long: pd.DataFrame) -> list[str]:
+    return sorted(pd.to_datetime(long["game_date"]).dt.strftime("%Y-%m-%d").unique().tolist())
+
+
+@app.get("/api/weeks")
+def weeks(target: str = Query(default=boards.CURRENT_TARGET)) -> dict:
+    """The NBA-week index for the weekly planner's week picker. `has_schedule` is False
+    until `scripts/pull_schedule.py` caches the season (published ~mid-August)."""
+    long = boards.team_week_games(target)
+    if long.empty:
+        return {"target": target, "has_schedule": False, "weeks": []}
+    out = []
+    for wk, g in long.groupby("week"):
+        days = _week_days(g)
+        out.append({
+            "week": int(wk),
+            "week_name": str(g["week_name"].iloc[0]),
+            "start": days[0], "end": days[-1], "days": days,
+            "n_games": int(len(g) // 2),  # each game is two team-rows in the long form
+        })
+    out.sort(key=lambda w: w["week"])
+    return {"target": target, "has_schedule": True, "weeks": out}
+
+
+@app.get("/api/weekly")
+def weekly(
+    target: str = Query(default=boards.CURRENT_TARGET),
+    week: int = Query(...),
+    model: str = Query(default="learned"),
+    stance: str = Query(default="safe"),
+    analyst: bool = Query(default=True),
+) -> dict:
+    """Per-player weekly value for one NBA week: projected FP/G × games that week, plus the
+    per-day game dates so the UI can re-total over a subset of days (the day toggles)."""
+    _require_data()
+    if target not in boards.TARGET_SEASONS:
+        raise HTTPException(422, f"target must be one of {boards.TARGET_SEASONS}")
+    if model not in boards.MODELS:
+        raise HTTPException(422, f"model must be one of {list(boards.MODELS)}")
+    if stance not in boards.STANCES:
+        raise HTTPException(422, f"stance must be one of {list(boards.STANCES)}")
+
+    long = boards.team_week_games(target)
+    if long.empty:
+        raise HTTPException(
+            404, "No schedule cached for this season — run `python scripts/pull_schedule.py` "
+                 "(the 2026-27 schedule publishes ~mid-August).")
+    wk = long[long["week"] == week]
+    if wk.empty:
+        raise HTTPException(404, f"week {week} is not in the {target} schedule")
+    days = _week_days(wk)
+    by_team: dict[str, list[str]] = {
+        str(team): sorted(pd.to_datetime(g["game_date"]).dt.strftime("%Y-%m-%d").tolist())
+        for team, g in wk.groupby("team")
+    }
+
+    b = boards.ranked_board(target, model, stance, analyst)
+    rows = []
+    for r in b.itertuples(index=False):
+        fpg = getattr(r, "fpts_pg", None)
+        if fpg is None or pd.isna(fpg):
+            continue
+        team = getattr(r, "TEAM_ABBREVIATION", None)
+        team = str(team) if team is not None and pd.notna(team) else None
+        games = by_team.get(team, []) if team else []
+        # Round FP/G first so the displayed value × games equals the weekly total exactly
+        # (and matches the client's re-total when days are toggled off).
+        fpg_r = round(float(fpg), 1)
+        rows.append({
+            "PLAYER_ID": int(r.PLAYER_ID),
+            "PLAYER_NAME": r.PLAYER_NAME,
+            "TEAM_ABBREVIATION": team,
+            "rank": int(r.rank),
+            "fpts_pg": fpg_r,
+            "gp": None if pd.isna(getattr(r, "gp", np.nan)) else round(float(r.gp)),
+            "games": games,
+            "n_games": len(games),
+            "weekly_fpts": round(fpg_r * len(games), 1),
+        })
+    rows.sort(key=lambda x: x["weekly_fpts"], reverse=True)
+    return {
+        "target": target, "week": week, "week_name": str(wk["week_name"].iloc[0]),
+        "start": days[0], "end": days[-1], "days": days,
+        "teams": sorted({t for t in (r["TEAM_ABBREVIATION"] for r in rows) if t}),
+        "rows": rows,
+    }
 
 
 # ---------------------------------------------------------------------------------- player

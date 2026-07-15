@@ -71,6 +71,45 @@ export interface RosRow {
   redist_mpg?: number;
 }
 
+// ------------------------------------------------------------------- weekly planner
+export interface WeekInfo {
+  week: number;
+  week_name: string;
+  start: string; // ISO date (Monday of the fantasy week)
+  end: string; // ISO date (Sunday)
+  days: string[]; // ISO dates on which any game is played that week
+  n_games: number; // total NBA games that week
+}
+
+export interface WeeksResponse {
+  target: string;
+  has_schedule: boolean;
+  weeks: WeekInfo[];
+}
+
+export interface WeeklyRow {
+  PLAYER_ID: number;
+  PLAYER_NAME: string;
+  TEAM_ABBREVIATION: string | null;
+  rank: number; // season-long board rank
+  fpts_pg: number;
+  gp: number | null; // projected games played (season)
+  games: string[]; // ISO dates this player's team plays this week
+  n_games: number;
+  weekly_fpts: number; // fpts_pg × n_games (all days)
+}
+
+export interface WeeklyResponse {
+  target: string;
+  week: number;
+  week_name: string;
+  start: string;
+  end: string;
+  days: string[]; // the week's game-days, ascending
+  teams: string[];
+  rows: WeeklyRow[];
+}
+
 export interface CareerRow {
   SEASON: string;
   AGE: number;
