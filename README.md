@@ -49,6 +49,9 @@ config/            league + scoring configuration and the analyst layer's files
                    (apply_proposals.py previews + promotes the approved ones)
   analyst_overrides.yaml  the approved analyst layer (board A -> board B; append-only,
                    latest-dated entry per player wins)
+.env               local secrets, **gitignored, never committed** — `ESPN_S2` / `ESPN_SWID`
+                   (browser cookies for the ESPN draft feed) + `ESPN_LEAGUE_ID`. Credentials
+                   never go in config/, which IS committed. See "Draft room" below.
 src/fantasy_nba/
   config.py        paths + config loading
   scoring.py       stat line -> fantasy points engine
@@ -70,6 +73,24 @@ src/fantasy_nba/
     breakout.py, rookies.py, darko.py, value.py  breakout flag, rookie model (rejected),
                    DARKO overlay, VOR
     backtest.py, eval_movers.py  no-leakage backtest + mover-segmented eval
+  draft/           the draft room (Step 19; UI at /room) — the layer that runs *during* the
+                   draft rather than producing a board and stopping:
+    feed.py        where picks come from: the `DraftFeed` protocol + `ManualFeed` (the
+                   shipped default and draft-night fallback) / `EspnPollFeed` (the real
+                   league) / `FixtureFeed` (recorded payloads, for tests)
+    ids.py         ESPN <-> NBA player-id join (normalized names + injuries.ALIASES; 96.8%
+                   measured) and ESPN `eligibleSlots` = real PG/SG/SF/PF/C eligibility, the
+                   one place in the repo that knows a player is SG *and* SF (models/value.py
+                   parks eligibility at guard/big)
+    live.py        `DraftState` (rebuildable from the pick list; undo = pop + rebuild) and
+                   `live_replacement` / `live_board`: replacement level recomputed from the
+                   *actual* remaining pool and *actual* remaining league-wide slot demand.
+                   **`live_vor` ships informational** — measured 2026-07-16, it ranks ~identically
+                   to plain fpts/g (Spearman 0.99) for ~110 of 130 picks and only bites in the
+                   endgame (0.94 at pick 125). value.py's caveat holds: one scoring dimension,
+                   3 UTIL slots, and 201/353 players multi-eligible ⇒ slots rarely bind
+    (api/draft.py) the room's endpoints: one server-side session holds the picks, so the
+                   source toggle is safe mid-draft and undo is just a pop
   api/             FastAPI backend for the web UI (scripts/serve.py): boards with tier
                    breaks, ROS snapshots, player pages, dataset browser, and the
                    analyst-proposal review panel (same code paths as the CLI tools)
@@ -143,7 +164,8 @@ data/              raw/ and processed/ caches (gitignored)
                    bbm_notes.csv = the extracted per-player fact ledger
 docs/              design docs (see the documentation map above)
 tests/             unit tests: scoring, model arithmetic, as-of engine, absorption,
-                   Stage-7 infra (no-leakage / determinism pins)
+                   Stage-7 infra (no-leakage / determinism pins), draft room (ESPN payload
+                   traps + the replacement-level invariant)
 ```
 
 ## Quick start
@@ -227,6 +249,11 @@ Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season 
   `config/analyst_proposals.yaml` entry with rationale, triangulation, and its live
   board impact; approve/reject writes only that entry's `status:` line (comments
   preserved), **Promote** runs the `apply_proposals.py --promote` code path (idempotent).
+- **Draft Room** — the live draft (Step 19; see "Draft room" below). Manual/ESPN source
+  toggle, the board minus drafted players, your roster's unfilled slots via ESPN eligibility
+  (the useful signal — orthogonal to value), all ten teams' composition with descriptive risk,
+  and a `live_vor` column that is **informational**: it re-ranks almost identically to fpts/g
+  until the endgame (see the layout note above).
 - **Data** — browse the raw parquet caches (season stats, game logs, bio, rosters, …).
 
 Frontend dev loop: `python scripts/serve.py` + `cd frontend && npm run dev` (Vite on
@@ -234,6 +261,72 @@ Frontend dev loop: `python scripts/serve.py` + `cd frontend && npm run dev` (Vit
 synthetic, schema-faithful cache (marked with `data/raw/FIXTURE_DATA.marker`; the UI
 shows a "synthetic data" badge; it refuses to touch a real cache). The legacy Streamlit
 explorer (`python -m streamlit run scripts/explore.py`) still works.
+
+## Draft room (Step 19 — `src/fantasy_nba/draft/`)
+
+The live-draft layer: picks arrive, drafted players leave the board, and replacement level is
+recomputed from the *actual* remaining pool and the *actual* remaining slot demand across the
+league. Open it at **`/room`** in the web app (`python scripts/serve.py`).
+
+**Status: the board + composition views are built and verified.** The prescriptive layer
+(H2H week-win simulator, "take player X") is **not** built and is gated — see
+`docs/implementation-plan.md` Phase 7. The room reports *composition*, not advice: what each
+team has, what it still can't fill, and how much injury risk it carries.
+
+The view carries a **Manual / ESPN source toggle**, switchable mid-draft: picks live
+server-side, so if the ESPN poller stalls on the night you flip to Manual and lose nothing.
+Manual is the default. Its one dependency is a single **Connect ESPN** click at any point
+before the draft — ESPN is the only source of slot eligibility, and the resulting map is
+cached to `data/processed/espn_player_map.parquet`, after which manual mode runs fully
+offline. Without it there are no positions, so no positional scarcity (the UI says so rather
+than pretending).
+
+**ESPN access.** The feed reads a private league, so it needs two browser cookies. Put them in
+`.env` at the repo root (**gitignored** — never in `config/`, which is committed):
+
+```
+ESPN_S2=<long URL-encoded value>      # F12 > Application > Cookies > fantasy.espn.com
+ESPN_SWID={<guid, braces included>}
+ESPN_LEAGUE_ID=507458037
+```
+
+ESPN session cookies expire — if a call 401s, re-harvest them from the browser before
+concluding the league is gone.
+
+**ESPN is the authority; `league.yaml` is the fallback.** League id, team ids, team count,
+roster slots and pick order all drift as members join, so read them live rather than trusting
+a cached value:
+
+```python
+s = feed.league_settings()      # size / slot_counts / pick_order / draft_type / draft_date
+s.order_is_placeholder          # True = ESPN's sorted default; the order is not yet drawn
+```
+
+Pick order is the sharp edge: ESPN seeds it with sorted team ids and randomizes shortly before
+the draft, so **never cache it** — a stale order returns confident nonsense, whereas no order
+makes `picks_until_next()` return `None` honestly. Re-verification is on the standing calendar
+(`docs/implementation-plan.md` 19.1b, mid-Oct, before the dual freeze — a league resize
+re-prices the whole board through replacement level).
+
+```python
+from fantasy_nba.draft import EspnPollFeed, build_player_map, DraftState
+from fantasy_nba.draft.live import live_board
+
+feed = EspnPollFeed(league_id=507458037, season=2027)   # season = the ENDING year
+picks, teams = feed.poll(), feed.team_ids()
+pmap = build_player_map(feed.player_universe(), season_stats, season="2025-26")
+state = DraftState(picks=picks, my_team_id=3, league=league, team_ids=teams,
+                   eligible_of=pmap.eligible_of, to_nba=pmap.to_nba)
+live_board(state, board)        # board minus drafted, + live_vor / live_repl / live_rank
+```
+
+`ManualFeed` (type the picks) is the shipped default and the draft-night fallback: it needs no
+network and takes a pick instantly if the ESPN poller stalls. Three ESPN behaviours are load-
+bearing and are pinned by tests — the API host is `lm-api-reads.fantasy.espn.com` (the old
+`fantasy.espn.com/apis/v3/...` returns **HTTP 200 with HTML**, so a bare status check
+silently "succeeds"); an undrafted league returns a **full pre-allocated pick array** of
+`playerId = -1` placeholders; and `teamId` is **not** a contiguous `1..N` index. Details in
+`docs/implementation-plan.md` Step 19.1.
 
 ## Configuring scoring
 

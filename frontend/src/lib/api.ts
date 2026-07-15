@@ -122,6 +122,81 @@ export interface ProposalsResponse {
   counts: Record<string, number>;
 }
 
+// ------------------------------------------------------------------- draft room
+export interface DraftBoardRow {
+  live_rank: number;
+  rank: number;
+  PLAYER_ID: number;
+  PLAYER_NAME: string;
+  TEAM_ABBREVIATION: string | null;
+  positions: string[];
+  fpts_pg: number;
+  live_vor: number;
+  live_repl: number;
+  fpts_p10: number;
+  fpts_median: number;
+  fpts_p90: number;
+  risk: number;
+  adp?: number | null;
+}
+
+export interface RosterPlayer {
+  player_id: number;
+  name: string;
+  positions: string[];
+  fpts_pg: number | null;
+  risk: number | null;
+  fpts_p10: number | null;
+  fpts_median: number | null;
+  chronic: number;
+}
+
+export interface RosterPanel {
+  team_id: number;
+  is_me: boolean;
+  players: RosterPlayer[];
+  unfilled: Record<string, number>;
+  n_chronic: number;
+  mean_risk: number | null;
+  sum_fpts_pg: number;
+}
+
+export interface DraftSettings {
+  size: number;
+  slot_counts: Record<string, number>;
+  pick_order: number[];
+  draft_type: string;
+  draft_date: number | null;
+  seconds_per_pick: number;
+  /** ESPN seeds pickOrder sorted and randomizes before the draft — true = not yet drawn. */
+  order_is_placeholder: boolean;
+  is_scheduled: boolean;
+}
+
+export interface DraftStateResponse {
+  source: "manual" | "espn";
+  sources: Record<string, string>;
+  league_id: string;
+  season: number;
+  my_team_id: number;
+  team_ids: number[];
+  settings: DraftSettings | null;
+  espn_error: string | null;
+  espn_ready: boolean;
+  /** false = no ESPN map cached yet, so no slot eligibility and no positional scarcity. */
+  has_positions: boolean;
+  /** true = team ids are 1..N stand-ins, not ESPN's real (non-contiguous) ids. */
+  synthetic_teams: boolean;
+  n_picks: number;
+  picks: { overall: number; team_id: number; player_id: number }[];
+  /** null when the draft order isn't known — never fabricated (survival keys off it). */
+  picks_until_next: number | null;
+  on_the_clock: number | null;
+  replacement: Record<string, number>;
+  rosters: RosterPanel[];
+  board: DraftBoardRow[];
+}
+
 export interface DatasetPage {
   name: string;
   columns: string[];

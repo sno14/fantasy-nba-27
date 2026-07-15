@@ -131,6 +131,43 @@ special-case handling.
       + the Step-12 nightly pipeline with status overrides.
 
 ### Stage 5 — Scoring & delivery
+- [ ] **Live draft room (Step 19 — implementation-plan Phase 7; in progress, 19.1–19.3 done
+      2026-07-15).** The named gap (user, 2026-07-15): every artefact here ends at "here is a
+      board" and nothing helps during the draft itself. Link the live ESPN draft so picks
+      remove players and re-rank the remainder; read all ten rosters to surface construction
+      (slot feasibility via ESPN `eligibleSlots` — which also closes the platform-eligibility
+      hole `models/value.py` parks) and drive a shortlist from **live** replacement level ×
+      ADP survival × Δ expected-weeks-won. Judged product-style (no ledger entry) **except**
+      the H2H variance layer (19.4 below), which carries a real coverage gate.
+  - [x] **19.1–19.3 (`src/fantasy_nba/draft/`): feed adapter + ID join + live board.**
+        Verified end-to-end against the real ESPN league (507458037): 130 picks parsed, ID
+        join 96.8%, draft order recovered, replacement flat at ~29.1 fpts/g through pick 90
+        on a board-order draft. **The league is live at season 2027** — it *is* the 2026-27
+        league, so `EspnPollFeed` is real, not a stub.
+  - [x] **19.7 the room itself (`api/draft.py` + `views/DraftRoom.tsx` at `/room`), shipped
+        2026-07-16.** Manual/ESPN source toggle switchable mid-draft (picks live server-side,
+        so a stalled poller costs nothing); board minus drafted players; slot feasibility from
+        ESPN eligibility; all-team composition with descriptive risk. Driven in a browser.
+  - [x] **🔑 FINDING (2026-07-16) — live VOR does NOT escape value.py's caveat; `live_vor`
+        ships informational.** The step was built on "static VOR barely reorders, but live VOR
+        will." Measured on the real league: `spearman(live_vor, fpts_pg)` = 0.995/0.994/0.992/
+        0.991/**0.943** at 0/40/80/110/125 picks — i.e. ~identical to plain fpts/g for ~110 of
+        130 picks, useful only in the **endgame**. Mechanism: **multi-eligibility** — 201/353
+        ESPN players fill 2+ slots, so slots rarely bind and per-slot replacement spread is
+        ≈2.3 fpts/g. An earlier claim of a C-26.7/PF-34.9 scarcity spread was an **artefact**
+        of a bug (replacement took the *first* unseated player in `rank` order, which assumes
+        rank == fpts order; false on the shipped `safe` board — it was manufacturing the very
+        scarcity the step sought). ⇒ **The room's value is the live board + slot feasibility,
+        not positional VOR.** Slot feasibility is the honest form of "too many guards" and is
+        orthogonal to value.
+  - [ ] ~~19.4 variance layer · 19.5 H2H week-win simulator · 19.6 prescriptive shortlist~~
+        **descoped 2026-07-16 (user):** the room reports composition and a human decides.
+        Specs stay in implementation-plan Phase 7 as the re-arm. If ever revived, the two
+        hard constraints stand: `SD_PG=9` is **season-total**-calibrated (~60% wider than the
+        honest per-game marginal *on purpose* — EXP-021 re-affirmed that width as load-bearing
+        for season ranges) and must never be a per-game sigma in a weekly sim; and injuries
+        must be sampled as **contiguous spells**, which is the whole reason H2H differs from
+        season totals. Nothing shipped depends on either.
 - [ ] Category-league scoring mode (z-scores / rankings) — honestly open; next-frontiers item
       (the scoring engine is swappable by design, so this is additive).
 - [x] Final ranked projections + export — **shipped (Step 15, 2026-07-10):**
@@ -183,7 +220,7 @@ decomposition refinements if the preseason gap ever re-opens.
       Monte-Carlo GP tails adopted, the GP *point estimate* rejected (the ceiling held). The
       live-news half is Step 12's `config/overrides.yaml` status caps (2026-07-10).
 
-### Stage 7 — Catching risers & fallers (the discontinuity frontier)  ← BUILD COMPLETE 2026-07-11 (every buildable step of docs/implementation-plan.md ran and is logged, Steps 0–17 incl. Phase 5; the analyst layer is live as workflow v2 — living entries via proposals→approval any time; **next build = Step 18**, the analyst-delta staleness flag + optional decay, spec'd 2026-07-12 in implementation-plan Phase 6; the rest is calendar-locked: mid-Aug schedule pull → Sept market pulls → mid-Oct analyst re-review + dual freeze (EXP-029) → opening-night cron → April 2027 scoring + EXP-020/021 re-arms)
+### Stage 7 — Catching risers & fallers (the discontinuity frontier)  ← BUILD COMPLETE 2026-07-11 (every buildable step of docs/implementation-plan.md ran and is logged, Steps 0–17 incl. Phase 5; the analyst layer is live as workflow v2 — living entries via proposals→approval any time; **Step 19 (the live draft room, implementation-plan Phase 7) SHIPPED 2026-07-16** — ESPN feed + ID join + dynamic replacement + the `/room` UI, verified against the real league; its H2H-simulator half (19.4–19.6) was **descoped by the user** the same day, so the room reports composition and a human decides. **Next build = Step 18**, the analyst-delta staleness flag + optional decay (spec'd 2026-07-12 in implementation-plan Phase 6). Step 19's remaining calendar item is the **mid-Oct 19.1b re-verification sweep + mock draft** (league id / teams / order all drift; polling latency still unproven). The rest is calendar-locked: mid-Aug schedule pull → Sept market pulls → mid-Oct analyst re-review + dual freeze (EXP-029) → opening-night cron → April 2027 scoring + EXP-020/021 re-arms)
 
 **The problem statement (user, 2026-07):** we project the stable core well but **miss the risers
 and fallers** — and capitalising on those is the entire edge of a projection system. This stage

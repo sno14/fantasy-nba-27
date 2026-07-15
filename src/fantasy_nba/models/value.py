@@ -6,13 +6,24 @@ the league's draft greedily (board order, ``teams × starting slots``) and reads
 the best player left over per position group; ``add_vor`` subtracts it.
 
 Position granularity is the allocation **guard/big** grouping (roster POSITION strings) —
-platform eligibility (ESPN's multi-slot rules) is parked per the spec (§9.7). BENCH/IR slots
-are excluded from the fill: replacement is the streaming level, i.e. the best player a team
-could pick up *after* every starting slot in the league is filled.
+platform eligibility (ESPN's multi-slot rules) is parked *here* (critique §9.7). BENCH/IR
+slots are excluded from the fill: replacement is the streaming level, i.e. the best player a
+team could pick up *after* every starting slot in the league is filled.
 
 Points-league honesty (the spec's own caveat): with one scoring dimension and 3 UTIL slots,
 VOR is close to a monotone transform of fpts/g — if it barely reorders the board, the sanity
 report says so and the column ships informational.
+
+.. note:: **The caveat above was measured and it holds (2026-07-16).** Step 19's draft room
+   re-computed replacement *live* — real ESPN ``eligibleSlots`` instead of guard/big, and the
+   actual remaining pool and slot demand after every pick — on the bet that VOR would stop
+   being a restatement of fpts/g. It did not: ``spearman(live_vor, fpts_pg)`` ≈ **0.99 through
+   ~110 of 130 picks**, diverging only in the endgame (0.94 by pick 125). Cause: **201 of 353
+   ESPN players are multi-eligible**, so slots rarely bind and per-slot replacement spread is
+   only ≈2.3 fpts/g. This module's own prescription therefore stands, for the live column too:
+   it **ships informational**. Don't re-litigate it with a fancier replacement model — the
+   constraint is the league format (one dimension, 3 UTIL), not the estimator. Detail:
+   implementation-plan Step 19.3; eligibility itself is unparked in ``draft/ids.py``.
 """
 
 from __future__ import annotations

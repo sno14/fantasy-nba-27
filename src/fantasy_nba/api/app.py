@@ -7,6 +7,8 @@ Routes (all JSON, under /api):
   player/{id}              one player: board-B row, career per-game history, minutes logs
   datasets / datasets/{n}  raw parquet browser (paged, filterable)
   proposals                analyst-proposal review panel (+ status PATCH + promote POST)
+  draft/*                  the live draft room (Step 19): state / connect / source / pick /
+                           undo / refresh — manual or ESPN feed, switchable mid-draft
 
 The built frontend (frontend/dist) is served from "/" when present, with an SPA fallback,
 so one process serves the whole app. During frontend dev, Vite proxies /api here instead.
@@ -31,6 +33,7 @@ from ..models.analyst import apply_overrides, name_key, parse_overrides
 from ..models.uncertainty import rank_board
 from ..scoring import load_scoring
 from . import boards
+from .draft import router as draft_router
 
 PROPOSALS_PATH = CONFIG_DIR / "analyst_proposals.yaml"
 LEAGUE_PATH = CONFIG_DIR / "league.yaml"
@@ -52,6 +55,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# Draft room (Step 19). Registered before the SPA static mount so /api/draft/* wins.
+app.include_router(draft_router)
 
 
 def _records(df: pd.DataFrame) -> list[dict]:
