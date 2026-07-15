@@ -173,6 +173,48 @@ def test_slot_demand_counts_the_whole_league_before_any_pick():
     assert total == 3 * 3                         # 3 teams x (PG + C + UTIL)
 
 
+def test_demand_counts_unnamed_teams():
+    """Regression pin #2 (found by the UI, 2026-07-16). Demand needs a team COUNT, not team
+    IDs. Before ESPN is connected we cannot name a single team, but league.yaml says how many
+    are competing — counting only named teams made replacement collapse to "best player
+    available" (a 56.6 fpts/g "waiver level" on an untouched board)."""
+    st = live.DraftState(picks=[], my_team_id=0, league=_league(), team_ids=[])   # nothing known
+    assert st.all_team_ids == []          # cannot name any team...
+    assert st.n_teams == 3                # ...but the league still has three
+    assert st.total_demand() == {"PG": 3, "C": 3, "UTIL": 3}   # full slate x 3 teams
+
+
+def test_demand_mixes_named_and_unnamed_teams():
+    st = _state(team_ids=(15,))           # only one of the league's 3 teams is named
+    st.picks.append(feed.Pick(overall=1, team_id=15, espn_player_id=1))  # a PG to team 15
+    d = st.total_demand()
+    assert d["PG"] == 2   # team 15's PG filled; the 2 unnamed teams still need one each
+    assert d["C"] == 3 and d["UTIL"] == 3
+
+
+def test_replacement_is_sane_on_an_untouched_board():
+    """The bug as the user would have seen it: with no picks and no ESPN, replacement must be
+    the level past the league's FULL starting demand — not the best player on the board."""
+    board = _board(n=30)
+    # Every player fills every slot, so demand-counting is the only thing under test.
+    st = live.DraftState(picks=[], my_team_id=0, league=_league(), team_ids=[],
+                         eligible_of={i: {"PG", "C"} for i in range(1, 31)})
+    repl = live.live_replacement(st, board)["any"]
+    assert repl < board["fpts_pg"].max(), "must not degenerate to the best player available"
+    # 3 teams x 3 starting slots (PG+C+UTIL) = 9 seated, so #10 (index 9) is the wire.
+    assert repl == pytest.approx(board["fpts_pg"].iloc[9])
+
+
+def test_replacement_respects_unfillable_slots():
+    """The complement: if nobody can fill a slot, that slot's demand never consumes players.
+    An all-PG pool leaves the 3 C slots open, so only 3 PG + 3 UTIL = 6 seat and #7 is the
+    wire — not #10. Position eligibility is a real constraint, not decoration."""
+    board = _board(n=30)
+    st = live.DraftState(picks=[], my_team_id=0, league=_league(), team_ids=[],
+                         eligible_of={i: {"PG"} for i in range(1, 31)})
+    assert live.live_replacement(st, board)["any"] == pytest.approx(board["fpts_pg"].iloc[6])
+
+
 def test_all_team_ids_falls_back_to_observed_when_not_supplied():
     st = live.DraftState(picks=[feed.Pick(overall=1, team_id=9, espn_player_id=1)],
                          my_team_id=15, league=_league())
@@ -311,6 +353,63 @@ def test_replacement_is_flat_when_the_draft_follows_board_order():
                                   espn_player_id=i))
         assert live.live_replacement(st, board)["any"] == pytest.approx(baseline), (
             f"replacement drifted at pick {i} — pool and demand must drain together")
+
+
+def test_multi_eligible_player_sets_replacement_for_every_slot_he_fills():
+    """User's question, 2026-07-16: does a PF/C count toward BOTH PF and C replacement?
+    Yes — he is a real alternative at either, so he levels both."""
+    board = pd.DataFrame({"PLAYER_ID": [1, 2], "rank": [1, 2], "fpts_pg": [50.0, 40.0]})
+    st = live.DraftState(
+        picks=[], my_team_id=0, team_ids=[1],
+        league={"teams": 1, "roster": {"PF": 1, "C": 1, "UTIL": 0}},
+        eligible_of={1: {"PF"}, 2: {"PF", "C"}},   # #2 is the hybrid, unseated after #1 takes PF
+    )
+    repl = live.live_replacement(st, board)
+    assert repl["PF"] == 40.0 and repl["C"] == 40.0, "the PF/C hybrid must level BOTH slots"
+
+
+def test_multi_eligibility_flattens_positional_scarcity():
+    """The consequence of the above, and the correction to an earlier false claim: when the
+    best player left is multi-eligible, the slots he covers share one replacement level.
+    Scarcity spreads come from slots he CANNOT fill."""
+    board = pd.DataFrame({"PLAYER_ID": [1, 2, 3], "rank": [1, 2, 3],
+                          "fpts_pg": [50.0, 44.0, 20.0]})
+    st = live.DraftState(
+        picks=[], my_team_id=0, team_ids=[1],
+        league={"teams": 1, "roster": {"PG": 1, "PF": 1, "C": 1}},
+        eligible_of={1: {"PG"}, 2: {"PF", "C"}, 3: {"PG"}},
+    )
+    repl = live.live_replacement(st, board)
+    # #2 seats at PF; the best unseated PF/C-eligible is nobody -> PF & C fall back to "any".
+    # #3 (PG, 20.0) is unseated and levels PG. PG is genuinely scarcer than the flexible slots.
+    assert repl["PG"] == 20.0
+    assert repl["PF"] == repl["C"], "slots covered by the same leftovers share a level"
+
+
+def test_replacement_does_not_depend_on_ranking_stance():
+    """Regression pin (bug found 2026-07-16 via the user's multi-eligibility question).
+
+    Replacement is a fact about the WIRE: given the same pool and the same demand, re-ordering
+    the board must not move it. The old code walked in `rank` order and took the FIRST unseated
+    player's fpts_pg, which silently assumed rank == fpts order. On the shipped `safe` board it
+    didn't hold, and PF read 29.09 / 34.86 / 31.49 for fpts_pg / safe / median rankings of an
+    identical pool. Now the level is the MAX over unseated eligibles, so a permutation that
+    seats the same players yields the same level.
+    """
+    ids, fpts = list(range(1, 13)), [50.0 - 2 * i for i in range(12)]
+    elig = {i: ({"PG"} if i % 2 else {"C"}) for i in ids}
+    league = {"teams": 1, "roster": {"PG": 1, "C": 1, "UTIL": 1}}
+
+    # Rank A = by fpts. Rank B = a permutation that seats the SAME three players (ids 1,2,3),
+    # just in a different internal order. The level must be identical.
+    a = pd.DataFrame({"PLAYER_ID": ids, "rank": range(1, 13), "fpts_pg": fpts})
+    order_b = [3, 1, 2] + ids[3:]
+    b = pd.DataFrame({"PLAYER_ID": order_b, "rank": range(1, 13),
+                      "fpts_pg": [fpts[ids.index(i)] for i in order_b]})
+    mk = lambda df: live.DraftState(picks=[], my_team_id=0, team_ids=[1], league=league,
+                                    eligible_of=elig)
+    ra, rb = live.live_replacement(mk(a), a), live.live_replacement(mk(b), b)
+    assert ra == rb, f"replacement moved with ranking order: {ra} vs {rb}"
 
 
 def test_live_board_drops_drafted_and_reranks():

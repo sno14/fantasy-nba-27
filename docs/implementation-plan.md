@@ -110,7 +110,7 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | 16 | 5 | Vacated-minutes absorption + live OUT-redistribution | EXP-030 | ☑ (`absorption.py` + `--exp030` + nightly wiring) | ☑ 2026-07-11 (adopted-tentative — MAE-neutral, treated bias −0.15→−0.01, lead +5–8d; naive gate re-ran, stays parked; re-affirm Apr 2027 short-horizon) |
 | 17 | 5 | Budget-reconciled minutes (allocation v2: depth features + soft reconciliation) | EXP-031 | ☑ (`eval_budget.py` + `learned_depth` + `reconcile_minutes`) | ☑ 2026-07-11 (both wirings rejected; 17.1 diagnostic ADOPTED — overshoot +0.18 supply, error-corr +0.38; re-run per adopted-model change) |
 | 18 | 6 | Analyst-delta lifecycle: staleness flag + optional decay (the double-count guard) | — (product) | ☐ | ☐ (spec below; runnable in a fresh session) |
-| 19 | 7 | Live draft room: ESPN feed + dynamic VOR + H2H week-win sim | — (product) | ◐ 19.1–19.3 ☑ (`draft/feed.py` · `ids.py` · `live.py`; 21 tests) | ◐ 19.1–19.3 verified end-to-end on the real league 2026-07-15 (see as-built note); **next = 19.4** (variance layer + its coverage gate) |
+| 19 | 7 | Live draft room: ESPN feed + dynamic VOR + composition views | — (product) | ☑ 19.1–19.3 + 19.7 (`draft/{feed,ids,live}.py` · `api/draft.py` · `views/DraftRoom.tsx`; 27 tests) | ☑ **shipped 2026-07-16** — verified on the real league + driven in a browser. **19.4–19.6 (the H2H simulator) descoped 2026-07-16, user decision** — see the note under Step 19 |
 
 *\*Phase-0 verdict (EXP-011, Decision Row 1, 2026-07-08): the model-pool riser reducible gap
 is +0.19 fpts/g (< 2) — preseason bias-chasing is near-done and the residual headroom is
@@ -1743,8 +1743,29 @@ This is a **product** step — no experiment gate, no ledger entry — with one 
 builds a new variance layer and carries a real calibration gate, because it is the one place
 this feature can be confidently wrong.*
 
+> ### ⚠ SCOPE: 19.4–19.6 descoped 2026-07-16 (user decision) — read before building them
+>
+> The user's call, once the cost of an honest H2H simulator was clear: *"I don't think the
+> insight layer is needed, maybe just a view of my current team composition and others."*
+> **19.1–19.3 + 19.7 shipped; the variance layer (19.4), the week-win simulator (19.5) and the
+> prescriptive shortlist (19.6) are NOT built.** Their specs stay below, unchanged, as the
+> re-arm.
+>
+> This is the same shape as the "if 19.4's gate fails" fallback the step already specced — so
+> it is a deliberate ship, not a shortcut. What the room does instead: reports **composition**
+> (slot feasibility from real ESPN eligibility, chronic-injury counts, the board's own
+> p10/median) and lets a human decide. It does **not** answer "should I take the lower-spread
+> player" — that needs the simulator, and the honest answer is format-dependent anyway
+> (variance helps an underdog, hurts a contender), so inventing a number would have been
+> worse than the silence.
+>
+> **If 19.4 is ever re-armed, the two hard-won constraints still stand:** `SD_PG=9` is
+> season-total-calibrated and must never be a per-game sigma; injuries must be sampled as
+> contiguous spells. Nothing shipped depends on either.
+
 *Scope decisions (user, 2026-07-15): (a) build the H2H week-win simulator now rather than
-shipping descriptive risk columns first; (b) ESPN access — **superseded the same day**: the
+shipping descriptive risk columns first — **reversed 2026-07-16, see the scope box above**;
+(b) ESPN access — **superseded the same day**: the
 user supplied league 507458037 and cookies, and the probe (19.1) verified the endpoint, the
 pick schema, the ID join, and `eligibleSlots` against three completed drafts. **The league is
 already live at season 2027**, so `EspnPollFeed` is a real build, not a stub. The only ESPN
@@ -1913,8 +1934,35 @@ within a day — which is how a real guard rots.
 
 ### 19.3 Live board + dynamic replacement level
 
+> **⚠ Verdict after building it (2026-07-16): this step's central premise is WRONG. The code
+> ships with the claim retracted; keep the step, drop the premise.**
+>
+> The premise below: static VOR barely reorders, but *live* VOR will, because its unknowns
+> collapse. Measured on the real league + the shipped board — `spearman(live_vor, fpts_pg)`:
+>
+> | picks made | 0 | 40 | 80 | 110 | 125 |
+> |---|---|---|---|---|---|
+> | spearman | 0.995 | 0.994 | 0.992 | 0.991 | **0.943** |
+> | top-20 disagreements | 2 | 3 | 1 | 2 | **9** |
+>
+> Live VOR ranks ~identically to plain fpts/g for ~110 of 130 picks and only earns anything in
+> the **endgame**. `value.py`'s standing caveat held; going live did not escape it.
+>
+> **Mechanism (surfaced by the user asking how a PF/C is handled): multi-eligibility.** 201 of
+> 353 ESPN players fill 2+ slots, so a slot is almost never truly scarce — per-slot
+> replacement spread ≈ **2.3 fpts/g**. Multi-eligibility *flattens* positional scarcity; an
+> earlier claim here that it created a C-26.7/PF-34.9 spread was an artefact of the
+> first-unseated bug (below), not a finding.
+>
+> Per `value.py`'s own instruction ("if it barely reorders the board, the sanity report says so
+> and the column ships informational"), **`live_vor` ships informational.** What the room is
+> actually worth: (1) drafted players leave the board; (2) **slot feasibility** — what you can
+> no longer fill, orthogonal to value, and the honest form of "do I have too many guards";
+> (3) live VOR in the last rounds.
+
 Removing drafted players and re-ranking is trivial (the board is already ranked and tiered).
-The part that earns its keep is **replacement level recomputed after every pick**.
+The original bet was that **replacement level recomputed after every pick** would be the part
+that earns its keep — see the retraction above.
 
 `value.replacement_level` today greedily fills a hypothetical league; the module's own
 docstring concedes that in a one-dimension points league with 3 UTIL slots, VOR ends up
@@ -2198,6 +2246,62 @@ or explicitly left stubbed with the manual path as the shipped default.
 > *Caveat on that verification:* replaying the **2025 draft** against the **2026-27 board** is
 > an anachronism (~30 of the 2026-27 top-100 went undrafted in 2025), so its replacement curve
 > rises and is not evidence of anything. Coherent board-order drafts are the correct harness.
+
+> **As built — 19.7 + the composition views (2026-07-16).** `src/fantasy_nba/api/draft.py`
+> (one server-side session; state/connect/source/config/refresh/pick/undo/reset) +
+> `frontend/src/views/DraftRoom.tsx` at `/room`. 27 tests; suite 127 green; tsc clean; driven
+> in a real browser (Playwright) with zero console errors.
+>
+> **Two more bugs of the same family, both found by looking at the UI — not by tests.** Both
+> were *demand under-counting*, the third and fourth instance of the bug fixed in 19.3:
+>
+> 1. **Replacement 56.6 fpts/g on an untouched board.** Pre-connect, `team_ids` is empty, so
+>    zero demand was counted and replacement degenerated to "best player available". **The
+>    insight: demand needs a team COUNT, not team ids** — `league.yaml` says ten teams compete
+>    even when we cannot name one. Fix: `DraftState.n_teams` + `total_demand()`, where each
+>    unnamed team contributes a full slate. Replacement pre-connect is now board #101 = 29.09,
+>    exactly as it should be.
+> 2. **Replacement 41.98 with no position data.** Applying "unknown position ⇒ UTIL-only"
+>    (value.py's rule, correct per-player) to the *whole league* filled only the 30 UTIL slots.
+>    Fix: `DraftState.no_positions` ⇒ `_fills` unconstrained — with zero information, degrade
+>    to value.py's classic league-wide fill rather than invent a constraint.
+>
+> Also fixed from the screenshot: manual mode with no ESPN had no clock, so **every pick fell
+> to my own roster** and the league panel showed one team — `_synthetic_teams` gives 1..N
+> stand-ins and a plain snake, flagged in the UI as stand-ins (`synthetic_teams`).
+>
+> **The standing lesson, now seen four times in one step: this bug class does not surface in
+> unit tests** — the synthetic leagues are small and fully-specified, so demand is never
+> unknown. It surfaces the moment you *look at a number a human would read*. The
+> tests-plus-real-data-plus-browser ladder caught what any one rung alone did not.
+>
+> **Fifth instance, and the worst — found by a user question, not by any rung (2026-07-16).**
+> Asked whether a PF/C contributes to both PF and C replacement, the answer was yes (correct),
+> but auditing it exposed that `live_replacement` walked the pool in `rank` order and recorded
+> the **first** unseated player's `fpts_pg`. That silently assumes `rank == fpts_pg order`. The
+> shipped board ranks by the risk-adjusted **`safe`** stance, where it does not hold, so the
+> level was incoherent — a `safe` ordering priced in fpts/g — and stance-dependent: PF read
+> **29.09 / 34.86 / 31.49** for fpts_pg / safe / median rankings of an *identical pool*.
+> Replacement is a fact about the wire and must not move when we change our mind about
+> ranking. Fixed: seat in draft order, then level each slot at the **max** fpts_pg among
+> unseated eligibles. PF's cross-stance spread fell 5.8 → 0.98. Pinned by
+> `test_replacement_does_not_depend_on_ranking_stance`.
+>
+> That fix is what revealed the premise was wrong (the retraction under 19.3): with the level
+> computed honestly, per-slot spread collapses to ~2.3 fpts/g and `live_vor` ≈ `fpts_pg`.
+> **The bug had been manufacturing the very positional scarcity the step was built to find.**
+> Standing lesson: when a new signal looks impressively strong, suspect the instrument first —
+> and prefer a *property* test (stance-invariance) over admiring the output.
+>
+> `PlayerMap.save/load` caches ESPN identity + eligibility to
+> `data/processed/espn_player_map.parquet` — without it "manual needs no network" was false,
+> since ESPN is the only source of slot eligibility. Connect once, ever.
+>
+> *Non-bugs chased, recorded so the next session doesn't repeat them:* `app.routes`
+> introspection shows no routes under FastAPI 0.139 even though the endpoints serve fine (a
+> control test proved the introspection wrong, not the code); and names look like mojibake
+> through a Windows cp1252 pipe while the API emits correct UTF-8 (`b"Luka Don\xc4\x8di\xc4\x87"`).
+> **The tooling lied twice; the code was right both times.**
 
 *Ordering: 19.1 → 19.2 → 19.3 (a useful tool already exists at this point — live board +
 dynamic VOR, no sim) → 19.4 **gate** → 19.5 → 19.6. If 19.4's gate fails, 19.3 still ships and

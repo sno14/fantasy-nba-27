@@ -11,6 +11,7 @@ import {
 import { Meta, useApi } from "./lib/api";
 import { Chip } from "./components/ui";
 import DraftBoard from "./views/DraftBoard";
+import DraftRoom from "./views/DraftRoom";
 import Ros from "./views/Ros";
 import Player from "./views/Player";
 import Compare from "./views/Compare";
@@ -103,6 +104,7 @@ function CompareTray() {
 // ---------------------------------------------------------------------------- nav
 const NAV = [
   { to: "/", label: "Draft Board", icon: "M4 6h16M4 10h16M4 14h10M4 18h7" },
+  { to: "/room", label: "Draft Room", icon: "M12 3v4M5 8h14l-1.5 11a2 2 0 01-2 2h-7a2 2 0 01-2-2L5 8zM9 12v5M15 12v5" },
   { to: "/ros", label: "ROS", icon: "M4 17l5-5 4 3 7-8M16 7h4v4" },
   { to: "/players", label: "Players", icon: "M12 12a4 4 0 100-8 4 4 0 000 8zM4 20a8 8 0 0116 0" },
   { to: "/compare", label: "Compare", icon: "M8 4v16M16 4v16M4 9h8M12 15h8" },
@@ -181,6 +183,7 @@ function Shell() {
           <div className="mx-auto max-w-[1400px] px-6 py-5">
             <Routes>
               <Route path="/" element={<DraftBoard />} />
+              <Route path="/room" element={<DraftRoom />} />
               <Route path="/ros" element={<Ros />} />
               <Route path="/players" element={<Player />} />
               <Route path="/players/:id" element={<Player />} />

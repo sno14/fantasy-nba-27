@@ -1192,18 +1192,21 @@ injury feed, the home-grown online skill layer (model-foundation §3C). **Phase 
 OUT-redistribution adopted-tentative (nightly layer live in `update_daily.py`; naive gate
 re-ran, stays parked; re-affirm at short horizons April 2027) · **EXP-031** rejected (both
 wirings) with the **17.1 budget diagnostic adopted** (`eval_budget.py` — overshoot +0.18 of
-supply, error-corr +0.38; re-run at every adopted-model change). **Next build: Step 19**
-(implementation-plan **Phase 7**, added 2026-07-15) — the **live draft room**; product step,
-no EXP number. 19.1–19.3 (ESPN feed + ID join + dynamic replacement) shipped 2026-07-15,
-verified end-to-end on the real league. **19.4 is next and is the one sub-step with a real
-gate:** the H2H weekly variance layer must hit weekly-total p10–p90 coverage ∈ [78,88]% or
-19.5–19.6 don't ship. Note for that build — `SD_PG=9` is **season-total**-calibrated (~60%
-wider than the honest per-game marginal *on purpose*; EXP-021 re-affirmed that width as
-load-bearing for season ranges) and must **never** be used as a per-game sigma in a weekly
-sim; `σ_level` there comes from EXP-021's *rejected* residual-CDF artefact, which is the
-honest marginal and is exactly right for this different job (the EXP-021 verdict for the
-season board stands untouched). Step 18 (Phase 6, analyst-delta staleness) follows 19 — it
-serves the nightly loop, which can't pay off before opening night, whereas the draft is ~Oct.
+supply, error-corr +0.38; re-run at every adopted-model change). **Step 19** (the live draft
+room, implementation-plan **Phase 7**) **SHIPPED 2026-07-16** — product step, no EXP number:
+ESPN feed + ID join + dynamic replacement + the `/room` UI, verified against the real league
+and driven in a browser. Its H2H-simulator half (19.4–19.6) was **descoped by the user** the
+same day — the room reports composition and a human decides; the specs remain as the re-arm.
+**If 19.4 is ever revived, two constraints stand:** `SD_PG=9` is **season-total**-calibrated
+(~60% wider than the honest per-game marginal *on purpose*; EXP-021 re-affirmed that width as
+load-bearing for season ranges) and must **never** be a per-game sigma in a weekly sim — its
+`σ_level` would come from EXP-021's *rejected* residual-CDF artefact, which is the honest
+marginal and exactly right for that different job (the EXP-021 verdict for the season board
+stands untouched); and injuries must be sampled as contiguous spells. **Next build: Step 18**
+(Phase 6, spec'd 2026-07-12) — the analyst-delta staleness flag + optional decay, the
+double-count guard for the living analyst layer; product step, no EXP number, runnable in a
+fresh session. Step 19's one open calendar item is the **mid-Oct 19.1b sweep + mock draft**
+(league id / teams / pick order all drift; ESPN polling latency remains unproven).
 Otherwise everything waits on the standing calendar
 (mid-Aug schedule → Sept market → mid-Oct analyst re-review + dual freeze →
 opening-night cron → April 2027 scoring + re-arms)._

@@ -31,11 +31,16 @@ from __future__ import annotations
 import re
 import unicodedata
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import pandas as pd
 
+from ..config import PROCESSED_DIR
 from ..models.injuries import ALIASES
 from .feed import POSITION_SLOTS, SLOT_NAMES
+
+#: Cached ESPN identity + eligibility. Lets the manual feed run with no network at all.
+MAP_PATH = PROCESSED_DIR / "espn_player_map.parquet"
 
 _SUFFIX_RE = re.compile(r"\s+(jr|sr|ii|iii|iv|v)$")
 _PUNCT_RE = re.compile(r"[.'`’]")
@@ -89,6 +94,33 @@ class PlayerMap:
             [{"espn_player_id": e, "PLAYER_ID": n, "espn_name": self.names.get(n, ""),
               "eligible": "|".join(sorted(self.eligible_of.get(n, ())))}
              for e, n in sorted(self.to_nba.items())]
+        )
+
+    def save(self, path: Path | None = None) -> Path:
+        path = Path(path) if path else MAP_PATH
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.to_frame().to_parquet(path, index=False)
+        return path
+
+    @classmethod
+    def load(cls, path: Path | None = None) -> "PlayerMap | None":
+        """The cached map, or ``None``.
+
+        This is what makes ``ManualFeed`` genuinely offline: ESPN is the only source of slot
+        eligibility, so without a cache "manual mode needs no network" would be a lie — you
+        would have no positions, hence no slot feasibility and a meaningless replacement
+        level. Connect once (any time before the draft) and the map persists.
+        """
+        path = Path(path) if path else MAP_PATH
+        if not path.exists():
+            return None
+        df = pd.read_parquet(path)
+        return cls(
+            to_nba={int(r.espn_player_id): int(r.PLAYER_ID) for r in df.itertuples()},
+            eligible_of={int(r.PLAYER_ID): set(str(r.eligible).split("|")) - {""}
+                         for r in df.itertuples()},
+            names={int(r.PLAYER_ID): str(r.espn_name) for r in df.itertuples()},
+            unmatched=[],  # not persisted: it's a diagnostic of one pull, not identity
         )
 
 

@@ -73,8 +73,8 @@ src/fantasy_nba/
     breakout.py, rookies.py, darko.py, value.py  breakout flag, rookie model (rejected),
                    DARKO overlay, VOR
     backtest.py, eval_movers.py  no-leakage backtest + mover-segmented eval
-  draft/           the draft room (Step 19) — the layer that runs *during* the draft rather
-                   than producing a board and stopping:
+  draft/           the draft room (Step 19; UI at /room) — the layer that runs *during* the
+                   draft rather than producing a board and stopping:
     feed.py        where picks come from: the `DraftFeed` protocol + `ManualFeed` (the
                    shipped default and draft-night fallback) / `EspnPollFeed` (the real
                    league) / `FixtureFeed` (recorded payloads, for tests)
@@ -84,7 +84,13 @@ src/fantasy_nba/
                    parks eligibility at guard/big)
     live.py        `DraftState` (rebuildable from the pick list; undo = pop + rebuild) and
                    `live_replacement` / `live_board`: replacement level recomputed from the
-                   *actual* remaining pool and *actual* remaining league-wide slot demand
+                   *actual* remaining pool and *actual* remaining league-wide slot demand.
+                   **`live_vor` ships informational** — measured 2026-07-16, it ranks ~identically
+                   to plain fpts/g (Spearman 0.99) for ~110 of 130 picks and only bites in the
+                   endgame (0.94 at pick 125). value.py's caveat holds: one scoring dimension,
+                   3 UTIL slots, and 201/353 players multi-eligible ⇒ slots rarely bind
+    (api/draft.py) the room's endpoints: one server-side session holds the picks, so the
+                   source toggle is safe mid-draft and undo is just a pop
   api/             FastAPI backend for the web UI (scripts/serve.py): boards with tier
                    breaks, ROS snapshots, player pages, dataset browser, and the
                    analyst-proposal review panel (same code paths as the CLI tools)
@@ -243,6 +249,11 @@ Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season 
   `config/analyst_proposals.yaml` entry with rationale, triangulation, and its live
   board impact; approve/reject writes only that entry's `status:` line (comments
   preserved), **Promote** runs the `apply_proposals.py --promote` code path (idempotent).
+- **Draft Room** — the live draft (Step 19; see "Draft room" below). Manual/ESPN source
+  toggle, the board minus drafted players, your roster's unfilled slots via ESPN eligibility
+  (the useful signal — orthogonal to value), all ten teams' composition with descriptive risk,
+  and a `live_vor` column that is **informational**: it re-ranks almost identically to fpts/g
+  until the endgame (see the layout note above).
 - **Data** — browse the raw parquet caches (season stats, game logs, bio, rosters, …).
 
 Frontend dev loop: `python scripts/serve.py` + `cd frontend && npm run dev` (Vite on
@@ -255,8 +266,20 @@ explorer (`python -m streamlit run scripts/explore.py`) still works.
 
 The live-draft layer: picks arrive, drafted players leave the board, and replacement level is
 recomputed from the *actual* remaining pool and the *actual* remaining slot demand across the
-league. **Status: 19.1–19.3 built and verified; the H2H week-win simulator (19.4–19.6) is not
-built yet** — its spec and coverage gate live in `docs/implementation-plan.md` Phase 7.
+league. Open it at **`/room`** in the web app (`python scripts/serve.py`).
+
+**Status: the board + composition views are built and verified.** The prescriptive layer
+(H2H week-win simulator, "take player X") is **not** built and is gated — see
+`docs/implementation-plan.md` Phase 7. The room reports *composition*, not advice: what each
+team has, what it still can't fill, and how much injury risk it carries.
+
+The view carries a **Manual / ESPN source toggle**, switchable mid-draft: picks live
+server-side, so if the ESPN poller stalls on the night you flip to Manual and lose nothing.
+Manual is the default. Its one dependency is a single **Connect ESPN** click at any point
+before the draft — ESPN is the only source of slot eligibility, and the resulting map is
+cached to `data/processed/espn_player_map.parquet`, after which manual mode runs fully
+offline. Without it there are no positions, so no positional scarcity (the UI says so rather
+than pretending).
 
 **ESPN access.** The feed reads a private league, so it needs two browser cookies. Put them in
 `.env` at the repo root (**gitignored** — never in `config/`, which is committed):
