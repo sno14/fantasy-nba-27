@@ -7,6 +7,15 @@ data/processed/
 # Manual-data exception (Step 9c): tiny, static, hand-curated — the repo's source of truth.
 !data/manual/*.csv
 
+# Secrets (Step 19 / the ESPN draft feed). NOTE: config/ is COMMITTED — never put
+# credentials there. espn_s2 + SWID are live session cookies for a personal ESPN/Disney
+# account: they authenticate as the user, so they are read from the environment or this
+# gitignored file only, are never logged, and are never echoed into a report or a payload
+# fixture (scrub them when recording tests/fixtures/espn_draft_*.json).
+.env
+.env.*
+espn_auth.json
+
 # Python
 __pycache__/
 *.py[cod]

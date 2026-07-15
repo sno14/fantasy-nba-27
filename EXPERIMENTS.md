@@ -1192,9 +1192,18 @@ injury feed, the home-grown online skill layer (model-foundation §3C). **Phase 
 OUT-redistribution adopted-tentative (nightly layer live in `update_daily.py`; naive gate
 re-ran, stays parked; re-affirm at short horizons April 2027) · **EXP-031** rejected (both
 wirings) with the **17.1 budget diagnostic adopted** (`eval_budget.py` — overshoot +0.18 of
-supply, error-corr +0.38; re-run at every adopted-model change). **Next build: Step 18**
-(implementation-plan Phase 6, spec'd 2026-07-12) — the analyst-delta staleness flag +
-optional decay, the double-count guard for the living analyst layer; product step, no EXP
-number, runnable in a fresh session. Otherwise everything waits on the standing calendar
+supply, error-corr +0.38; re-run at every adopted-model change). **Next build: Step 19**
+(implementation-plan **Phase 7**, added 2026-07-15) — the **live draft room**; product step,
+no EXP number. 19.1–19.3 (ESPN feed + ID join + dynamic replacement) shipped 2026-07-15,
+verified end-to-end on the real league. **19.4 is next and is the one sub-step with a real
+gate:** the H2H weekly variance layer must hit weekly-total p10–p90 coverage ∈ [78,88]% or
+19.5–19.6 don't ship. Note for that build — `SD_PG=9` is **season-total**-calibrated (~60%
+wider than the honest per-game marginal *on purpose*; EXP-021 re-affirmed that width as
+load-bearing for season ranges) and must **never** be used as a per-game sigma in a weekly
+sim; `σ_level` there comes from EXP-021's *rejected* residual-CDF artefact, which is the
+honest marginal and is exactly right for this different job (the EXP-021 verdict for the
+season board stands untouched). Step 18 (Phase 6, analyst-delta staleness) follows 19 — it
+serves the nightly loop, which can't pay off before opening night, whereas the draft is ~Oct.
+Otherwise everything waits on the standing calendar
 (mid-Aug schedule → Sept market → mid-Oct analyst re-review + dual freeze →
 opening-night cron → April 2027 scoring + re-arms)._

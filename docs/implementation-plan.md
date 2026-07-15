@@ -109,7 +109,8 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | 15 | 4 | Ship: default model switch, explorer, final doc sweep | — | ☑ (`project.py` default `learned` + `--asof`; explorer: learned default, chronic GP pools, D1 columns, ROS tab) | ☑ 2026-07-10 (see as-built note under Step 15) |
 | 16 | 5 | Vacated-minutes absorption + live OUT-redistribution | EXP-030 | ☑ (`absorption.py` + `--exp030` + nightly wiring) | ☑ 2026-07-11 (adopted-tentative — MAE-neutral, treated bias −0.15→−0.01, lead +5–8d; naive gate re-ran, stays parked; re-affirm Apr 2027 short-horizon) |
 | 17 | 5 | Budget-reconciled minutes (allocation v2: depth features + soft reconciliation) | EXP-031 | ☑ (`eval_budget.py` + `learned_depth` + `reconcile_minutes`) | ☑ 2026-07-11 (both wirings rejected; 17.1 diagnostic ADOPTED — overshoot +0.18 supply, error-corr +0.38; re-run per adopted-model change) |
-| 18 | 6 | Analyst-delta lifecycle: staleness flag + optional decay (the double-count guard) | — (product) | ☐ | ☐ (next build — spec below; runnable in a fresh session) |
+| 18 | 6 | Analyst-delta lifecycle: staleness flag + optional decay (the double-count guard) | — (product) | ☐ | ☐ (spec below; runnable in a fresh session) |
+| 19 | 7 | Live draft room: ESPN feed + dynamic VOR + H2H week-win sim | — (product) | ◐ 19.1–19.3 ☑ (`draft/feed.py` · `ids.py` · `live.py`; 21 tests) | ◐ 19.1–19.3 verified end-to-end on the real league 2026-07-15 (see as-built note); **next = 19.4** (variance layer + its coverage gate) |
 
 *\*Phase-0 verdict (EXP-011, Decision Row 1, 2026-07-08): the model-pool riser reducible gap
 is +0.19 fpts/g (< 2) — preseason bias-chasing is near-done and the residual headroom is
@@ -183,7 +184,12 @@ market board already reads the right teams); **mid-Oct** = re-pull `preseason_ga
 `draft_history` **+ refresh transactions & injuries** (`pull_injuries.py --dataset transactions`
 then `--dataset injuries`) → regenerate the sheet with `--model learned_ps` →
 `analyst_triggers.py` → the analyst pass → `apply_analyst.py` → **dual freeze committed before
-opening night** (D2.3 / rule 10a); **opening night** = cron `update_daily.py`; **April 2027** =
+opening night** (D2.3 / rule 10a) **+ the Step-19 draft-room re-verification sweep (19.1b) —
+league id / team ids / size / roster slots / pick order are all mutable until draft night and
+every ESPN fact in Step 19 was measured 2026-07-15 on an undrafted league; a resize re-prices
+the whole board via replacement level, so this runs BEFORE the freeze. Run the mock draft here
+too — it is the only answer to the polling-latency question;** **opening night** = cron
+`update_daily.py`; **April 2027** =
 score EXP-029 A-vs-B + the rule-10a freeze, and EXP-020 arms when its archives reach ≥ 1 season.
 Step 13 stays archive-gated — do not log it early.
 
@@ -1724,6 +1730,482 @@ immediately useful; decay is only worth defaulting on if 18.1 shows staleness is
 
 ---
 
+# PHASE 7 — the draft room (Step 19, added 2026-07-15)
+
+*Context (user, 2026-07-15): every artefact in this repo ends at "here is a board." Nothing
+helps during the three hours that decide the season. The gap named: link the **live ESPN
+draft** so picks remove players and re-order the remainder in real time; read **what all ten
+teams have taken** to surface roster construction — at the base level positional spread, at
+the useful level risk/volatility concentration and what to target next.*
+
+*Calendar: the draft is ~Oct; the mid-Oct dual freeze (D2.3 / rule 10a) is the hard deadline.
+This is a **product** step — no experiment gate, no ledger entry — with one exception: 19.4
+builds a new variance layer and carries a real calibration gate, because it is the one place
+this feature can be confidently wrong.*
+
+*Scope decisions (user, 2026-07-15): (a) build the H2H week-win simulator now rather than
+shipping descriptive risk columns first; (b) ESPN access — **superseded the same day**: the
+user supplied league 507458037 and cookies, and the probe (19.1) verified the endpoint, the
+pick schema, the ID join, and `eligibleSlots` against three completed drafts. **The league is
+already live at season 2027**, so `EspnPollFeed` is a real build, not a stub. The only ESPN
+unknown left is live-draft polling latency (October mock draft).*
+
+## Step 19 — live draft room
+
+### 19.1 The feed adapter (isolate the unknown)
+
+**Endpoint — VERIFIED 2026-07-15 against a real league (id 507458037), do not "correct" this
+back:**
+```
+https://lm-api-reads.fantasy.espn.com/apis/v3/games/fba/seasons/{season}/segments/0/leagues/{id}?view=mDraftDetail
+```
+`season` is the season's **ending** year (2026-27 → `2027`). Private leagues need `espn_s2` +
+`SWID` cookies.
+
+⚠ **The old host `fantasy.espn.com/apis/v3/...` is dead and fails in the worst possible way:
+it returns HTTP 200 with the SPA's HTML.** A client checking `status_code == 200` will think
+it succeeded and then fail on the parse. **Therefore: never treat 200 as success — assert
+`content-type` starts with `application/json` and raise a loud, named error otherwise.** The
+live host returns well-formed JSON errors (verified: `401 {"messages":["You are not
+authorized to view this League."]}` without cookies), so real failures are legible.
+
+**Probe results — league 507458037, run 2026-07-15 with the user's cookies. These are
+measured facts, not assumptions:**
+
+| season | name | drafted | inProgress | picks | **real** picks | size | scoringType |
+|---|---|---|---|---|---|---|---|
+| 2027 | My 2025 League | False | False | 130 | **0** | 10 | H2H_POINTS |
+| 2026 | My 2025 League | False | False | 130 | **0** | 10 | H2H_POINTS |
+| 2025 | My 2025 League | True | False | 130 | 130 | 10 | H2H_POINTS |
+| 2024 | My 2024 League | True | False | 130 | 130 | 10 | H2H_POINTS |
+| 2023 | My 2023 League | True | False | 104 | 104 | 8 | H2H_POINTS |
+
+**The league is LIVE at season 2027** — this *is* the 2026-27 league; it rolls forward and is
+already provisioned (10 teams, H2H_POINTS, 130 picks = 10 × 13 rounds). So `EspnPollFeed` can
+be developed against the real league now, and **2023/2024/2025 are three completed drafts** to
+build fixtures from and test the ID join against. `size=10` + `scoringType=H2H_POINTS`
+independently confirm `league.yaml`. 130 = 10 × 13 confirms 13 *drafted* slots (league.yaml's
+14th is IR, which isn't drafted).
+
+⚠ **TRAP — ESPN pre-allocates placeholder picks.** An undrafted season returns a **full
+130-pick array** whose entries carry `playerId = -1`. A `poll()` that diffs on `len(picks)`
+would conclude the draft is complete *before it starts*. **The feed MUST filter
+`playerId > 0`**, and read draft state from the `drafted` / `inProgress` flags — never from
+the pick count.
+
+⚠ **TRAP — `teamId` is NOT a contiguous 1..N index.** In the 10-team 2025 draft, the team
+making overall pick 1 has `teamId = 15`. Do **not** derive snake order or team position from
+`league["teams"]`; read the actual order off the picks. `DraftState.picks_until_next()` must be
+built from observed `teamId`s, not an assumed range.
+
+**Verified pick schema** (`draftDetail.picks[]`): `overallPickNumber, roundId, roundPickNumber,
+teamId, playerId, keeper, reservedForKeeper, lineupSlotId, autoDraftTypeId, bidAmount,
+nominatingTeamId, tradeLocked`. (`bidAmount`/`nominatingTeamId` ⇒ auction leagues share this
+schema; ours is a snake — ignore them.)
+
+**Still unverified — the load-bearing one:** whether `mDraftDetail` updates with usable latency
+*during* a live draft (ESPN's draft room uses its own real-time channel). The `inProgress` flag
+existing is encouraging but proves nothing about refresh rate. Only an October mock draft
+answers it. `ManualFeed` remains the shipped default until it does.
+
+Build a narrow adapter so the unknown stays in one file:
+```python
+# src/fantasy_nba/draft/feed.py
+@dataclass(frozen=True)
+class Pick:
+    overall: int; team_id: int; espn_player_id: int; keeper: bool = False
+
+class DraftFeed(Protocol):
+    def poll(self) -> list[Pick]: ...   # full pick list to date; caller diffs. Idempotent.
+```
+Three implementations: `ManualFeed` (picks entered in the UI — **the default and the
+draft-night fallback**; always works), `EspnPollFeed` (the poller — **credentials verified
+2026-07-15, build it for real**), `FixtureFeed` (replays a recorded JSON payload — how the
+tests run).
+
+**Auth:** `espn_s2` + `SWID` read from `.env` (gitignored) or the environment — never from
+`config/`, which is committed. Never log them; scrub them from any recorded fixture.
+
+**Why manual is not a consolation prize:** it makes 19.3–19.6 testable with no live draft, and
+it is what saves the draft night if the poller turns out to be laggy.
+
+**Verification ladder:** (1) `FixtureFeed` + unit tests — *pending*; (2) **completed past draft
+— ✅ DONE 2026-07-15**, see the probe table below: schema, ID join, and `eligibleSlots` all
+validated against the 2025 league with no live-draft dependency; (3) an ESPN **mock draft in
+early Oct** — *pending, and the only thing that can answer the latency question*. Record raw
+payloads to `tests/fixtures/espn_draft_*.json` as you go (cookies scrubbed).
+
+### 19.1b ⚠ The October re-verification sweep — **everything below is a snapshot that drifts**
+
+*User, 2026-07-15: "the league id and draft order and teams likely will change as new people
+are joining." Confirmed in the data the same day, so this is a standing instruction, not a
+caveat.* Every ESPN fact in this step was measured on **2026-07-15** against a league that had
+not yet drafted. **Nothing here may be trusted on draft day without re-reading it live.**
+
+**What is known to drift, and the evidence:**
+
+| Fact | Why it drifts | Detect it |
+|---|---|---|
+| **`pickOrder`** | ESPN seeds it with **sorted team ids** and randomizes shortly before the draft. Season 2027 reads `[1, 3, 8, 9, …, 15]` (sorted ⇒ **not yet drawn**); the played 2025 season reads `[15, 11, 13, 14, 8, 9, 1, 12, 3, 10]` (drawn). | `LeagueSettings.order_is_placeholder` |
+| **league id** | A fresh league for new members ⇒ a new id; 507458037 is only *this* league rolled forward. | `ESPN_LEAGUE_ID` in `.env` — never hardcode |
+| **team ids / count** | New members change both; ids are non-contiguous, so a resize is not a range change. | `EspnPollFeed.team_ids()` / `LeagueSettings.size` |
+| **roster slots** | Settings are editable until the draft. | `LeagueSettings.slot_counts` |
+| **draft date** | `None` until scheduled (2027 today) vs epoch-ms once set (2025). | `LeagueSettings.is_scheduled` |
+| **cookies** | ESPN sessions expire. | a 401 ⇒ re-harvest, do **not** conclude the league is gone |
+
+**The standing rule: ESPN is the authority, `config/league.yaml` is the fallback.** Read
+`league_settings()` live and use `slot_counts` as `league["roster"]` and `size` as
+`league["teams"]`. (They matched exactly on 2026-07-15, which is a *checkable* fact, not a
+permanent one — `test_espn_settings_are_drop_in_for_league_yaml` fails loudly if they diverge,
+which is the desired behaviour: it means the league changed and the config is stale.)
+
+**Never cache `pick_order`.** A cached order is *worse than none*: `picks_until_next()` returns
+`None` without one (honest — survival probability must not key off a fabricated number), but a
+stale order returns confident nonsense all night.
+
+**The mid-Oct sweep checklist (run in this order):**
+1. Re-harvest `espn_s2` / `SWID`; confirm `ESPN_LEAGUE_ID` is *this season's* league.
+2. `league_settings()` → assert `size` + `slot_counts` still match `league.yaml`; if not,
+   **update `league.yaml`, then recompute VOR** — replacement level is a direct function of
+   `teams × starting slots`, so a 10 → 12 team league re-prices the entire board.
+3. `team_ids()` → confirm count == `size`.
+4. Confirm `order_is_placeholder` is still `True`; if the draw has happened, capture the real
+   order — **and re-read it again on draft day.**
+5. Run an ESPN **mock draft** — the only thing that answers the polling-latency question
+   (rung 3 of the ladder). Record payloads to `tests/fixtures/` (cookies scrubbed).
+
+### 19.2 ID join + slot eligibility
+
+ESPN player IDs ≠ NBA stats `PLAYER_ID`. Join on name via the existing alias-hardened path
+(`models/injuries.py::ALIASES`, the `pull_market.py` pattern). Cache the resolved map to
+`data/processed/espn_player_map.parquet`.
+
+**Player universe endpoint — VERIFIED 2026-07-15.** Names + `eligibleSlots` come from
+`?view=kona_player_info` **with an `X-Fantasy-Filter` JSON header** (NOT `mRoster`, which is
+empty on an undrafted season):
+```python
+flt = {"players": {"limit": 400, "sortPercOwned": {"sortAsc": False, "sortPriority": 1}}}
+requests.get(base, params={"view": "kona_player_info"},
+             headers={"X-Fantasy-Filter": json.dumps(flt)}, cookies=ck)   # -> 400 players
+```
+**`eligibleSlots` confirmed real and genuinely multi-slot** — Edwards `[SG, SF]`, Harden
+`[PG, SG]`, Giannis `[PF, C]`, Jokić `[C]`. Slot id map: `0 PG · 1 SG · 2 SF · 3 PF · 4 C ·
+5 G · 6 F · 7 SG/SF · 8 G/F · 9 PF/C · 10 F/C · 11 UTIL · 12 BE · 13 IR` (filter to 0–4 for
+the true position set). This closes the platform-eligibility hole
+[`models/value.py`](../src/fantasy_nba/models/value.py) parks (§9.7) with ESPN's own answer;
+fall back to the guard/big grouping only when a player is unmatched.
+
+**Name normalization — measured, don't guess.** ESPN writes ASCII (`"Nikola Jokic"`); our
+stats carry diacritics (`"Nikola Jokić"`). Normalize **NFKD → strip non-ASCII → lowercase →
+drop `.`/`'` → drop Jr/Sr/II/III/IV suffixes**, then apply `ALIASES`. Measured on the 2025
+league: **387/400 = 96.8%**, with Jokić → `203999` and Dončić → `1629029` correct.
+
+**The 13 misses are correct behaviour, not join failures** — Bojan Bogdanović, Derrick Rose,
+Blake Griffin, Andre Iguodala, Saddiq Bey, Nikola Topić, Tacko Fall … i.e. retirees and
+players with **no season row at all** (Bey/Topić missed 2024-25 injured). ESPN's universe is
+wider than our stats cache by construction.
+
+⇒ **Refines the hard-fail rule:** hard-fail loudly on any name that is **on our board / has a
+stats row** but doesn't resolve — never a silent guess. An ESPN player with no NBA season row
+is a legitimate non-match: record it as `unmatched` and drop it, never fabricate an ID. A blunt
+"hard-fail on any unmatched top-200 name" would fire constantly on retirees and be turned off
+within a day — which is how a real guard rots.
+
+### 19.3 Live board + dynamic replacement level
+
+Removing drafted players and re-ranking is trivial (the board is already ranked and tiered).
+The part that earns its keep is **replacement level recomputed after every pick**.
+
+`value.replacement_level` today greedily fills a hypothetical league; the module's own
+docstring concedes that in a one-dimension points league with 3 UTIL slots, VOR ends up
+"close to a monotone transform of fpts/g." Live, both unknowns collapse: you know exactly who
+is gone and exactly which slots each of the 10 teams still needs. Add:
+```python
+# src/fantasy_nba/draft/live.py
+@dataclass
+class DraftState:
+    """The single source of truth the API and every 19.5/19.6 call read. Rebuildable from
+    the pick list alone — so undo is just `picks.pop()` + rebuild, never mutation-in-place."""
+    picks: list[Pick]                    # in overall order
+    my_team_id: int
+    league: dict                         # value.load_league()
+    eligible_of: dict[int, set[str]]     # PLAYER_ID -> ESPN slots (19.2)
+
+    @property
+    def drafted(self) -> set[int]: ...           # PLAYER_IDs
+    @property
+    def rosters(self) -> dict[int, list[int]]: ...  # team_id -> [PLAYER_ID], all 10 teams
+    def picks_until_next(self) -> int: ...        # snake order from league["teams"]
+
+def live_replacement(state: DraftState, board: pd.DataFrame) -> dict[str, float]:
+    """Replacement per slot from the ACTUAL remaining pool and the ACTUAL remaining
+    starting-slot demand across all teams. Reuses value._slot_counts; the greedy fill
+    starts from the real draft state, not an empty league."""
+```
+Recompute on each pick (cheap — a sort over ≤ ~500 rows). This is what stops VOR being a
+restatement of fpts/g, and it is the backbone of 19.6.
+
+### 19.4 The weekly variance layer ⚠ **the one place this can be confidently wrong**
+
+**The trap (verified 2026-07-15):** `uncertainty.SD_PG = 9.0` is documented at its definition
+as *"NOT just the ~5.6 per-game projection RMSE — it's tuned so the resulting season-total
+p10–p90 band covers ~80%... it also absorbs... season-wide common health shocks that move a
+whole cohort together."* It is deliberately ~60% wider than the honest per-game marginal
+because it is doing a **season-total** job, and EXP-021 re-affirmed that excess width as
+load-bearing *for that job*. **Passing `SD_PG` into a weekly sim as a per-game sigma would
+inflate weekly variance, drive every matchup toward a coin flip, and produce a sim that says
+roster construction doesn't matter.** Do not do it.
+
+A weekly sim needs two variance components that `SD_PG` conflates, because they behave
+completely differently across a season:
+
+| Component | Source | Drawn | Behaviour |
+|---|---|---|---|
+| `σ_level` — uncertainty about the player's *true* fpts/g | walk-forward model residuals (~5.6) | **once per season**, persists every week | does **not** diversify — this is what actually decides your season |
+| `σ_game` — game-to-game scatter around his own mean | **empirical, from `player_game_logs`** (16 seasons, 404k rows, cached) | **per game** | diversifies across ~35 player-games/week — mostly washes out |
+
+**Reuse note (respects the ledger — this is not re-running a rejected experiment):** EXP-021
+built exactly the honest per-game marginal we need here — `quantiles.pg_quantile_frame` /
+`uncertainty.residual_pool` / `calibrate_resid_scale` — and it was rejected *because* it was
+honest: too narrow for the season-total job `SD_PG` was doing. For `σ_level` the honest
+marginal is precisely correct, because here the season-level covariance is modeled
+**explicitly** (below) instead of being smuggled into a width. The rejected artefact has a
+real home; the EXP-021 verdict stands untouched for the season board.
+
+**Build — `src/fantasy_nba/draft/variance.py`. The three pieces bundle into one object the
+sim takes, so the layer is swappable and the gate has something to hold:**
+```python
+@dataclass(frozen=True)
+class VarianceLayer:
+    sigma_game: pd.Series      # PLAYER_ID -> float, shrunk (piece 1)
+    level_cdf: np.ndarray      # the EXP-021 empirical residual CDF grid (piece 2)
+    spell_pools: dict          # (age_bucket, chronic_flag) -> empirical (count, length) (piece 3)
+
+    def draw_levels(self, board, n_draws, rng) -> np.ndarray:   # (n_draws, n_players)
+    def draw_availability(self, board, n_weeks, n_draws, rng) -> np.ndarray:  # (n_draws, n_players, n_weeks) mask
+
+def build_variance_layer(game_logs, season_stats, bio, spells, cfg,
+                         as_of: str) -> VarianceLayer:
+    """as_of gates every input (Oct 1 of the target season preseason) — the same no-leakage
+    contract as every other feature module here."""
+```
+1. `game_sd_table(game_logs, cfg)` — per (player, season) empirical SD of per-game fantasy
+   points, shrunk toward a **minutes-conditional league curve** by sample size (a 12-game
+   sample's raw SD is noise). Returns `σ_game` per PLAYER_ID.
+2. `level_draw(...)` — `σ_level` from `residual_pool` (the EXP-021 CDF, empirical shape, no
+   width inflation).
+3. **Availability as contiguous spells, not random game-misses.** `injuries.build_spells`
+   already yields `(start, end, days)` per absence. Sample spell **count and length** from
+   the empirical distribution bucketed by (age × chronic) — the same pools EXP-015b adopted —
+   and lay them on the calendar. This is the whole reason H2H differs from season totals: an
+   injury takes out six *consecutive* weeks, it does not sprinkle absences uniformly. A sim
+   that drops games at random would badly understate how injuries actually lose you matchups.
+
+**Calibration gate (this sub-step is not "done" until this passes). Follow this protocol
+exactly — it is the decision gate for the whole feature, so it must be reproducible:**
+
+```python
+# scripts/eval_draft_sim.py  (new; the 19.4 gate + the 19.5 sanity prints)
+#   python scripts/eval_draft_sim.py --seasons 2024-25 2025-26 --n-rosters 200 --seed 0
+```
+1. **Roster construction (deterministic, seeded).** For each eval season, take the *board the
+   model would have had* — `project_learned` trained on prior seasons only (the
+   `backtest.project_models` no-leakage path; **never** the eval season's data). Draw
+   `--n-rosters` (default 200) rosters of 13 from the top 150 by **snake-draft simulation**
+   over 10 teams with `rng(seed)` jitter on board order (σ = 8 ranks) — not uniform random.
+   Rationale: uniform-random rosters are not the population we advise on; a real roster is
+   rank-correlated, which is exactly the regime the coverage claim has to hold in.
+2. **Weeks.** Use `pull_schedule.py`'s per-team weekly counts for that season; score fantasy
+   weeks 1..`league_end` (the `league.yaml` cut, **not** the NBA finale — the D1.3b rule).
+3. **Predict.** Simulate each roster's weekly totals with the 19.4 layer (`n_draws=2000`),
+   from prior-season-only projections. Emit p10/p50/p90 per (roster, week).
+4. **Realize.** Compute each roster's **actual** weekly total from that season's
+   `player_game_logs` scored through `load_scoring()`, applying the same v1 lineup
+   simplification as 19.5 (start the best available by projected value each day) so predicted
+   and realized are the same estimand. **This is the step to get right** — a coverage number
+   comparing two different estimands is meaningless.
+5. **Report.** Pooled coverage = fraction of realized weekly totals inside [p10, p90], plus a
+   breakdown **by week-of-season** and **by roster strength tercile**. Also print p25–p75.
+
+**Gate: pooled p10–p90 coverage ∈ [78, 88]%** — the same window EXP-015b/021 are judged in —
+**and** no strength tercile outside [72, 92]% (a sim that only calibrates on average is not
+safe to advise a specific roster). Judged under rule 8 (seeds {0,1,2}; the claim must survive
+the spread). If it fails: 19.5–19.6 **do not ship**, 19.3 ships alone, and the risk layer
+falls back to descriptive columns (chronic-flag / high-`risk` counts vs the league, no
+fabricated team-variance number). Write the coverage table into a short note under this
+step — operational, not a ledger entry.
+
+**Skeptic pass (rule 4) — answer these in the note before claiming the gate passed:** (a) is
+any input to `σ_game`, `σ_level`, or the spell pools dated on/after the eval season's Oct 1?
+(b) does roster construction select on realized outcomes? (c) is the coverage carried by one
+season or one tercile?
+
+### 19.5 The H2H week-win simulator
+
+Per sim draw of a season: draw each player's `σ_level` once → draw injury spells → per fantasy
+week, per player, `games_that_week` (from `pull_schedule.py`'s per-team weekly counts) × draws
+of `mu_i + N(0, σ_game_i)` → roster weekly total → compare vs opponent's → win/loss. Aggregate
+over ~20 weeks × 9 opponents × N draws → **expected weeks won**, the headline number.
+
+**Build — `src/fantasy_nba/draft/sim.py`:**
+```python
+N_DRAWS = 2000          # gate-validated default; the advice path (19.6) may drop to 500
+@dataclass(frozen=True)
+class SimResult:
+    weeks_won: float            # expected, out of the scored weeks
+    weeks_won_p10: float; weeks_won_p90: float
+    weekly_p10: float; weekly_p50: float; weekly_p90: float
+    playoff_odds: float         # P(top-N by weeks won); N from league.yaml when set, else 4
+
+def simulate_season(rosters: dict[int, list[int]],   # team_id -> [PLAYER_ID]; all 10 teams
+                    board: pd.DataFrame,             # needs PLAYER_ID, fpts_pg
+                    schedule: pd.DataFrame,          # pull_schedule.py output, same season
+                    league: dict,                    # value.load_league()
+                    var: VarianceLayer,              # the 19.4 object
+                    n_draws: int = N_DRAWS,
+                    seed: int = 0) -> dict[int, SimResult]:
+    """Expected weeks won per team. Vectorized over draws (n_draws x n_players), never a
+    Python loop per draw — 19.6 re-runs this ~15x per pick and must stay interactive."""
+```
+**Performance budget (a hard requirement, not a nice-to-have):** one `simulate_season` at
+`n_draws=500` must return in **< 300 ms** — 19.6 calls it per candidate while you are on the
+clock. Draw arrays are `(n_draws, n_players)` float32; spells are pre-sampled once per draw
+into a `(n_draws, n_players, n_weeks)` availability mask. If the budget is missed, cut
+`n_draws` before cutting the spell model — spell structure is the thing that makes this
+better than a season-total number.
+
+**Two simplifications that must be stated in the UI, not buried:**
+- *Daily lineups.* You start ~10 of 13 daily with no weekly games cap (`league.yaml`), so
+  bench-loss is modest but not zero. v1 = start the best available by projected value each
+  day; do **not** attempt full daily lineup optimization inside the sim.
+- *Waivers.* An injured player is partially backfilled by a streamed replacement. Ignoring
+  this overstates injury damage — v1 backfills at the 19.3 live replacement level, which is
+  the right number and is already computed.
+
+**Schedule vintage (corrected 2026-07-15):** the schedule is **not** a blocker.
+`pull_schedule.py` is season-stamped and already derives per-team games-per-week; that
+*structure* is stable year over year, so the 2025-26 vintage is a sound stand-in for
+expected-weeks-won at draft altitude. Only **fantasy-playoff-week** planning is genuinely
+vintage-sensitive (and `league.yaml`'s `fantasy_playoff_weeks` is already a flagged
+placeholder). Re-run the pull mid-Aug and the numbers refresh — a re-run, not a rewrite.
+
+**Opponents:** mid-draft this is a real strength — you know exactly what the other nine teams
+have taken. Pre-draft, seed opponent rosters from ADP.
+
+### 19.6 Slot feasibility + the recommendation
+
+State the user's "too many guards" question correctly: not a **count**, a **feasibility**
+question. With `eligibleSlots`, run a bipartite matching — can this roster legally fill all
+10 starting slots? Which slot is closest to unfillable?
+
+The recommendation combines three things that are all now real numbers: **live VOR** (19.3),
+**survival** — `P(player lasts until my next pick)` from ADP and picks-to-next-turn — and
+**Δ expected weeks won** from adding each candidate (19.5, re-simulated for the top ~15
+candidates only; full-board re-sim per pick is too slow). Output is a ranked shortlist with
+the reason attached, e.g. *"Center replacement falls 6 fpts/g in the next 14 picks and your
+only C-eligible player is X"* — never a bare number.
+
+**Build — `src/fantasy_nba/draft/advice.py`:**
+```python
+SHORTLIST_N = 15        # candidates re-simulated per pick (the interactivity budget)
+ADVICE_DRAWS = 500      # n_draws for the per-candidate sims; the gate ran at 2000
+
+def slot_feasibility(roster: list[int], eligible_of: dict[int, set[str]],
+                     league: dict) -> dict:
+    """Max bipartite matching (Hopcroft-Karp or nx.max_weight_matching) of roster players ->
+    starting slots. Returns {filled: int, unfillable: list[str], binding: str | None} where
+    `binding` = the slot that fails first if you add nobody eligible for it. This is the
+    honest form of 'do I have too many guards'."""
+
+def survival_prob(adp: float, picks_until_next: int, sigma: float = 6.0) -> float:
+    """P(player is still there at my next pick) = 1 - Phi((picks_until_next - (adp - pick_now))
+    / sigma). sigma is ADP noise; 6.0 is a starting value -- calibrate against the archived
+    FantasyPros ADP vs realized draft slots once one real draft is recorded (a named re-arm,
+    not a claim)."""
+
+def recommend(state: DraftState, board: pd.DataFrame, var: VarianceLayer,
+              n: int = SHORTLIST_N) -> list[Recommendation]:
+    """Ranked shortlist. Each Recommendation carries `player_id, d_weeks_won, live_vor,
+    survival, binding_slot, reason: str`. Candidates = top `n` by live VOR among undrafted;
+    `d_weeks_won` = simulate_season(my roster + candidate) - simulate_season(my roster),
+    SHARED RNG SEED across the two calls so the difference is signal and not draw noise."""
+```
+The shared-seed detail is load-bearing: with independent seeds, `d_weeks_won` for two similar
+candidates is dominated by Monte-Carlo noise and the shortlist reorders randomly between
+refreshes. Use common random numbers.
+
+**Tests (rule 6 — `tests/test_draft.py`, synthetic, no network):** `slot_feasibility` on a
+hand-built roster with a known unfillable slot; `survival_prob` monotone in
+`picks_until_next`; `live_replacement` rises as the pool drains; `FixtureFeed` → pick diffing
+is idempotent (polling twice yields no duplicate picks); `simulate_season` determinism under a
+fixed seed; the ID join hard-fails on an unmatched top-200 name.
+
+**Standing caveat to surface in the UI (user's framing needs this correction):** in weekly
+H2H, roster variance is **not** simply bad — it is bad for a strong roster and *good* for a
+weak one, which needs variance to steal weeks. "Get someone with a lower spread" is sound
+advice for a contender and wrong for an underdog. The sim already knows which one you are;
+let expected-weeks-won carry the recommendation rather than a variance rule of thumb.
+
+### 19.7 API + frontend
+
+- `src/fantasy_nba/api/draft.py`: `GET /api/draft/state`, `POST /api/draft/pick` (manual),
+  `POST /api/draft/undo` (misclicks happen and the draft does not pause), `GET
+  /api/draft/advice`. Poll from the client; no websockets in v1.
+- `frontend/src/views/DraftRoom.tsx`: the live board (drafted struck out), my roster with slot
+  feasibility, the shortlist with reasons, expected-weeks-won, and a league-wide picks feed.
+  Register it in `frontend/src/App.tsx` alongside the existing views (DraftBoard / Ros /
+  Player / Compare / Analyst / DataBrowser) and reuse `components/DataTable.tsx` +
+  `lib/api.ts` rather than introducing a second table implementation.
+  Draft-night UX rules: **large hit targets, undo always visible, never block on a network
+  call** — if the ESPN poller stalls, the manual path must still take the pick instantly.
+
+### 19.8 Doc sync
+
+README (layout + a "Draft room" section under Web app), ROADMAP (a Stage-5 delivery line),
+this tracker. No `EXPERIMENTS.md` entry — product step; 19.4's coverage table goes in a note
+under this step.
+
+**Done when:** a full mock draft can be run end-to-end through `ManualFeed` with the board
+re-ordering, slot feasibility, and expected-weeks-won all live; 19.4's weekly coverage gate
+passes and its table is written down; `EspnPollFeed` is either verified against a mock draft
+or explicitly left stubbed with the manual path as the shipped default.
+
+> **As built — 19.1–19.3 (2026-07-15).** `src/fantasy_nba/draft/` = `feed.py` (Pick /
+> DraftFeed / Manual · Espn · Fixture, `_get_json` content-type assertion, `scrub_payload`),
+> `ids.py` (`normalize_name` NFKD, `eligible_positions`, `build_player_map`), `live.py`
+> (`DraftState`, `live_replacement`, `live_board`). 21 tests in `tests/test_draft.py`; full
+> suite 119 green.
+>
+> **Verified end-to-end against the real league (507458037, season 2025), not just tests:**
+> 130 real picks parsed · ID join 387/400 = 96.8% · all 10 rosters at exactly 13 · draft
+> order recovered as `[15, 11, 13, 14, 8, 9, 1, 12, 3, 10]` · team ids
+> `[1, 3, 8, 9, 10, 11, 12, 13, 14, 15]` — **no 2/4/5/6/7, confirming the non-contiguity trap
+> is real and a `range(1, N+1)` assumption would have mispriced every pick.**
+>
+> **Bug found by the real-data run that the unit tests missed — worth remembering.**
+> `remaining_slots()` iterated only teams that had *already picked*, so pre-draft it saw 1
+> team / 10 open slots instead of 10 teams / 100, and replacement was priced against a tenth
+> of real demand. **The test suite passed anyway**: `test_live_replacement_rises_as_pool_drains`
+> asserted the right direction for the wrong reason — replacement moved because demand was
+> *growing* as teams appeared, not because the pool was draining. Fix: `DraftState.team_ids`
+> (+ `EspnPollFeed.team_ids()` via `mTeam`), demand computed over the whole league.
+> **Standing lesson:** a monotonicity assertion on a quantity with two moving inputs can pass
+> while the mechanism is inverted — pin the *invariant*, not the direction. The replacement
+> test is now `test_replacement_is_flat_when_the_draft_follows_board_order` (pool and demand
+> drain together ⇒ replacement is a statement about the wire, not about pick count), verified
+> flat at ~29.1 fpts/g through pick 90 on the live board.
+>
+> *Caveat on that verification:* replaying the **2025 draft** against the **2026-27 board** is
+> an anachronism (~30 of the 2026-27 top-100 went undrafted in 2025), so its replacement curve
+> rises and is not evidence of anything. Coherent board-order drafts are the correct harness.
+
+*Ordering: 19.1 → 19.2 → 19.3 (a useful tool already exists at this point — live board +
+dynamic VOR, no sim) → 19.4 **gate** → 19.5 → 19.6. If 19.4's gate fails, 19.3 still ships and
+the risk layer falls back to descriptive columns. Step 19 precedes Step 18 — Step 18 serves the
+nightly in-season loop which starts at opening night; the draft is ~6 weeks sooner.*
+
+---
+
 ## Appendix A — gate summary (one screen)
 
 | Exp | Adopt when (all floor-adjusted where applicable) |
@@ -1743,6 +2225,7 @@ immediately useful; decay is only worth defaulting on if 18.1 shows staleness is
 | 028 | rookie-cohort Spearman beats draft-pick-order baseline by ≥ 0.05 pooled, MAE not worse (rule 8); on reject the D1.5 market seed stands |
 | 029 | dual freeze before opening night is unconditional; layer verdict in April 2027 — B beats A on top-150 MAE + riser recall → keep; A beats B → delete + ledger failure categories; one-season sample ⇒ at most adopted-tentative. *(Amended 2026-07-12, user decision — workflow v2: the layer is a standing supplement fed by BBM-transcript triangulation (proposals → approval → living overrides, applied preseason AND nightly in-season via update_daily); the April scoring now **calibrates** magnitudes + per-source weighting (user vs `BBM <date>:`-tagged entries) instead of deciding existence. Freeze + scoring mechanics unchanged.)* |
 | D1 | product step — no gate; ships with sanity reports (VOR reorder count, schedule spot-checks) |
+| 19 | product step — no ledger entry, **except 19.4**: the weekly-total p10–p90 coverage of the H2H variance layer must land in [78, 88]% on synthetic rosters from real game logs (the EXP-015b/021 window), or 19.5–19.6 don't ship and the risk layer falls back to descriptive columns. Never pass `SD_PG=9` (a season-total-calibrated width) into a per-game weekly draw. |
 | 022 | direct beats composed on riser bias ≥25% reducible-gap (rule-8), or bucketed covariance large+positive → adopt correction/blend |
 | 023 | standard mover gate; watch age ≤ 24 cohort; rule-11 hygiene on the lag group |
 | 024 | standard mover gate AND aggregate MAE not worse (consistency fix adoptable on a tie) |

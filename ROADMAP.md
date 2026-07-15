@@ -131,6 +131,31 @@ special-case handling.
       + the Step-12 nightly pipeline with status overrides.
 
 ### Stage 5 — Scoring & delivery
+- [ ] **Live draft room (Step 19 — implementation-plan Phase 7; in progress, 19.1–19.3 done
+      2026-07-15).** The named gap (user, 2026-07-15): every artefact here ends at "here is a
+      board" and nothing helps during the draft itself. Link the live ESPN draft so picks
+      remove players and re-rank the remainder; read all ten rosters to surface construction
+      (slot feasibility via ESPN `eligibleSlots` — which also closes the platform-eligibility
+      hole `models/value.py` parks) and drive a shortlist from **live** replacement level ×
+      ADP survival × Δ expected-weeks-won. Judged product-style (no ledger entry) **except**
+      the H2H variance layer (19.4 below), which carries a real coverage gate.
+  - [x] **19.1–19.3 (`src/fantasy_nba/draft/`): feed adapter + ID join + live board.**
+        Verified end-to-end against the real ESPN league (507458037): 130 picks parsed, ID
+        join 96.8%, draft order recovered, replacement flat at ~29.1 fpts/g through pick 90
+        on a board-order draft. **The league is live at season 2027** — it *is* the 2026-27
+        league, so `EspnPollFeed` is real, not a stub.
+  - [ ] **19.4 the weekly variance layer + its coverage gate — the next build, and the one
+        place this feature can be confidently wrong.** `SD_PG=9` is season-total-calibrated
+        (~60% wider than the honest per-game marginal, deliberately — EXP-021 re-affirmed
+        that width as load-bearing *for that job*); feeding it into a weekly sim would push
+        every matchup toward a coin flip and conclude roster construction doesn't matter.
+        The layer splits `σ_level` (drawn once, never diversifies — EXP-021's rejected
+        residual-CDF artefact is exactly right here) from `σ_game` (empirical, from game
+        logs, diversifies away), and samples injuries as **contiguous spells** — the reason
+        H2H differs from season totals. **Gate:** weekly-total p10–p90 coverage ∈ [78,88]%
+        or 19.5–19.6 don't ship.
+  - [ ] 19.5 H2H week-win simulator · 19.6 slot feasibility + shortlist · 19.7 API/UI
+        (`DraftRoom.tsx`) — all gated on 19.4.
 - [ ] Category-league scoring mode (z-scores / rankings) — honestly open; next-frontiers item
       (the scoring engine is swappable by design, so this is additive).
 - [x] Final ranked projections + export — **shipped (Step 15, 2026-07-10):**
@@ -183,7 +208,7 @@ decomposition refinements if the preseason gap ever re-opens.
       Monte-Carlo GP tails adopted, the GP *point estimate* rejected (the ceiling held). The
       live-news half is Step 12's `config/overrides.yaml` status caps (2026-07-10).
 
-### Stage 7 — Catching risers & fallers (the discontinuity frontier)  ← BUILD COMPLETE 2026-07-11 (every buildable step of docs/implementation-plan.md ran and is logged, Steps 0–17 incl. Phase 5; the analyst layer is live as workflow v2 — living entries via proposals→approval any time; **next build = Step 18**, the analyst-delta staleness flag + optional decay, spec'd 2026-07-12 in implementation-plan Phase 6; the rest is calendar-locked: mid-Aug schedule pull → Sept market pulls → mid-Oct analyst re-review + dual freeze (EXP-029) → opening-night cron → April 2027 scoring + EXP-020/021 re-arms)
+### Stage 7 — Catching risers & fallers (the discontinuity frontier)  ← BUILD COMPLETE 2026-07-11 (every buildable step of docs/implementation-plan.md ran and is logged, Steps 0–17 incl. Phase 5; the analyst layer is live as workflow v2 — living entries via proposals→approval any time; **next build = Step 19** (added 2026-07-15), the **live draft room** — ESPN feed adapter + dynamic VOR + H2H week-win sim, spec'd in implementation-plan **Phase 7**; it is calendar-hard (the draft is ~Oct) and so takes precedence over **Step 18**, the analyst-delta staleness flag + optional decay (spec'd 2026-07-12 in implementation-plan Phase 6), which serves the nightly loop and cannot pay off before opening night; the rest is calendar-locked: mid-Aug schedule pull → Sept market pulls → mid-Oct analyst re-review + dual freeze (EXP-029) → opening-night cron → April 2027 scoring + EXP-020/021 re-arms)
 
 **The problem statement (user, 2026-07):** we project the stable core well but **miss the risers
 and fallers** — and capitalising on those is the entire edge of a projection system. This stage
