@@ -49,6 +49,17 @@ which ships with A; V4/V5 reuse V3's week-games join; V5 reuses V4's per-roster 
 
 ## Session hand-off notes (append, dated, newest first)
 
+- **2026-07-16 (session 3): draft-session persistence.** User question exposed that the
+  room's Session (my_team_id, source, manual picks, Connect snapshot) was in-memory only
+  — every relaunch forgot "my team" and a manual draft. Now persisted to
+  `data/processed/draft_session.json` (`_save_session()` on every mutating endpoint incl.
+  simulate; `_load_session()` at import; corrupt/missing file → fresh session, never a
+  crash). Verified by an actual server restart (team id + 130 picks survive; /api/myteam
+  populates immediately). Reset clears picks but keeps my_team_id/source. The persisted
+  pick order is only as fresh as the last Connect — `order_is_placeholder` travels with
+  it; the mid-Oct 19.1b live re-read rule is unchanged (README "Draft room" documents
+  this). Suite 144 green.
+
 - **2026-07-16 (session 2, close-out): ALL SIX VIEWS SHIPPED.** V4/V5 done via the
   shared `_roster_week_rows()` / `_day_grid()` core in `season.py` (ROS snapshot numbers
   + board ranges/risk/chronic + availability-aware week games); `current_rosters()` now

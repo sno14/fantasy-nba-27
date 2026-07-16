@@ -95,8 +95,12 @@ src/fantasy_nba/
     (api/draft.py) the room's endpoints: one server-side session holds the picks, so the
                    source toggle is safe mid-draft and undo is just a pop
   api/             FastAPI backend for the web UI (scripts/serve.py): boards with tier
-                   breaks, ROS snapshots, player pages, dataset browser, and the
-                   analyst-proposal review panel (same code paths as the CLI tools)
+                   breaks, ROS snapshots, player pages, dataset browser, the
+                   analyst-proposal review panel (same code paths as the CLI tools),
+                   the draft room (draft.py — session persists to
+                   data/processed/draft_session.json across restarts), and the season
+                   views (season.py: trends / trade targets / waivers / my team /
+                   matchup / schedule strength — docs/ui-views-plan.md)
 frontend/          the web UI (React + Vite + Tailwind; light/dark). `npm run build`
                    emits frontend/dist, which serve.py serves; `npm run dev` proxies
                    /api for frontend development
@@ -168,7 +172,9 @@ data/              raw/ and processed/ caches (gitignored)
 docs/              design docs (see the documentation map above)
 tests/             unit tests: scoring, model arithmetic, as-of engine, absorption,
                    Stage-7 infra (no-leakage / determinism pins), draft room (ESPN payload
-                   traps + the replacement-level invariant)
+                   traps + the replacement-level invariant), season-view API helpers
+                   (trend deltas, market name-join, availability-aware week games,
+                   draft-session persistence round-trip)
 ```
 
 ## Quick start
@@ -264,8 +270,8 @@ Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season 
   ROS rank/FP-G, 14-day trend + sparkline, season floor→median→ceiling strip, risk,
   chronic/OUT/redistribution chips, and week volume; plus the team block — projected
   week total, games-by-day chips vs the 10 startable slots, flagged-out count, and
-  unfilled starting slots (draft-room slot logic; says so when no ESPN map). Backed by
-  `/api/myteam`.
+  unfilled starting slots (draft-room slot logic; says so when no ESPN map). "My team"
+  is set once in the Draft Room and persists across restarts. Backed by `/api/myteam`.
 - **Matchup** — my week vs an opponent's, **descriptively**: FP/G × games totals, the
   volume gap, a per-day games bar pair (vs the startable-slot cap), both rosters, and a
   "stream these idle days" pointer into Waivers. Deliberately **no win probability and
@@ -321,6 +327,14 @@ explorer (`python -m streamlit run scripts/explore.py`) still works.
 The live-draft layer: picks arrive, drafted players leave the board, and replacement level is
 recomputed from the *actual* remaining pool and the *actual* remaining slot demand across the
 league. Open it at **`/room`** in the web app (`python scripts/serve.py`).
+
+**The room's state survives restarts** (2026-07-16): manual picks, the source toggle,
+"my team", and the last Connect snapshot (team ids / slots / pick order) persist to
+`data/processed/draft_session.json` on every change and reload at startup — so you set
+"my team" once, and a draft-night server restart costs nothing. **Reset** clears picks
+only (who you are survives). The persisted pick order is a cache of the *last live read*:
+`order_is_placeholder` travels with it, Connect refreshes it, and the never-trust-a-stale-
+order rule below still stands — 19.1b re-reads everything live in October.
 
 **Status: the board + composition views are built and verified.** The prescriptive layer
 (H2H week-win simulator, "take player X") is **not** built and is gated — see

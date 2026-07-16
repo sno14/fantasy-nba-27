@@ -2,7 +2,9 @@
 
 One in-process session holds the draft: the pick list, who I am, and which feed is supplying
 picks. Everything the UI shows is derived from that — the live board, every team's roster, and
-the slot/risk composition panels.
+the slot/risk composition panels. The human-entered parts persist to
+data/processed/draft_session.json (saved on every mutation, loaded at startup), so a server
+restart never loses the picks or "my team".
 
 **The source toggle is the point.** ESPN polling is unverified for live-draft latency (only an
 October mock draft settles it), so the UI must be able to fall back to manual entry *mid-draft
@@ -24,7 +26,7 @@ from dataclasses import dataclass, field
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query
 
-from ..config import ROOT
+from ..config import PROCESSED_DIR, ROOT
 from ..draft import build_player_map
 from ..draft.feed import EspnApiError, EspnPollFeed, ManualFeed, Pick
 from ..draft.ids import PlayerMap
@@ -74,6 +76,53 @@ _session = Session()
 # Load the cached ESPN map at import: without it "manual needs no network" is false — ESPN is
 # the only source of slot eligibility, so an uncached room has no positions.
 _session.pmap = PlayerMap.load()
+
+# --------------------------------------------------------------------- persistence
+# The room's human-entered state (manual picks, my_team_id, the source toggle, the last
+# Connect snapshot) persists to the local cache so a server restart doesn't lose the draft
+# or make you re-pick "my team" every launch. Everything else re-derives; pmap has its own
+# parquet. NOTE on the pick-order rule (README "Draft room"): what's saved here is only as
+# fresh as the last Connect — `order_is_placeholder` travels with it, Connect refreshes it,
+# and the mid-Oct 19.1b sweep re-reads everything live. This cache does not weaken that
+# rule; it just stops a restart from forgetting what the last live read said.
+SESSION_PATH = PROCESSED_DIR / "draft_session.json"
+
+
+def _save_session() -> None:
+    s = _session
+    try:
+        SESSION_PATH.parent.mkdir(parents=True, exist_ok=True)
+        SESSION_PATH.write_text(json.dumps({
+            "source": s.source, "league_id": s.league_id, "season": s.season,
+            "my_team_id": s.my_team_id,
+            "picks": [p.__dict__ for p in s.picks],
+            "team_ids": s.team_ids, "pick_order": s.pick_order,
+            "settings": s.settings,
+        }, indent=1), encoding="utf-8")
+    except OSError:
+        pass  # persistence is a convenience — never take the room down over it
+
+
+def _load_session() -> None:
+    if not SESSION_PATH.exists():
+        return
+    try:
+        d = json.loads(SESSION_PATH.read_text(encoding="utf-8"))
+        s = _session
+        if d.get("source") in SOURCES:
+            s.source = d["source"]
+        s.league_id = str(d.get("league_id", ""))
+        s.season = int(d.get("season", s.season))
+        s.my_team_id = int(d.get("my_team_id", 0))
+        s.picks = [Pick(**p) for p in d.get("picks", [])]
+        s.team_ids = [int(t) for t in d.get("team_ids", [])]
+        s.pick_order = [int(t) for t in d.get("pick_order", [])]
+        s.settings = d.get("settings")
+    except (ValueError, TypeError, KeyError):
+        pass  # corrupt/stale cache → start fresh rather than crash at import
+
+
+_load_session()
 
 
 def _env(key: str, default: str = "") -> str:
@@ -392,6 +441,7 @@ def simulate(rounds: int = Query(default=0, ge=0, le=30)) -> dict:
         s.picks.append(Pick(overall=len(s.picks) + 1, team_id=team_id, espn_player_id=espn_id,
                             round_id=len(s.picks) // max(n_teams, 1) + 1))
         added += 1
+    _save_session()
     return {"n_picks": len(s.picks), "added": added, "rounds": rounds, "n_teams": n_teams}
 
 
@@ -419,6 +469,7 @@ def connect(league_id: str = Query(default=""), season: int = Query(default=2027
         s.pmap = build_player_map(feed.player_universe(), boards.raw("player_season_stats"))
         s.pmap.save()          # so manual mode works offline from here on
         s.espn_error = None
+        _save_session()
     except EspnApiError as e:
         s.espn_error = str(e)
         raise HTTPException(502, str(e))
@@ -434,12 +485,16 @@ def set_source(source: str = Query(...)) -> dict:
     if source not in SOURCES:
         raise HTTPException(422, f"source must be one of {list(SOURCES)}")
     _session.source = source
+    _save_session()
     return {"source": source, "n_picks": len(_session.picks)}
 
 
 @router.post("/config")
 def set_config(my_team_id: int = Query(...)) -> dict:
+    """Set which league team is mine. Persisted — pick it once, not every launch (My
+    Team / Matchup / the trade view's "mine" chips all key off it)."""
     _session.my_team_id = my_team_id
+    _save_session()
     return {"my_team_id": my_team_id}
 
 
@@ -455,6 +510,7 @@ def refresh() -> dict:
         picks = feed.poll()
         s.picks = picks           # ESPN is authoritative for its own picks
         s.espn_error = None
+        _save_session()
         return {"n_picks": len(picks), "status": feed.status().__dict__}
     except EspnApiError as e:
         s.espn_error = str(e)
@@ -473,6 +529,7 @@ def add_pick(player_id: int = Query(...), team_id: int = Query(default=0)) -> di
                    player_id)
     s.picks.append(Pick(overall=len(s.picks) + 1, team_id=team_id, espn_player_id=espn_id,
                         round_id=len(s.picks) // max(len(state.all_team_ids), 1) + 1))
+    _save_session()
     return {"n_picks": len(s.picks), "team_id": team_id, "player_id": player_id}
 
 
@@ -480,12 +537,16 @@ def add_pick(player_id: int = Query(...), team_id: int = Query(default=0)) -> di
 def undo() -> dict:
     """Drop the last pick. Misclicks happen and the draft does not pause."""
     p = _session.picks.pop() if _session.picks else None
+    _save_session()
     return {"n_picks": len(_session.picks), "undone": p.overall if p else None}
 
 
 @router.post("/reset")
 def reset() -> dict:
+    """Clear the picks (my_team_id and the source survive — reset is for redoing a
+    draft, not for forgetting who I am)."""
     _session.picks = []
+    _save_session()
     return {"n_picks": 0}
 
 

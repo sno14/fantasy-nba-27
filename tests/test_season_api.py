@@ -112,3 +112,40 @@ def test_out_until_drops_games_before_the_return_date():
     assert games_while_active(games, "out_until:2027-01-14 (gp 40->28)") == ["2027-01-15", "2027-01-17"]
     assert games_while_active(games, "out_for_season") == []
     assert games_while_active(games, "") == games
+
+
+# ------------------------------------------------------- draft-session persistence
+def test_session_roundtrip_survives_restart(tmp_path, monkeypatch):
+    """A server restart must not lose the human-entered room state: manual picks,
+    my_team_id, the source toggle, and the last Connect snapshot."""
+    from fantasy_nba.api import draft as d
+    from fantasy_nba.draft.feed import Pick
+
+    monkeypatch.setattr(d, "SESSION_PATH", tmp_path / "draft_session.json")
+    saved = d.Session(source="espn", league_id="507458037", season=2027, my_team_id=3,
+                      picks=[Pick(overall=1, team_id=3, espn_player_id=4066, round_id=1)],
+                      team_ids=[1, 3, 7], pick_order=[3, 7, 1])
+    monkeypatch.setattr(d, "_session", saved)
+    d._save_session()
+
+    fresh = d.Session()  # what a restarted process starts from
+    monkeypatch.setattr(d, "_session", fresh)
+    d._load_session()
+    assert fresh.my_team_id == 3 and fresh.source == "espn"
+    assert fresh.team_ids == [1, 3, 7] and fresh.pick_order == [3, 7, 1]
+    assert len(fresh.picks) == 1 and fresh.picks[0] == saved.picks[0]
+
+
+def test_session_load_tolerates_missing_and_corrupt_files(tmp_path, monkeypatch):
+    from fantasy_nba.api import draft as d
+
+    monkeypatch.setattr(d, "SESSION_PATH", tmp_path / "nope.json")
+    fresh = d.Session()
+    monkeypatch.setattr(d, "_session", fresh)
+    d._load_session()  # missing -> no-op
+    assert fresh.my_team_id == 0 and not fresh.picks
+
+    (tmp_path / "bad.json").write_text("{not json", encoding="utf-8")
+    monkeypatch.setattr(d, "SESSION_PATH", tmp_path / "bad.json")
+    d._load_session()  # corrupt -> start fresh, never crash at import
+    assert fresh.my_team_id == 0 and not fresh.picks
