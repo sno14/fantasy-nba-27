@@ -4,7 +4,8 @@ Remote/dev sessions can't reach stats.nba.com and never carry the local parquet 
 (`data/raw`, `data/processed` are gitignored, local-only). This script fabricates a small,
 schema-faithful cache so the FastAPI + React app (`scripts/serve.py`) can run end-to-end:
 draft board (the learned model genuinely trains on the synthetic panel), risk ranges,
-ROS snapshots, draft-sheet decision columns, player pages, and the data browser.
+ROS snapshots, draft-sheet decision columns, player pages, the data browser, and the
+weekly planner (a synthetic 2026-27 schedule with realistic 3–4-game weeks).
 
 Player names include the real names referenced by `config/analyst_overrides.yaml` /
 `analyst_proposals.yaml` (the analyst engine fails loudly on an unmatched name), but every
@@ -258,6 +259,34 @@ def ros_snapshots(ss: pd.DataFrame, cfg, rng: np.random.Generator) -> dict[str, 
     return out
 
 
+def schedule(rng: np.random.Generator) -> pd.DataFrame:
+    """A synthetic 2026-27 schedule (regular season) for the weekly planner. Fantasy weeks
+    run Mon–Sun; each team plays a game on a given day with ~55% chance but is capped at 4
+    games/week (the real NBA max), and the day's playing teams are paired into games — so
+    weekly counts land around 3–4 with real variance (the whole point of the streaming
+    view). Schema matches pull_schedule.py."""
+    week1_monday = pd.Timestamp("2026-10-19")  # NBA 2026-27 opens the following Tuesday
+    n_weeks, cap = 24, 4
+    rows = []
+    for w in range(1, n_weeks + 1):
+        monday = week1_monday + pd.Timedelta(weeks=w - 1)
+        played: dict[str, int] = {t: 0 for t in TEAMS}
+        for dow in range(7):
+            date = monday + pd.Timedelta(days=dow)
+            playing = [t for t in TEAMS if played[t] < cap and rng.random() < 0.55]
+            rng.shuffle(playing)
+            for i in range(0, len(playing) - 1, 2):
+                home, away = playing[i], playing[i + 1]
+                played[home] += 1
+                played[away] += 1
+                rows.append({
+                    "season": "2026-27", "game_date": date, "week": w,
+                    "week_name": f"Week {w}", "label": "",
+                    "home": home, "away": away, "regular_season": True,
+                })
+    return pd.DataFrame(rows)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Write synthetic dev fixtures for the web UI.")
     ap.add_argument("--force", action="store_true", help="Replace an existing FIXTURE cache.")
@@ -285,6 +314,7 @@ def main() -> None:
     rosters = ss[ss["SEASON"] == SEASONS[-1]][
         ["SEASON", "TEAM_ABBREVIATION", "PLAYER_ID", "PLAYER_NAME", "AGE"]]
     rosters.to_parquet(RAW_DIR / "team_rosters.parquet", index=False)
+    schedule(rng).to_parquet(RAW_DIR / "schedule_2026-27.parquet", index=False)
 
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     draft_sheet(ss, cfg, rng).to_parquet(PROCESSED_DIR / "draft_sheet_2026-27.parquet", index=False)

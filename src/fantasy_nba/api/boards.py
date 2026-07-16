@@ -184,3 +184,31 @@ def add_tiers(board: pd.DataFrame) -> pd.DataFrame:
 def ranked_board(target: str, model: str, stance: str, apply_analyst: bool) -> pd.DataFrame:
     board = compute_board(target, model, apply_analyst, overrides_mtime())
     return add_tiers(rank_board(board, method=stance))
+
+
+# ------------------------------------------------------------------------------- schedule
+def load_schedule(target: str) -> pd.DataFrame:
+    """The target season's schedule pull (regular-season games only), or an empty frame
+    when `scripts/pull_schedule.py` hasn't cached one yet (published ~mid-August)."""
+    name = f"schedule_{target}"
+    if not storage.exists(name):
+        return pd.DataFrame()
+    df = storage.read(name)
+    if "regular_season" in df.columns:
+        df = df[df["regular_season"] == True].copy()  # noqa: E712
+    else:
+        df = df.copy()
+    df["game_date"] = pd.to_datetime(df["game_date"])
+    return df
+
+
+def team_week_games(target: str) -> pd.DataFrame:
+    """Schedule in long form: one row per (team, week, game_date) so per-team weekly game
+    counts fall straight out of a groupby. Empty when no schedule is cached."""
+    sch = load_schedule(target)
+    if sch.empty:
+        return sch
+    cols = ["game_date", "week", "week_name"]
+    home = sch[cols + ["home"]].rename(columns={"home": "team"})
+    away = sch[cols + ["away"]].rename(columns={"away": "team"})
+    return pd.concat([home, away], ignore_index=True)

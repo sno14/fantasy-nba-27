@@ -71,6 +71,45 @@ export interface RosRow {
   redist_mpg?: number;
 }
 
+// ------------------------------------------------------------------- weekly planner
+export interface WeekInfo {
+  week: number;
+  week_name: string;
+  start: string; // ISO date (Monday of the fantasy week)
+  end: string; // ISO date (Sunday)
+  days: string[]; // ISO dates on which any game is played that week
+  n_games: number; // total NBA games that week
+}
+
+export interface WeeksResponse {
+  target: string;
+  has_schedule: boolean;
+  weeks: WeekInfo[];
+}
+
+export interface WeeklyRow {
+  PLAYER_ID: number;
+  PLAYER_NAME: string;
+  TEAM_ABBREVIATION: string | null;
+  rank: number; // season-long board rank
+  fpts_pg: number;
+  gp: number | null; // projected games played (season)
+  games: string[]; // ISO dates this player's team plays this week
+  n_games: number;
+  weekly_fpts: number; // fpts_pg × n_games (all days)
+}
+
+export interface WeeklyResponse {
+  target: string;
+  week: number;
+  week_name: string;
+  start: string;
+  end: string;
+  days: string[]; // the week's game-days, ascending
+  teams: string[];
+  rows: WeeklyRow[];
+}
+
 export interface CareerRow {
   SEASON: string;
   AGE: number;
@@ -195,6 +234,38 @@ export interface DraftStateResponse {
   replacement: Record<string, number>;
   rosters: RosterPanel[];
   board: DraftBoardRow[];
+}
+
+// ------------------------------------------------------------------- power rankings
+export interface PowerTeam {
+  team_id: number;
+  is_me: boolean;
+  power_rank: number;
+  n_players: number;
+  total_fpts_pg: number;
+  avg_fpts_pg: number;
+  total_fpts_season: number;
+  starters_fpts_pg: number;
+  star_power: number;
+  best_player: string | null;
+  best_fpts_pg: number | null;
+  depth: number;
+  floor_season: number;
+  ceiling_season: number;
+  mean_risk: number | null;
+  n_chronic: number;
+  unfilled_starts: number;
+}
+
+export interface PowerResponse {
+  n_picks: number;
+  my_team_id: number;
+  n_teams: number;
+  roster_size: number;
+  has_positions: boolean;
+  synthetic_teams: boolean;
+  starting_slots: Record<string, number>;
+  teams: PowerTeam[];
 }
 
 export interface DatasetPage {
