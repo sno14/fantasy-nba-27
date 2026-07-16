@@ -244,7 +244,16 @@ Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season 
   range dot-plot; search / team filter / column sorting; checkboxes feed **Compare**.
 - **ROS (in-season)** — nightly `data/processed/ros_board/` snapshots with the
   naive-updater disagreement panel (populates once `update_daily.py` crons from opening
-  night; DARKO/market disagreement stays in `darko_report.py` / `market_report.py`).
+  night; DARKO disagreement stays in `darko_report.py`).
+- **Trends** — risers & fallers: the latest nightly snapshot diffed against one 7/14/30
+  days back (rank/FP-G/MPG deltas + a trailing-month sparkline per player), snapshot-vs-
+  snapshot only. The in-season "who's moving" radar; needs ≥2 nightly snapshots and says
+  so until then. Backed by `/api/trends`.
+- **Trade Targets** — the buy-low / sell-high *disagreement finder* (not advice): market
+  consensus rank vs ours (`pull_market.py` archives — the likely trade price), the
+  naive-vs-model heat gap (hot streaks the model discounts / cold streaks it looks
+  through), and the 14-day trend, side by side with owner chips from the Draft Room
+  picks. No composite score on purpose. Backed by `/api/trade-targets`.
 - **Weekly** — the streaming planner: pick an NBA week and rank players by **projected
   FP/G × games that week**, so a 4-game week at 25 FP/G (100) beats a 3-game week at 30
   (90) — the volume edge that drives waiver pickups. A per-day game grid shows when each
@@ -273,7 +282,15 @@ Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season 
   the live Draft Room picks (manual or ESPN); a **Simulate mock draft** button best-available
   snake-fills all teams to preview the league before draft night. Backed by `/api/draft/power`
   + `/api/draft/simulate`.
+- **Schedule** — schedule strength: teams × fantasy-weeks game-count heatmap with the
+  fantasy playoff weeks highlighted (draft tiebreak / trade-deadline tool), plus total
+  games and back-to-backs. Banners that `league.yaml`'s `fantasy_playoff_weeks` is a
+  placeholder until `fantasy_playoff_weeks_confirmed: true` is set (mid-Aug ESPN
+  calendar). Backed by `/api/schedule-strength`.
 - **Data** — browse the raw parquet caches (season stats, game logs, bio, rosters, …).
+
+The remaining season views (Waivers / My Team / Matchup planner) are spec'd in
+[docs/ui-views-plan.md](docs/ui-views-plan.md) — its tracker is the live build state.
 
 Frontend dev loop: `python scripts/serve.py` + `cd frontend && npm run dev` (Vite on
 :5173, `/api` proxied). No local data yet? `python scripts/dev_fixtures.py` writes a

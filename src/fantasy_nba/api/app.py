@@ -35,6 +35,7 @@ from ..models.uncertainty import rank_board
 from ..scoring import load_scoring
 from . import boards
 from .draft import router as draft_router
+from .season import router as season_router
 
 PROPOSALS_PATH = CONFIG_DIR / "analyst_proposals.yaml"
 LEAGUE_PATH = CONFIG_DIR / "league.yaml"
@@ -58,6 +59,8 @@ app.add_middleware(
 )
 # Draft room (Step 19). Registered before the SPA static mount so /api/draft/* wins.
 app.include_router(draft_router)
+# Season views V1-V6 (docs/ui-views-plan.md): trends / trade-targets / schedule-strength.
+app.include_router(season_router)
 
 
 def _records(df: pd.DataFrame) -> list[dict]:

@@ -401,3 +401,43 @@ export function RiskMeter({ value, max = 1.2 }: { value: number; max?: number })
     </span>
   );
 }
+
+// ------------------------------------------------------------------- sparkline
+/** Tiny inline trend line for table cells (V1 Trends). Stroke follows the net
+ * direction over the window; the last point gets a dot. Pure SVG, no hover layer —
+ * the row's delta columns carry the numbers. */
+export function Sparkline({
+  values,
+  width = 96,
+  height = 24,
+}: {
+  values: number[];
+  width?: number;
+  height?: number;
+}) {
+  if (values.length < 2) return <span className="text-ink-3">—</span>;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min || 1;
+  const xy = (v: number, i: number): [number, number] => [
+    (i / (values.length - 1)) * (width - 6) + 3,
+    height - 3 - ((v - min) / span) * (height - 6),
+  ];
+  const pts = values.map((v, i) => xy(v, i).map((n) => n.toFixed(1)).join(","));
+  const net = values[values.length - 1] - values[0];
+  const color = Math.abs(net) < 0.05 ? "var(--ink-3)" : net > 0 ? "var(--up)" : "var(--down)";
+  const [lx, ly] = xy(values[values.length - 1], values.length - 1);
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} width={width} height={height} className="block">
+      <polyline
+        points={pts.join(" ")}
+        fill="none"
+        stroke={color}
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx={lx} cy={ly} r="2.2" fill={color} />
+    </svg>
+  );
+}

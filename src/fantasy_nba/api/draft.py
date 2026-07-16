@@ -185,6 +185,21 @@ def _roster_panel(state: DraftState, board: pd.DataFrame) -> list[dict]:
     return out
 
 
+def current_rosters() -> dict:
+    """Post-draft ownership for the season views (docs/ui-views-plan.md §A.4): the live
+    draft session's rosters keyed by team id, values NBA player ids (DraftState already
+    maps ESPN→NBA at pick ingestion). Manual picks, ESPN picks, and Simulate all land
+    here. In-season live rosters (adds/drops) are the named V3b enhancement — until then
+    this is the honest source and it's empty before anyone drafts."""
+    state = _state()
+    return {
+        "my_team_id": int(state.my_team_id),
+        "source": _session.source,
+        "n_picks": len(state.picks),
+        "rosters": {int(t): [int(p) for p in pids] for t, pids in state.rosters.items() if pids},
+    }
+
+
 def _num(row, col: str) -> float | None:
     if row is None or col not in row or pd.isna(row[col]):
         return None
