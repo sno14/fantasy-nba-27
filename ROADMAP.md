@@ -25,10 +25,13 @@ special-case handling.
 ## Key decisions
 
 - **Scoring:** points league first, but scoring is a swappable **config** (`config/scoring.yaml`)
-  so category/9-cat works later. Default weights are DraftKings-style placeholders — user to adjust.
-- **League format (user, 2026-07):** weekly **H2H points** matchups with **daily lineup setting**;
-  scoring numbers TBD (placeholders stand until locked — re-run the headline eval under the final
-  scoring before draft day). The league **ends ~2–3 weeks before the NBA regular season** (exact gap
+  so category/9-cat works later. The original DraftKings-style placeholder weights were
+  **superseded 2026-07-10: league scoring confirmed as the ESPN default points league** —
+  `scoring.yaml` already carried exactly those weights, so every ledger verdict stands and
+  nothing re-ran (the D1.1 pre-draft verification: passed).
+- **League format (user, 2026-07; confirmed 2026-07-10):** **ESPN default points, 10 teams**,
+  weekly **H2H points** matchups with **daily lineup setting** (structure in
+  `config/league.yaml`). The league **ends ~2–3 weeks before the NBA regular season** (exact gap
   TBD) to dodge late-season rest/tank noise — so ROS horizons, totals, and playoff-week logic key
   off `league_end`, not the NBA finale (`config/league.yaml`; implementation-plan Step D1).
 - **Granularity:** season-long per-game first; game-by-game (opponent/rest-aware) later.
@@ -131,8 +134,10 @@ special-case handling.
       + the Step-12 nightly pipeline with status overrides.
 
 ### Stage 5 — Scoring & delivery
-- [ ] **Live draft room (Step 19 — implementation-plan Phase 7; in progress, 19.1–19.3 done
-      2026-07-15).** The named gap (user, 2026-07-15): every artefact here ends at "here is a
+- [x] **Live draft room (Step 19 — implementation-plan Phase 7; SHIPPED 2026-07-16 as
+      descoped: 19.1–19.3 + the `/room` UI; 19.4–19.6 descoped by the user the same day;
+      the one open item is the mid-Oct 19.1b re-verification sweep + mock draft, on the
+      standing calendar).** The named gap (user, 2026-07-15): every artefact here ends at "here is a
       board" and nothing helps during the draft itself. Link the live ESPN draft so picks
       remove players and re-rank the remainder; read all ten rosters to surface construction
       (slot feasibility via ESPN `eligibleSlots` — which also closes the platform-eligibility
@@ -174,7 +179,18 @@ special-case handling.
       `scripts/project.py` defaults to the learned model (risk ranges + `--rank-by`;
       `--asof DATE` for the in-season ROS board), `scripts/draft_sheet.py` is the D1
       decision sheet (VOR + ADP availability + rookie market-seed), boards persist to
-      `data/processed/`, and the explorer carries board/ROS/player/data tabs.
+      `data/processed/`, and the explorer carries board/ROS/player/data tabs *(the
+      Streamlit explorer was superseded 2026-07-14 by the web app — next bullet; it stays
+      runnable as the legacy fallback)*.
+- [x] **Web app — the primary frontend (shipped 2026-07-14, extended through 2026-07-16):**
+      `scripts/serve.py` = FastAPI backend (`src/fantasy_nba/api/`) + React frontend
+      (`frontend/`), wrapping the same model code as the CLI. Views: Draft Board
+      (analyst-B toggle, tier breaks, ADP value/reach chips) · Draft Room (`/room`,
+      2026-07-16) · **Power Rankings** (per-roster projected-season-FP table + mock-draft
+      simulate, 2026-07-16) · ROS · **Weekly** (streaming planner: FP/G × games-that-week
+      against the schedule grid, 2026-07-15) · Players · Compare · Analyst review panel ·
+      Data. Product work — no ledger entries; per-view detail + commands live in README
+      "Web app" (the Appendix-B doc-ownership split).
 
 **Next frontiers (post-ship, in rough return order):** **the minutes economy (Phase 5) is
 COMPLETE 2026-07-11** — Step 16 / EXP-030 OUT-redistribution adopted-tentative (nightly
