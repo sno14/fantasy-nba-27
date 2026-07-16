@@ -38,6 +38,14 @@ from .injuries import ALIASES, SEVERE_RE
 CATEGORIES = ("role", "injury", "hype", "rookie", "other")
 ACTIONS = ("none", "rank_delta", "fpts_delta")
 
+# Step 18 — the delta lifecycle. Role/hype deltas are *bridges*: they carry information
+# the model can't see yet, and the in-season EWMA features learn the role as games
+# accumulate — leaving a static delta stacked on a caught-up base = double-counting.
+# injury/other deltas are exempt (availability lives in config/overrides.yaml anyway).
+BRIDGE_CATEGORIES = ("role", "hype")
+DECAY_FULL_GAMES = 10   # delta at full strength while the EWMA is still small-sample
+DECAY_ZERO_GAMES = 30   # by here the role signal is reliable (EXP-018 half-lives: MPG=10g)
+
 # D2.1 trigger thresholds.
 TRIGGER_TOP_N = 200          # the union universe: our top-200 + consensus top-200
 TRIGGER_RANK_GAP = 15        # |our rank − consensus rank| that flags a player
@@ -129,7 +137,8 @@ def _action_str(e: dict) -> str:
     return f"{e['kind']}:{e['value']:+g}"
 
 
-def apply_overrides(board: pd.DataFrame, entries: list[dict]) -> pd.DataFrame:
+def apply_overrides(board: pd.DataFrame, entries: list[dict],
+                    decay_from: str | None = None) -> pd.DataFrame:
     """Board A + overrides → board B (a new frame; the input is not mutated).
 
     Deterministic arithmetic, applied in file order after the latest-dated-wins dedupe:
@@ -147,15 +156,27 @@ def apply_overrides(board: pd.DataFrame, entries: list[dict]) -> pd.DataFrame:
     (the analyst layer adjusts rank/fpts only — replacement level is not re-simulated).
     An override naming a player absent from the board, or matching two board rows,
     raises — a silently dropped or ambiguous override would corrupt the April scoring.
+
+    ``decay_from`` (Step 18.2, in-season only — off by default): the name of a
+    games-played-so-far column. When set, each :data:`BRIDGE_CATEGORIES` ``fpts_delta``
+    is scaled by :func:`decay_factor` of that row's value before applying, and every
+    adjusted row carries an ``analyst_decay_factor`` audit column (1.0 = undamped;
+    injury/other/rookie deltas and the preseason board-B path are never scaled).
+    ``analyst_action`` keeps the *entry's* delta — the factor column is the audit of
+    what was actually applied.
     """
     out = board.copy().reset_index(drop=True)
     if "rank" not in out.columns:
         raise ValueError("board needs a 'rank' column.")
+    if decay_from is not None and decay_from not in out.columns:
+        raise ValueError(f"decay_from column {decay_from!r} not on the board.")
     out = out.sort_values("rank").reset_index(drop=True)
     out["model_rank"] = out["rank"].to_numpy()
     out["analyst_action"] = ""
     out["analyst_category"] = ""
     out["analyst_date"] = ""
+    if decay_from is not None:
+        out["analyst_decay_factor"] = np.nan
     keys = out["PLAYER_NAME"].map(name_key)
 
     for e in effective_overrides(entries):
@@ -174,8 +195,16 @@ def apply_overrides(board: pd.DataFrame, entries: list[dict]) -> pd.DataFrame:
         if e["kind"] == "none":
             continue
         if e["kind"] == "fpts_delta":
+            value = e["value"]
+            if decay_from is not None:
+                factor = 1.0
+                if e["category"] in BRIDGE_CATEGORIES:
+                    g = out.loc[i, decay_from]
+                    factor = decay_factor(g) if pd.notna(g) else 1.0
+                out.loc[i, "analyst_decay_factor"] = factor
+                value = value * factor
             old_pg = float(out.loc[i, "fpts_pg"])
-            new_pg = old_pg + e["value"]
+            new_pg = old_pg + value
             out.loc[i, "fpts_pg"] = new_pg
             if "fpts_total" in out.columns:
                 gp = out.loc[i, "gp"] if "gp" in out.columns else np.nan
@@ -198,6 +227,63 @@ def apply_overrides(board: pd.DataFrame, entries: list[dict]) -> pd.DataFrame:
 
     out["rank"] = range(1, len(out) + 1)
     return out
+
+
+# --------------------------------------------------------------- Step 18: delta lifecycle
+def parse_fpts_delta(action_str: str) -> float:
+    """The fpts_delta encoded in an ``analyst_action`` audit string ("fpts_delta:+3.5"),
+    0.0 for anything else (none / rank_delta / empty) — used to recover a snapshot's
+    pre-analyst base: ``base = snapshot fpts_pg − parse_fpts_delta(analyst_action)``."""
+    s = (action_str or "").strip()
+    if s.startswith("fpts_delta:"):
+        try:
+            return float(s.split(":", 1)[1])
+        except ValueError:
+            return 0.0
+    return 0.0
+
+
+def stale_entries(entries: list[dict], base_now: dict[str, float],
+                  base_then: dict[str, float]) -> list[dict]:
+    """18.1 — which effective bridge deltas has the model already absorbed?
+
+    For each effective ``fpts_delta`` entry in a :data:`BRIDGE_CATEGORIES` category,
+    compare the model's current pre-analyst base against its base when the entry was
+    written (both keyed by ``name_key``; players missing either base are skipped —
+    never guessed). The entry is **stale** when the base has moved *in the delta's
+    direction* by at least the delta's magnitude — the spec's "risen by ≥ the delta"
+    for upgrades, mirrored for downgrades. Stale ≠ auto-removed: the flag is a nudge
+    to post a later-dated ``none``/reduced entry (append-only rule unchanged).
+
+    Returns one dict per checkable entry: ``name, name_key, category, delta,
+    base_then, base_now, caught_up`` (signed base move) ``, stale``.
+    """
+    out = []
+    for e in effective_overrides(entries):
+        if e["kind"] != "fpts_delta" or e["category"] not in BRIDGE_CATEGORIES:
+            continue
+        now, then = base_now.get(e["name_key"]), base_then.get(e["name_key"])
+        if now is None or then is None:
+            continue
+        caught = float(now) - float(then)
+        stale = (caught * e["value"] > 0) and abs(caught) >= abs(e["value"])
+        out.append({"name": e["name"], "name_key": e["name_key"],
+                    "category": e["category"], "delta": e["value"],
+                    "base_then": round(float(then), 1), "base_now": round(float(now), 1),
+                    "caught_up": round(caught, 1), "stale": stale})
+    return out
+
+
+def decay_factor(games_so_far: float) -> float:
+    """18.2 — how much of a bridge delta survives after ``games_so_far`` games: full
+    strength through :data:`DECAY_FULL_GAMES`, linear taper to 0 by
+    :data:`DECAY_ZERO_GAMES` (where the EWMA role signal is reliable)."""
+    g = float(games_so_far)
+    if g <= DECAY_FULL_GAMES:
+        return 1.0
+    if g >= DECAY_ZERO_GAMES:
+        return 0.0
+    return 1.0 - (g - DECAY_FULL_GAMES) / (DECAY_ZERO_GAMES - DECAY_FULL_GAMES)
 
 
 def _breakout_flags(board: pd.DataFrame) -> pd.Series:

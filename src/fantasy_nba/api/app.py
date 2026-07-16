@@ -151,7 +151,8 @@ def ros_snapshot(date: str) -> dict:
     cols = [c for c in ("rank", "PLAYER_ID", "PLAYER_NAME", "TEAM_ABBREVIATION",
                         "games_so_far", "gp", "mpg", "fpts_pg", "fpts_total",
                         "naive_fpts_pg", "naive_rank", "status_override", "redist_mpg",
-                        "analyst_action") if c in df.columns]
+                        "analyst_action", "analyst_decay_factor", "analyst_stale")
+            if c in df.columns]
     out = df[cols].copy()
     if {"rank", "naive_rank"} <= set(out.columns):
         out["rank_gap"] = out["naive_rank"] - out["rank"]

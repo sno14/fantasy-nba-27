@@ -115,15 +115,21 @@ entry, never an emergent stack:
   Expect big joint deltas to be rare; April 2027's calibration judges whether they
   ran hot.
 
-## Delta lifecycle — role/hype deltas are BRIDGES (Step 18, next build)
+## Delta lifecycle — role/hype deltas are BRIDGES (Step 18, built 2026-07-16)
 
 A role/hype `fpts_delta` bridges the model until it can see the role for itself. In-season,
 `update_daily.py` re-projects the model nightly and its EWMA **learns the role** from games —
 so once the model's own base has caught up, a static delta double-counts and should be
 retired (a later-dated `none`/reduced entry) or auto-decayed. Injury/availability facts don't
-decay (they live in `config/overrides.yaml`, not here). Step 18 (implementation-plan Phase 6)
-adds the staleness flag + optional decay; until then, retirement is manual (the mid-Oct
-re-review and ad-hoc as roles crystallize).
+decay (they live in `config/overrides.yaml`, not here).
+
+**Step 18 shipped (2026-07-16):** every nightly run now prints the **staleness report** —
+per bridge entry, the model's pre-analyst base *now* vs *when the entry was written*
+(recovered from the snapshot archive / frozen board A); a caught-up delta flags
+`analyst_stale` on the board and prints "consider retiring". Retirement stays **manual and
+append-only** — the flag is a nudge, never an auto-edit. `--analyst-decay` (18.2) can
+auto-taper bridge deltas by games played (full ≤ ~10, gone by ~30) but is **off by default**
+until its validation gate runs on real in-season dates (implementation-plan 18.2).
 
 ## Scoring = calibration (amended 2026-07-12)
 

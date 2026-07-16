@@ -1202,10 +1202,13 @@ same day — the room reports composition and a human decides; the specs remain 
 load-bearing for season ranges) and must **never** be a per-game sigma in a weekly sim — its
 `σ_level` would come from EXP-021's *rejected* residual-CDF artefact, which is the honest
 marginal and exactly right for that different job (the EXP-021 verdict for the season board
-stands untouched); and injuries must be sampled as contiguous spells. **Next build: Step 18**
-(Phase 6, spec'd 2026-07-12) — the analyst-delta staleness flag + optional decay, the
-double-count guard for the living analyst layer; product step, no EXP number, runnable in a
-fresh session. Step 19's one open calendar item is the **mid-Oct 19.1b sweep + mock draft**
+stands untouched); and injuries must be sampled as contiguous spells. **Step 18 BUILT 2026-07-16**
+(Phase 6) — the analyst-delta staleness flag ships in the nightly run (`analyst_stale` +
+the "consider retiring" report; base-then recovered from the snapshot archive / frozen
+board A) and `--analyst-decay` exists behind its flag, OFF by default; product step, no EXP
+number. Its 18.1 acceptance spot-checks + 18.2 validation gate run on real in-season dates
+once the cron has snapshots (a one-line EXP-029 addendum records the spot-checks then).
+Step 19's one open calendar item is the **mid-Oct 19.1b sweep + mock draft**
 (league id / teams / pick order all drift; ESPN polling latency remains unproven).
 Otherwise everything waits on the standing calendar
 (mid-Aug schedule → Sept market → mid-Oct analyst re-review + dual freeze →

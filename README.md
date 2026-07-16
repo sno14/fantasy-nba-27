@@ -225,7 +225,15 @@ applied (availability only: "out until X" caps ROS games; rates/minutes untouche
 to teammates by the fitted absorption tiers; `redist_mpg` audit column; `--no-redist`),
 (6) applies the analyst layer (effective `config/analyst_overrides.yaml` entries with
 `analyst_action`/`model_rank` audit columns; `--no-analyst`; fed by the BBM-transcript
-workflow in `data/manual/bbm_transcripts/README.md`), and (7) emits the naive-updater
+workflow in `data/manual/bbm_transcripts/README.md`) **with the Step-18 staleness
+report** — role/hype deltas are *bridges* until the in-season model learns the role, so
+each night the pre-analyst base is compared against the base when the entry was written
+(recovered from the snapshot archive / frozen board A); a caught-up delta flags
+`analyst_stale` on the board and prints "consider retiring" (post a later-dated
+`none`/reduced entry — never edit). `--analyst-decay` (18.2, **off by default** pending
+its validation gate) auto-tapers role/hype deltas by games played (full through ~10,
+gone by ~30; `analyst_decay_factor` audit column; injury/other never decay), and
+(7) emits the naive-updater
 benchmark alongside (`naive_fpts_pg`/`naive_rank` + a disagreement report — the daily
 gap between them is itself a signal). Each pull is fault-isolated; an existing board
 for the date is never silently overwritten.
