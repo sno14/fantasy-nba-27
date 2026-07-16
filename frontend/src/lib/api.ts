@@ -412,3 +412,32 @@ export interface ScheduleStrengthResponse {
   weeks: { week: number; week_name: string; start: string; end: string }[];
   teams: ScheduleTeamRow[];
 }
+
+export interface WaiverRow {
+  PLAYER_ID: number;
+  PLAYER_NAME: string;
+  TEAM_ABBREVIATION: string | null;
+  rank: number;
+  fpts_pg: number;
+  games: string[];
+  n_games: number;
+  weekly_fpts: number;
+  redist_mpg: number | null; // >0 = inheriting minutes from an OUT teammate (EXP-030)
+  breakout_p: number | null;
+  fpts_delta_14: number | null;
+  status_override: string;
+}
+
+export interface WaiversResponse {
+  mode: "ros" | "preseason";
+  ownership: boolean;
+  n_rostered: number;
+  my_team_id: number;
+  has_schedule: boolean;
+  week?: number | null;
+  week_name?: string;
+  start?: string;
+  end?: string;
+  days?: string[];
+  rows: WaiverRow[];
+}

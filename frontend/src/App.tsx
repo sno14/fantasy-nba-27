@@ -16,6 +16,7 @@ import Power from "./views/Power";
 import Ros from "./views/Ros";
 import Trends from "./views/Trends";
 import Trades from "./views/Trades";
+import Waivers from "./views/Waivers";
 import Schedule from "./views/Schedule";
 import Weekly from "./views/Weekly";
 import Player from "./views/Player";
@@ -115,6 +116,7 @@ const NAV = [
   { section: "Season", to: "/ros", label: "ROS", icon: "M4 17l5-5 4 3 7-8M16 7h4v4" },
   { section: "Season", to: "/trends", label: "Trends", icon: "M3 17l6-6 4 4 8-9M14 6h7v7" },
   { section: "Season", to: "/trades", label: "Trade Targets", icon: "M4 7h13l-3-3M4 7l3 3M20 17H7l3-3M20 17l-3 3" },
+  { section: "Season", to: "/waivers", label: "Waivers", icon: "M12 8v8M8 12h8M12 21a9 9 0 110-18 9 9 0 010 18z" },
   { section: "Season", to: "/weekly", label: "Weekly", icon: "M4 5h16v15H4zM4 9h16M8 3v4M16 3v4" },
   { section: "Research", to: "/players", label: "Players", icon: "M12 12a4 4 0 100-8 4 4 0 000 8zM4 20a8 8 0 0116 0" },
   { section: "Research", to: "/compare", label: "Compare", icon: "M8 4v16M16 4v16M4 9h8M12 15h8" },
@@ -204,6 +206,7 @@ function Shell() {
               <Route path="/ros" element={<Ros />} />
               <Route path="/trends" element={<Trends />} />
               <Route path="/trades" element={<Trades />} />
+              <Route path="/waivers" element={<Waivers />} />
               <Route path="/schedule" element={<Schedule />} />
               <Route path="/weekly" element={<Weekly />} />
               <Route path="/players" element={<Player />} />

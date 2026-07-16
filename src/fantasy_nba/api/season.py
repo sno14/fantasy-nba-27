@@ -237,6 +237,139 @@ def trade_targets() -> dict:
     }
 
 
+# ------------------------------------------------------------------ waiver wire (V3)
+def week_games_by_team(target: str, week: int) -> tuple[dict, dict[str, list[str]]]:
+    """One NBA week's (meta, {team: [game dates]}) — the shared join behind V3/V4/V5.
+    ``({}, {})`` when no schedule is cached or the week isn't in it."""
+    long = boards.team_week_games(target)
+    if long.empty:
+        return {}, {}
+    wk = long[long["week"] == week]
+    if wk.empty:
+        return {}, {}
+    days = sorted(pd.to_datetime(wk["game_date"]).dt.strftime("%Y-%m-%d").unique().tolist())
+    by_team = {str(t): sorted(pd.to_datetime(g["game_date"]).dt.strftime("%Y-%m-%d").tolist())
+               for t, g in wk.groupby("team")}
+    meta = {"week": int(week), "week_name": str(wk["week_name"].iloc[0]),
+            "start": days[0], "end": days[-1], "days": days}
+    return meta, by_team
+
+
+_OUT_UNTIL = re.compile(r"^out_until:(\d{4}-\d{2}-\d{2})")
+
+
+def games_while_active(games: list[str], status_override: str) -> list[str]:
+    """Drop week game-dates a flagged-out player will miss (the Step-12 override notes:
+    ``out_for_season`` / ``out_until:YYYY-MM-DD`` — the return date's game counts). An
+    OUT player's streaming value that week is the games he's actually back for."""
+    s = status_override or ""
+    if s.startswith("out_for_season"):
+        return []
+    m = _OUT_UNTIL.match(s)
+    if m:
+        return [g for g in games if g >= m.group(1)]
+    return games
+
+
+def default_week(week_ends: list[tuple[int, str]], asof: str | None) -> int | None:
+    """The week a manager cares about *now*: the first whose last game date is >= the
+    as-of date (the latest snapshot), else the final week; the first week preseason."""
+    if not week_ends:
+        return None
+    ordered = sorted(week_ends)
+    if asof is None:
+        return ordered[0][0]
+    for wk, end in ordered:
+        if end >= asof:
+            return wk
+    return ordered[-1][0]
+
+
+def _week_ends(target: str) -> list[tuple[int, str]]:
+    long = boards.team_week_games(target)
+    if long.empty:
+        return []
+    ends = long.groupby("week")["game_date"].max()
+    return [(int(w), pd.Timestamp(e).date().isoformat()) for w, e in ends.items()]
+
+
+@router.get("/waivers")
+def waivers(week: int | None = Query(default=None),
+            target: str = Query(default=None)) -> dict:
+    """V3 — the pickup list: the current pool minus rostered players, ranked by
+    ROS FP/G × games in the chosen week, with the opportunity columns attached
+    (EXP-030 redist_mpg, breakout_p, 14d trend, status)."""
+    target = target or boards.CURRENT_TARGET
+    dates = ros_dates()
+    if dates:
+        cur, mode = _ros_cached(dates[-1]).copy(), "ros"
+        asof = dates[-1]
+    else:
+        if not boards.data_ready():
+            raise HTTPException(503, "No data cached yet — pull data or run dev_fixtures.py.")
+        cur, mode = boards.ranked_board(boards.CURRENT_TARGET, "learned", "safe", True).copy(), "preseason"
+        asof = None
+
+    from .draft import current_rosters  # session-backed
+
+    own = current_rosters()
+    rostered = {pid for pids in own["rosters"].values() for pid in pids}
+    if rostered:
+        cur = cur[~cur["PLAYER_ID"].isin(rostered)]
+
+    sheet_path = PROCESSED_DIR / f"draft_sheet_{target}.parquet"
+    breakout: dict[int, float] = {}
+    if sheet_path.exists():
+        sheet = pd.read_parquet(sheet_path)
+        if "breakout_p" in sheet.columns:
+            breakout = {int(r.PLAYER_ID): float(r.breakout_p)
+                        for r in sheet[["PLAYER_ID", "breakout_p"]].dropna().itertuples(index=False)}
+
+    if week is None:
+        week = default_week(_week_ends(target), asof)
+    meta, by_team = week_games_by_team(target, week) if week is not None else ({}, {})
+    has_schedule = bool(meta)
+
+    trend_by_pid: dict[int, float] = {}
+    if len(dates) >= 2:
+        tj = trend_join(_ros_cached(dates[-1]), _ros_cached(baseline_date(dates, dates[-1], 14)))
+        trend_by_pid = {int(r.PLAYER_ID): float(r.fpts_delta) for r in tj.itertuples(index=False)}
+
+    cur = cur.sort_values("rank").head(TRADE_TOP)
+    rows = []
+    for r in cur.itertuples(index=False):
+        pid = int(r.PLAYER_ID)
+        team = getattr(r, "TEAM_ABBREVIATION", None)
+        team = str(team) if team is not None and pd.notna(team) else None
+        status = getattr(r, "status_override", "") or ""
+        games = by_team.get(team, []) if (has_schedule and team) else []
+        games = games_while_active(games, status)
+        fpg = round(float(r.fpts_pg), 1)
+        rows.append({
+            "PLAYER_ID": pid,
+            "PLAYER_NAME": r.PLAYER_NAME,
+            "TEAM_ABBREVIATION": team,
+            "rank": int(r.rank),
+            "fpts_pg": fpg,
+            "games": games,
+            "n_games": len(games),
+            "weekly_fpts": round(fpg * len(games), 1),
+            "redist_mpg": round(float(r.redist_mpg), 1)
+                          if hasattr(r, "redist_mpg") and pd.notna(r.redist_mpg) else None,
+            "breakout_p": breakout.get(pid),
+            "fpts_delta_14": trend_by_pid.get(pid),
+            "status_override": status,
+        })
+    rows.sort(key=lambda x: (x["weekly_fpts"] if has_schedule else -x["rank"]), reverse=True)
+    return {
+        "mode": mode, "ownership": bool(rostered), "n_rostered": len(rostered),
+        "my_team_id": own["my_team_id"], "has_schedule": has_schedule,
+        **({k: meta[k] for k in ("week", "week_name", "start", "end", "days")} if meta
+           else {"week": week}),
+        "rows": rows,
+    }
+
+
 # ------------------------------------------------------------------ schedule strength
 def b2b_count(dates: pd.Series) -> int:
     """Back-to-backs: pairs of consecutive calendar days with a game."""

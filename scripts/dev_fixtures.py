@@ -289,7 +289,8 @@ def ros_snapshots(ss: pd.DataFrame, sheet: pd.DataFrame,
                                 "naive_fpts_pg": naive.round(1),
                                 "redist_mpg": redist.round(1),
                                 "status_override": ""})
-        aligned.loc[out_idx, "status_override"] = "out_until_2027-02-01"
+        # The real pipeline's note format (models/asof.py): "out_until:YYYY-MM-DD".
+        aligned.loc[out_idx, "status_override"] = "out_until:2027-02-01"
         d = d.merge(aligned, on="PLAYER_ID", how="left")
         d["naive_rank"] = d["naive_fpts_pg"].rank(ascending=False).astype(int)
         out[date.date().isoformat()] = d[[

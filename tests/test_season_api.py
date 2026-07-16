@@ -86,3 +86,29 @@ def test_b2b_counts_consecutive_days_only():
 
 def test_b2b_zero_on_sparse_schedule():
     assert b2b_count(pd.Series(pd.to_datetime(["2026-11-02", "2026-11-04"]))) == 0
+
+
+# ------------------------------------------------------------------ default_week (V3)
+def test_default_week_picks_first_week_still_in_progress_or_ahead():
+    ends = [(1, "2026-10-25"), (2, "2026-11-01"), (3, "2026-11-08")]
+    from fantasy_nba.api.season import default_week
+
+    assert default_week(ends, "2026-10-30") == 2   # week 1 already finished
+    assert default_week(ends, "2026-11-01") == 2   # last day of week 2 still counts
+    assert default_week(ends, "2026-12-25") == 3   # past the schedule -> final week
+    assert default_week(ends, None) == 1           # preseason -> first week
+    assert default_week([], "2026-10-30") is None
+
+
+# ------------------------------------------------------------- games_while_active (V3)
+def test_out_until_drops_games_before_the_return_date():
+    from fantasy_nba.api.season import games_while_active
+
+    games = ["2027-01-11", "2027-01-13", "2027-01-15", "2027-01-17"]
+    assert games_while_active(games, "out_until:2027-01-14") == ["2027-01-15", "2027-01-17"]
+    # The return date's own game counts ("back on the 15th").
+    assert games_while_active(games, "out_until:2027-01-15") == ["2027-01-15", "2027-01-17"]
+    # The pipeline appends a gp-cap suffix: "out_until:… (gp 40->28)" — still parses.
+    assert games_while_active(games, "out_until:2027-01-14 (gp 40->28)") == ["2027-01-15", "2027-01-17"]
+    assert games_while_active(games, "out_for_season") == []
+    assert games_while_active(games, "") == games

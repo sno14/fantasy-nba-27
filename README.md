@@ -254,6 +254,12 @@ Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season 
   naive-vs-model heat gap (hot streaks the model discounts / cold streaks it looks
   through), and the 14-day trend, side by side with owner chips from the Draft Room
   picks. No composite score on purpose. Backed by `/api/trade-targets`.
+- **Waivers** — the pickup list: unrostered players (Draft Room picks mark ownership;
+  live ESPN rosters are the named V3b enhancement) ranked by ROS FP/G × games in the
+  chosen week — with games a flagged-out player will miss removed (`out_until:` /
+  `out_for_season` notes) — plus the opportunity chips: `redist_mpg` (inheriting an OUT
+  teammate's minutes, EXP-030), `breakout_p`, and the 14-day trend. Backed by
+  `/api/waivers`.
 - **Weekly** — the streaming planner: pick an NBA week and rank players by **projected
   FP/G × games that week**, so a 4-game week at 25 FP/G (100) beats a 3-game week at 30
   (90) — the volume edge that drives waiver pickups. A per-day game grid shows when each

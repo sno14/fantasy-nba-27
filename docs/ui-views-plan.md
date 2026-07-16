@@ -40,7 +40,7 @@ projection edge converts to wins.
 | V1 | Trends — risers & fallers from the ros_board archive | ☑ | ☑ | ☑ | ☑ 2026-07-16 |
 | V6 | Schedule strength — playoff-week games + B2B per NBA team | ☑ | ☑ | ☑ | ☑ 2026-07-16 |
 | V2 | Trade targets — buy-low / sell-high disagreement finder | ☑ | ☑ | ☑ | ☑ 2026-07-16 |
-| V3 | Waiver wire — unrostered pool × this-week games × opportunity | ☐ (spec §V3) | ☐ | ☐ | ☐ |
+| V3 | Waiver wire — unrostered pool × this-week games × opportunity | ☑ | ☑ | ☑ | ☑ 2026-07-16 |
 | V4 | My Team — roster dashboard | ☐ (spec §V4) | ☐ | ☐ | ☐ |
 | V5 | Matchup planner — descriptive H2H week totals | ☐ (spec §V5) | ☐ | ☐ | ☐ |
 
@@ -49,6 +49,14 @@ which ships with A; V4/V5 reuse V3's week-games join; V5 reuses V4's per-roster 
 
 ## Session hand-off notes (append, dated, newest first)
 
+- **2026-07-16 (session 2, this branch, later):** V3 shipped too (suite 146 green;
+  built + driven in the browser; ownership verified via /api/draft/simulate then reset).
+  Two V3 learnings that bind V4/V5: (1) the real `status_override` note format is
+  `out_until:YYYY-MM-DD` / `out_for_season` (models/asof.py) — the fixture now matches,
+  and `games_while_active()` in `season.py` drops the week games a flagged-out player
+  misses (V4/V5 weekly totals MUST reuse it); (2) `week_games_by_team()` +
+  `default_week()` exist in `season.py` — don't re-derive the week join. Next: §V4 then
+  §V5.
 - **2026-07-16 (session 2, this branch):** A + V1 + V6 + V2 built and verified (pytest
   suite green incl. new `tests/test_season_api.py`; `npm run build` + `tsc` clean; driven
   against the fixture cache). V3 is next: everything it needs already exists —
