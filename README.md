@@ -20,7 +20,10 @@ See [ROADMAP.md](ROADMAP.md) for the build plan, current progress, and modeling 
 6. **[docs/implementation-plan.md](docs/implementation-plan.md)** — **the execution spec**:
    a strictly linear, step-by-step build plan with file-level specs, commands, and
    adopt/reject gates. Active work happens from this file.
-7. **[data/manual/bbm_transcripts/README.md](data/manual/bbm_transcripts/README.md)** — the
+7. **[docs/ui-views-plan.md](docs/ui-views-plan.md)** — the web-app view build-out spec
+   (V1–V6 manager views: trends, trade targets, waivers, my-team, matchup, schedule
+   strength) with its own progress tracker; product work, no ledger entries.
+8. **[data/manual/bbm_transcripts/README.md](data/manual/bbm_transcripts/README.md)** — the
    analyst-layer workflow contract: BBM transcript drop zone, the triangulation rubric that
    sizes each fpts_delta (model × BBM mechanism × judgment; target-level sizing — delta =
    triangulated target − model base — so magnitude gaps count without stacking; joint

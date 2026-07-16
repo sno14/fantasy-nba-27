@@ -190,7 +190,10 @@ special-case handling.
       simulate, 2026-07-16) · ROS · **Weekly** (streaming planner: FP/G × games-that-week
       against the schedule grid, 2026-07-15) · Players · Compare · Analyst review panel ·
       Data. Product work — no ledger entries; per-view detail + commands live in README
-      "Web app" (the Appendix-B doc-ownership split).
+      "Web app" (the Appendix-B doc-ownership split). **The build-out continues per
+      [docs/ui-views-plan.md](docs/ui-views-plan.md)** (user, 2026-07-16): six manager
+      views — trends/risers, buy-low·sell-high trade targets, waiver wire, my-team
+      dashboard, matchup planner, schedule strength — spec'd with their own tracker.
 
 **Next frontiers (post-ship, in rough return order):** **the minutes economy (Phase 5) is
 COMPLETE 2026-07-11** — Step 16 / EXP-030 OUT-redistribution adopted-tentative (nightly
