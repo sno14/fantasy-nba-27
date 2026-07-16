@@ -192,10 +192,11 @@ special-case handling.
       Data. Product work — no ledger entries; per-view detail + commands live in README
       "Web app" (the Appendix-B doc-ownership split). **The build-out continues per
       [docs/ui-views-plan.md](docs/ui-views-plan.md)** (user, 2026-07-16): six manager
-      views spec'd with their own tracker — **Trends (V1), Trade Targets (V2), Waivers
-      (V3), and Schedule strength (V6) shipped 2026-07-16** (+ sectioned nav, a 12-night
-      fixture archive with engineered movers, and a fixture market pull); my-team
-      dashboard and matchup planner (V4–V5) remain.
+      views spec'd with their own tracker — **all six (V1–V6) shipped 2026-07-16**:
+      Trends, Trade Targets, Waivers, My Team, Matchup (descriptive-only, honoring the
+      19.4 no-win-probability constraint), Schedule strength (+ sectioned nav, a
+      12-night fixture archive with engineered movers, and a fixture market pull). The
+      named follow-up is V3b: live ESPN rosters once in-season adds/drops start.
 
 **Next frontiers (post-ship, in rough return order):** **the minutes economy (Phase 5) is
 COMPLETE 2026-07-11** — Step 16 / EXP-030 OUT-redistribution adopted-tentative (nightly

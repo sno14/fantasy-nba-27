@@ -41,13 +41,24 @@ projection edge converts to wins.
 | V6 | Schedule strength — playoff-week games + B2B per NBA team | ☑ | ☑ | ☑ | ☑ 2026-07-16 |
 | V2 | Trade targets — buy-low / sell-high disagreement finder | ☑ | ☑ | ☑ | ☑ 2026-07-16 |
 | V3 | Waiver wire — unrostered pool × this-week games × opportunity | ☑ | ☑ | ☑ | ☑ 2026-07-16 |
-| V4 | My Team — roster dashboard | ☐ (spec §V4) | ☐ | ☐ | ☐ |
-| V5 | Matchup planner — descriptive H2H week totals | ☐ (spec §V5) | ☐ | ☐ | ☐ |
+| V4 | My Team — roster dashboard | ☑ | ☑ | ☑ (shared helpers) | ☑ 2026-07-16 |
+| V5 | Matchup planner — descriptive H2H week totals | ☑ | ☑ | ☑ (shared helpers) | ☑ 2026-07-16 |
 
 Build order: **A → V1 → V6 → V2 → V3 → V4 → V5.** V3–V5 share the ownership helper (§A.4)
 which ships with A; V4/V5 reuse V3's week-games join; V5 reuses V4's per-roster totals.
 
 ## Session hand-off notes (append, dated, newest first)
+
+- **2026-07-16 (session 2, close-out): ALL SIX VIEWS SHIPPED.** V4/V5 done via the
+  shared `_roster_week_rows()` / `_day_grid()` core in `season.py` (ROS snapshot numbers
+  + board ranges/risk/chronic + availability-aware week games); `current_rosters()` now
+  also carries per-player positions, per-team `unfilled` slots, and `has_positions`, so
+  the slot math stays owned by `api/draft.py`. Distinct empty states for "no picks" vs
+  "picks but my-team unset" (my_team_id defaults to 0 — set it in the Draft Room; the
+  smoke path is POST /api/draft/config?my_team_id=3 → /api/draft/simulate). Suite 142
+  green (the earlier note's "146" was a miscount), build + tsc clean, every view driven
+  in the browser. Remaining named follow-up: **V3b** (live ESPN rosters) — nothing else
+  is open in this plan.
 
 - **2026-07-16 (session 2, this branch, later):** V3 shipped too (suite 146 green;
   built + driven in the browser; ownership verified via /api/draft/simulate then reset).

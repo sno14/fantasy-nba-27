@@ -441,3 +441,74 @@ export interface WaiversResponse {
   days?: string[];
   rows: WaiverRow[];
 }
+
+export interface RosterWeekRow {
+  PLAYER_ID: number;
+  PLAYER_NAME: string;
+  TEAM_ABBREVIATION: string | null;
+  rank: number | null;
+  fpts_pg: number | null;
+  fpts_p10: number | null;
+  fpts_median: number | null;
+  fpts_p90: number | null;
+  risk: number | null;
+  chronic: number;
+  status_override: string;
+  redist_mpg: number | null;
+  fpts_delta_14: number | null;
+  spark: [string, number, number][];
+  games: string[];
+  n_games: number;
+  weekly_fpts: number;
+}
+
+export interface DayGridCell {
+  day: string;
+  games: number;
+  benched: number;
+}
+
+export interface MyTeamResponse {
+  has_team: boolean;
+  my_team_id: number;
+  note?: string;
+  has_positions?: boolean;
+  positions?: Record<string, string[]>;
+  unfilled?: Record<string, number>;
+  has_schedule?: boolean;
+  week?: number | null;
+  week_name?: string;
+  start?: string;
+  end?: string;
+  days?: string[];
+  weekly_total?: number;
+  day_grid?: DayGridCell[];
+  n_out?: number;
+  daily_slots?: number;
+  rows?: RosterWeekRow[];
+}
+
+export interface MatchupSide {
+  team_id: number;
+  total: number;
+  rows: RosterWeekRow[];
+  day_grid: DayGridCell[];
+}
+
+export interface MatchupResponse {
+  has_matchup: boolean;
+  my_team_id: number;
+  note?: string;
+  opp_team_id?: number;
+  opponents?: number[];
+  has_schedule?: boolean;
+  week?: number | null;
+  week_name?: string;
+  start?: string;
+  end?: string;
+  days?: string[];
+  daily_slots?: number;
+  me?: MatchupSide;
+  opp?: MatchupSide;
+  gap?: number;
+}

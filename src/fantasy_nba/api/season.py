@@ -370,6 +370,175 @@ def waivers(week: int | None = Query(default=None),
     }
 
 
+# ------------------------------------------------------------- my team + matchup (V4/V5)
+# ESPN default startable slots per day (PG/SG/SF/PF/C/G/F + 3×UTIL) — mirrors the
+# Weekly view's DAILY_SLOTS. Purely descriptive: more of your players playing on one
+# night than this means games you cannot start.
+DAILY_SLOTS = 10
+
+
+def _board_lookup() -> dict[int, dict]:
+    """Current draft board keyed by PLAYER_ID — the range/risk/chronic columns the ROS
+    snapshots don't carry."""
+    if not boards.data_ready():
+        return {}
+    b = boards.ranked_board(boards.CURRENT_TARGET, "learned", "safe", True)
+    cols = [c for c in ("PLAYER_NAME", "TEAM_ABBREVIATION", "rank", "fpts_pg", "fpts_p10",
+                        "fpts_median", "fpts_p90", "risk", "inj_chronic_flag") if c in b.columns]
+    return {int(r["PLAYER_ID"]): {c: r[c] for c in cols} for _, r in b[["PLAYER_ID"] + cols].iterrows()}
+
+
+def _roster_week_rows(pids: list[int], week: int | None, target: str) -> tuple[list[dict], dict]:
+    """Per-player weekly rows for one roster + the week meta — the shared V4/V5 core.
+    ROS snapshot numbers when they exist (rank/FP-G/status/redist), board ranges/risk
+    always, availability-aware week games (`games_while_active`)."""
+    dates = ros_dates()
+    ros = {}
+    if dates:
+        snap = _ros_cached(dates[-1])
+        ros = {int(r.PLAYER_ID): r for r in snap.itertuples(index=False)}
+    board = _board_lookup()
+    meta, by_team = week_games_by_team(target, week) if week is not None else ({}, {})
+
+    trend_by_pid: dict[int, float] = {}
+    spark: dict[int, list[list]] = {}
+    if len(dates) >= 2:
+        tj = trend_join(_ros_cached(dates[-1]), _ros_cached(baseline_date(dates, dates[-1], 14)))
+        trend_by_pid = {int(r.PLAYER_ID): float(r.fpts_delta) for r in tj.itertuples(index=False)}
+        spark = _spark_series(dates[-SPARK_MAX_SNAPSHOTS:])
+
+    def _f(v) -> float | None:
+        return None if v is None or pd.isna(v) else round(float(v), 1)
+
+    rows = []
+    for pid in pids:
+        s, b = ros.get(pid), board.get(pid, {})
+        name = getattr(s, "PLAYER_NAME", None) or b.get("PLAYER_NAME") or f"#{pid}"
+        team = getattr(s, "TEAM_ABBREVIATION", None) or b.get("TEAM_ABBREVIATION")
+        team = str(team) if team is not None and pd.notna(team) else None
+        status = (getattr(s, "status_override", "") or "") if s is not None else ""
+        fpg = _f(getattr(s, "fpts_pg", None)) if s is not None else _f(b.get("fpts_pg"))
+        games = games_while_active(by_team.get(team, []) if (meta and team) else [], status)
+        rows.append({
+            "PLAYER_ID": pid, "PLAYER_NAME": str(name), "TEAM_ABBREVIATION": team,
+            "rank": int(s.rank) if s is not None else
+                    (int(b["rank"]) if b.get("rank") is not None else None),
+            "fpts_pg": fpg,
+            "fpts_p10": _f(b.get("fpts_p10")), "fpts_median": _f(b.get("fpts_median")),
+            "fpts_p90": _f(b.get("fpts_p90")),
+            "risk": None if b.get("risk") is None or pd.isna(b.get("risk"))
+                    else round(float(b["risk"]), 2),
+            "chronic": int(b["inj_chronic_flag"]) if b.get("inj_chronic_flag") is not None
+                       and pd.notna(b.get("inj_chronic_flag")) else 0,
+            "status_override": status,
+            "redist_mpg": _f(getattr(s, "redist_mpg", None)) if s is not None else None,
+            "fpts_delta_14": trend_by_pid.get(pid),
+            "spark": spark.get(pid, []),
+            "games": games, "n_games": len(games),
+            "weekly_fpts": round((fpg or 0.0) * len(games), 1),
+        })
+    return rows, meta
+
+
+def _day_grid(rows: list[dict], days: list[str]) -> list[dict]:
+    """Per-day game counts for a roster vs the startable-slot cap. Descriptive."""
+    out = []
+    for d in days:
+        n = sum(1 for r in rows if d in r["games"])
+        out.append({"day": d, "games": n, "benched": max(0, n - DAILY_SLOTS)})
+    return out
+
+
+@router.get("/myteam")
+def myteam(week: int | None = Query(default=None),
+           target: str = Query(default=None)) -> dict:
+    """V4 — my roster's dashboard: per-player ROS state + trend + this week's volume,
+    and the team block (weekly total, day grid vs startable slots, OUT count, unfilled
+    starting slots from the draft room's slot logic)."""
+    target = target or boards.CURRENT_TARGET
+    from .draft import current_rosters
+
+    own = current_rosters()
+    mine = own["rosters"].get(own["my_team_id"], [])
+    if not mine:
+        return {"has_team": False, "my_team_id": own["my_team_id"],
+                "note": ("Teams have rosters but none is marked as yours — set \"my team\" "
+                         "in the Draft Room (it defaults to unset)."
+                         if own["rosters"] else
+                         "No roster yet — draft in the Room (or Simulate a mock draft) "
+                         "and your picks become the team this page tracks.")}
+
+    if week is None:
+        dates = ros_dates()
+        week = default_week(_week_ends(target), dates[-1] if dates else None)
+    rows, meta = _roster_week_rows(mine, week, target)
+    rows.sort(key=lambda r: (r["fpts_pg"] is None, -(r["fpts_pg"] or 0)))
+    days = meta.get("days", [])
+    return {
+        "has_team": True, "my_team_id": own["my_team_id"],
+        "has_positions": own["has_positions"],
+        "positions": {str(p): own["positions"].get(p, []) for p in mine},
+        "unfilled": own["unfilled"].get(own["my_team_id"], {}),
+        "has_schedule": bool(meta),
+        **({k: meta[k] for k in ("week", "week_name", "start", "end", "days")} if meta
+           else {"week": week}),
+        "weekly_total": round(sum(r["weekly_fpts"] for r in rows), 1),
+        "day_grid": _day_grid(rows, days),
+        "n_out": sum(1 for r in rows if r["status_override"]),
+        "daily_slots": DAILY_SLOTS,
+        "rows": rows,
+    }
+
+
+@router.get("/matchup")
+def matchup(week: int | None = Query(default=None),
+            opp: int | None = Query(default=None),
+            target: str = Query(default=None)) -> dict:
+    """V5 — my week vs an opponent's, descriptively: FP/G × games totals and the
+    day-by-day volume grid. **No win probability, no simulation** — the H2H variance
+    layer was descoped (implementation-plan 19.4) and SD_PG must never become a weekly
+    sigma; this view states game counts and lets the human judge."""
+    target = target or boards.CURRENT_TARGET
+    from .draft import current_rosters
+
+    own = current_rosters()
+    me = own["my_team_id"]
+    mine = own["rosters"].get(me, [])
+    others = sorted(t for t in own["rosters"] if t != me and own["rosters"][t])
+    if not mine or not others:
+        return {"has_matchup": False, "my_team_id": me,
+                "note": ("Teams have rosters but none is marked as yours — set \"my team\" "
+                         "in the Draft Room first."
+                         if own["rosters"] and not mine else
+                         "A matchup needs my roster and at least one opponent — draft in "
+                         "the Room or Simulate a mock draft.")}
+    if opp is None or opp not in others:
+        opp = others[0]
+
+    if week is None:
+        dates = ros_dates()
+        week = default_week(_week_ends(target), dates[-1] if dates else None)
+    my_rows, meta = _roster_week_rows(mine, week, target)
+    opp_rows, _ = _roster_week_rows(own["rosters"][opp], week, target)
+    for side in (my_rows, opp_rows):
+        side.sort(key=lambda r: -r["weekly_fpts"])
+    days = meta.get("days", [])
+    my_total = round(sum(r["weekly_fpts"] for r in my_rows), 1)
+    opp_total = round(sum(r["weekly_fpts"] for r in opp_rows), 1)
+    return {
+        "has_matchup": True, "my_team_id": me, "opp_team_id": opp, "opponents": others,
+        "has_schedule": bool(meta),
+        **({k: meta[k] for k in ("week", "week_name", "start", "end", "days")} if meta
+           else {"week": week}),
+        "daily_slots": DAILY_SLOTS,
+        "me": {"team_id": me, "total": my_total, "rows": my_rows,
+               "day_grid": _day_grid(my_rows, days)},
+        "opp": {"team_id": opp, "total": opp_total, "rows": opp_rows,
+                "day_grid": _day_grid(opp_rows, days)},
+        "gap": round(my_total - opp_total, 1),
+    }
+
+
 # ------------------------------------------------------------------ schedule strength
 def b2b_count(dates: pd.Series) -> int:
     """Back-to-backs: pairs of consecutive calendar days with a game."""

@@ -190,13 +190,22 @@ def current_rosters() -> dict:
     draft session's rosters keyed by team id, values NBA player ids (DraftState already
     maps ESPN→NBA at pick ingestion). Manual picks, ESPN picks, and Simulate all land
     here. In-season live rosters (adds/drops) are the named V3b enhancement — until then
-    this is the honest source and it's empty before anyone drafts."""
+    this is the honest source and it's empty before anyone drafts. Also carries the
+    slot facts the season views reuse rather than reimplement: per-player ESPN
+    eligibility and each team's unfilled starting slots (empty maps without the
+    Connect-ESPN player map — no positions, no slot math, said honestly)."""
     state = _state()
+    rosters = {int(t): [int(p) for p in pids] for t, pids in state.rosters.items() if pids}
+    remaining = state.remaining_slots()
     return {
         "my_team_id": int(state.my_team_id),
         "source": _session.source,
         "n_picks": len(state.picks),
-        "rosters": {int(t): [int(p) for p in pids] for t, pids in state.rosters.items() if pids},
+        "rosters": rosters,
+        "positions": {int(p): sorted(state.eligible_of.get(p, []))
+                      for pids in rosters.values() for p in pids},
+        "unfilled": {int(t): remaining.get(t, {}) for t in rosters},
+        "has_positions": bool(state.eligible_of),
     }
 
 

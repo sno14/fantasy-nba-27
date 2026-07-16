@@ -260,6 +260,17 @@ Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season 
   `out_for_season` notes) — plus the opportunity chips: `redist_mpg` (inheriting an OUT
   teammate's minutes, EXP-030), `breakout_p`, and the 14-day trend. Backed by
   `/api/waivers`.
+- **My Team** — the daily home page for my roster (Draft Room picks): per player the
+  ROS rank/FP-G, 14-day trend + sparkline, season floor→median→ceiling strip, risk,
+  chronic/OUT/redistribution chips, and week volume; plus the team block — projected
+  week total, games-by-day chips vs the 10 startable slots, flagged-out count, and
+  unfilled starting slots (draft-room slot logic; says so when no ESPN map). Backed by
+  `/api/myteam`.
+- **Matchup** — my week vs an opponent's, **descriptively**: FP/G × games totals, the
+  volume gap, a per-day games bar pair (vs the startable-slot cap), both rosters, and a
+  "stream these idle days" pointer into Waivers. Deliberately **no win probability and
+  no simulation** — the H2H variance layer was descoped (implementation-plan 19.4) and
+  `SD_PG` must never become a weekly sigma. Backed by `/api/matchup`.
 - **Weekly** — the streaming planner: pick an NBA week and rank players by **projected
   FP/G × games that week**, so a 4-game week at 25 FP/G (100) beats a 3-game week at 30
   (90) — the volume edge that drives waiver pickups. A per-day game grid shows when each
@@ -295,8 +306,9 @@ Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season 
   calendar). Backed by `/api/schedule-strength`.
 - **Data** — browse the raw parquet caches (season stats, game logs, bio, rosters, …).
 
-The remaining season views (Waivers / My Team / Matchup planner) are spec'd in
-[docs/ui-views-plan.md](docs/ui-views-plan.md) — its tracker is the live build state.
+All six manager views (V1–V6) shipped 2026-07-16 per
+[docs/ui-views-plan.md](docs/ui-views-plan.md) — its tracker stays the live state for
+follow-ups (the named V3b enhancement: live ESPN rosters once in-season adds/drops start).
 
 Frontend dev loop: `python scripts/serve.py` + `cd frontend && npm run dev` (Vite on
 :5173, `/api` proxied). No local data yet? `python scripts/dev_fixtures.py` writes a
