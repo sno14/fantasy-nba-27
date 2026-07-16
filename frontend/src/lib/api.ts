@@ -236,6 +236,38 @@ export interface DraftStateResponse {
   board: DraftBoardRow[];
 }
 
+// ------------------------------------------------------------------- power rankings
+export interface PowerTeam {
+  team_id: number;
+  is_me: boolean;
+  power_rank: number;
+  n_players: number;
+  total_fpts_pg: number;
+  avg_fpts_pg: number;
+  total_fpts_season: number;
+  starters_fpts_pg: number;
+  star_power: number;
+  best_player: string | null;
+  best_fpts_pg: number | null;
+  depth: number;
+  floor_season: number;
+  ceiling_season: number;
+  mean_risk: number | null;
+  n_chronic: number;
+  unfilled_starts: number;
+}
+
+export interface PowerResponse {
+  n_picks: number;
+  my_team_id: number;
+  n_teams: number;
+  roster_size: number;
+  has_positions: boolean;
+  synthetic_teams: boolean;
+  starting_slots: Record<string, number>;
+  teams: PowerTeam[];
+}
+
 export interface DatasetPage {
   name: string;
   columns: string[];

@@ -263,6 +263,13 @@ Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season 
   (the useful signal — orthogonal to value), all ten teams' composition with descriptive risk,
   and a `live_vor` column that is **informational**: it re-ranks almost identically to fpts/g
   until the endgame (see the layout note above).
+- **Power Rankings** — once teams draft, every roster ranked by projected **season fantasy
+  points** (rate × durability), with total/avg FP/G, best-lineup **Starters** FP/G, **Star
+  power** (top-3), **Depth** (players above replacement), summed floor→ceiling spread, mean
+  injury risk, chronic-injury and unfilled-lineup-slot counts, and your team flagged. Reads
+  the live Draft Room picks (manual or ESPN); a **Simulate mock draft** button best-available
+  snake-fills all teams to preview the league before draft night. Backed by `/api/draft/power`
+  + `/api/draft/simulate`.
 - **Data** — browse the raw parquet caches (season stats, game logs, bio, rosters, …).
 
 Frontend dev loop: `python scripts/serve.py` + `cd frontend && npm run dev` (Vite on

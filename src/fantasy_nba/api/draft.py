@@ -28,7 +28,14 @@ from ..config import ROOT
 from ..draft import build_player_map
 from ..draft.feed import EspnApiError, EspnPollFeed, ManualFeed, Pick
 from ..draft.ids import PlayerMap
-from ..draft.live import DraftState, live_board, live_replacement
+from ..draft.live import (
+    DraftState,
+    _fills,
+    _slot_priority,
+    _starting_slots,
+    live_board,
+    live_replacement,
+)
 from ..models.value import load_league
 from . import boards
 
@@ -184,6 +191,84 @@ def _num(row, col: str) -> float | None:
     return round(float(row[col]), 2)
 
 
+def _seat_best(players: list[dict], starting: dict[str, int], unconstrained: bool) -> float:
+    """Sum of the strongest legal starting lineup's FP/G — seat players by descending FP/G,
+    each into the most specific open slot they fill. Bench players don't count. With no
+    eligibility data every player can fill anything, so this degrades to the top-N by FP/G.
+
+    A greedy heuristic, not a provably optimal assignment; with 3 flexible UTIL slots and heavy
+    multi-eligibility it lands on the optimum in the cases that matter (matches value.py's
+    seating spirit)."""
+    open_slots = dict(starting)
+    total = 0.0
+    for p in sorted(players, key=lambda x: -(x["fpts_pg"] or 0)):
+        pos = p["positions"]
+        for slot in sorted(open_slots, key=_slot_priority):
+            if open_slots[slot] > 0 and _fills(slot, pos, unconstrained):
+                open_slots[slot] -= 1
+                total += p["fpts_pg"] or 0
+                break
+    return total
+
+
+def _power_rankings(state: DraftState, board: pd.DataFrame) -> list[dict]:
+    """Per-team draft-strength aggregates from the drafted rosters. Descriptive, like the rest
+    of the room: these sum independent per-player projections — a team-strength index, not a
+    win-probability (that needs the gated H2H simulator). Season-total floor/ceiling are summed
+    p10/p90 and so ignore cross-player correlation; read them as indicative spread."""
+    idx = board.set_index("PLAYER_ID")
+    starting = _starting_slots(_league_cfg())
+    remaining = state.remaining_slots()
+    repl_any = live_replacement(state, board).get("any", 0.0)
+    names = _session.pmap.names if _session.pmap else {}
+
+    rows = []
+    for team_id in state.all_team_ids:
+        players = []
+        for pid in state.rosters.get(team_id, []):
+            row = idx.loc[pid] if pid in idx.index else None
+            players.append({
+                "name": (row["PLAYER_NAME"] if row is not None and "PLAYER_NAME" in row
+                         else names.get(pid, f"#{pid}")),
+                "positions": set(state.eligible_of.get(pid, [])),
+                "fpts_pg": _num(row, "fpts_pg"),
+                "fpts_total": _num(row, "fpts_total"),
+                "fpts_p10": _num(row, "fpts_p10"),
+                "fpts_p90": _num(row, "fpts_p90"),
+                "risk": _num(row, "risk"),
+                "chronic": int(row["inj_chronic_flag"]) if row is not None
+                           and "inj_chronic_flag" in row and pd.notna(row["inj_chronic_flag"]) else 0,
+            })
+        fpg = [p["fpts_pg"] for p in players if p["fpts_pg"] is not None]
+        risks = [p["risk"] for p in players if p["risk"] is not None]
+        top3 = sorted(fpg, reverse=True)[:3]
+        best = max(players, key=lambda p: p["fpts_pg"] or 0.0) if players else None
+        unfilled = sum(remaining.get(team_id, {}).values())
+        rows.append({
+            "team_id": int(team_id),
+            "is_me": team_id == state.my_team_id,
+            "n_players": len(players),
+            "total_fpts_pg": round(sum(fpg), 1),
+            "avg_fpts_pg": round(sum(fpg) / len(fpg), 1) if fpg else 0.0,
+            "total_fpts_season": round(sum(p["fpts_total"] or 0 for p in players)),
+            "starters_fpts_pg": round(_seat_best(players, starting, state.no_positions), 1),
+            "star_power": round(sum(top3), 1),          # top-3 FP/G — elite talent concentration
+            "best_player": best["name"] if best else None,
+            "best_fpts_pg": best["fpts_pg"] if best else None,
+            "depth": sum(1 for v in fpg if v >= repl_any),   # starters above replacement level
+            "floor_season": round(sum(p["fpts_p10"] or 0 for p in players)),
+            "ceiling_season": round(sum(p["fpts_p90"] or 0 for p in players)),
+            "mean_risk": round(sum(risks) / len(risks), 3) if risks else None,
+            "n_chronic": sum(p["chronic"] for p in players),
+            "unfilled_starts": int(unfilled),
+        })
+    # Power rank = projected season total (bakes in both scoring rate and durability).
+    rows.sort(key=lambda r: r["total_fpts_season"], reverse=True)
+    for i, r in enumerate(rows, 1):
+        r["power_rank"] = i
+    return rows
+
+
 @router.get("/state")
 def draft_state(top: int = Query(default=120, le=400)) -> dict:
     """Everything the room renders: config, live board, rosters, composition."""
@@ -226,6 +311,64 @@ def draft_state(top: int = Query(default=120, le=400)) -> dict:
         "rosters": _roster_panel(state, board),
         "board": rows,
     }
+
+
+@router.get("/power")
+def power_rankings() -> dict:
+    """League power rankings from the current drafted rosters (the same in-session picks the
+    room holds). Empty `teams` with `n_picks == 0` = nobody drafted yet."""
+    if not boards.data_ready():
+        raise HTTPException(503, "No data cached — run pull_data.py or dev_fixtures.py.")
+    s = _session
+    state = _state()
+    board = _board()
+    league = _league_cfg()
+    roster_size = sum(int(n) for slot, n in league["roster"].items() if slot.upper() != "IR")
+    return {
+        "n_picks": len(s.picks),
+        "my_team_id": s.my_team_id,
+        "n_teams": state.n_teams,
+        "roster_size": roster_size,
+        "has_positions": not state.no_positions,
+        "synthetic_teams": not s.team_ids,
+        "starting_slots": _starting_slots(league),
+        "teams": _power_rankings(state, board),
+    }
+
+
+@router.post("/simulate")
+def simulate(rounds: int = Query(default=0, ge=0, le=30)) -> dict:
+    """Auto-complete the draft: fill every team to a full roster by best-available snake,
+    keeping any picks already made. A preview convenience so Power Rankings (and the room)
+    have data before draft night — undo/reset apply exactly as they do to manual picks."""
+    if not boards.data_ready():
+        raise HTTPException(503, "No data cached — run pull_data.py or dev_fixtures.py.")
+    s = _session
+    league = _league_cfg()
+    board = _board().sort_values("rank")
+    n_teams = _state().n_teams
+    if rounds <= 0:
+        rounds = sum(int(n) for slot, n in league["roster"].items() if slot.upper() != "IR")
+    target = n_teams * rounds
+    order = _state().draft_order
+    if not order:
+        raise HTTPException(422, "No draft order available to simulate — connect ESPN first.")
+
+    added = 0
+    while len(s.picks) < target and added <= target:
+        state = _state()
+        team_id = _on_the_clock(state)
+        if team_id is None:
+            break
+        pool = board[~board["PLAYER_ID"].isin(state.drafted)]
+        if pool.empty:
+            break
+        pid = int(pool.iloc[0]["PLAYER_ID"])
+        espn_id = next((e for e, n in (s.pmap.to_nba.items() if s.pmap else []) if n == pid), pid)
+        s.picks.append(Pick(overall=len(s.picks) + 1, team_id=team_id, espn_player_id=espn_id,
+                            round_id=len(s.picks) // max(n_teams, 1) + 1))
+        added += 1
+    return {"n_picks": len(s.picks), "added": added, "rounds": rounds, "n_teams": n_teams}
 
 
 @router.post("/connect")
