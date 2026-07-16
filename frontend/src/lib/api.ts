@@ -341,3 +341,174 @@ export function useApi<T>(path: string | null): Loaded<T> {
 
   return { data, error, loading, reload: () => setNonce((n) => n + 1) };
 }
+
+// ------------------------------------------------------------- season views (V1/V2/V6)
+export interface TrendRow {
+  PLAYER_ID: number;
+  PLAYER_NAME: string;
+  TEAM_ABBREVIATION: string | null;
+  rank: number;
+  rank_delta: number; // baseline_rank - rank: positive = riser
+  fpts_pg: number;
+  fpts_delta: number;
+  mpg: number | null;
+  mpg_delta: number | null;
+  status_override: string;
+  spark: [string, number, number][]; // [date, fpts_pg, rank] per trailing snapshot
+}
+
+export interface TrendsResponse {
+  has_history: boolean;
+  n_snapshots: number;
+  window: number;
+  latest: string | null;
+  baseline: string | null;
+  note?: string;
+  rows: TrendRow[];
+}
+
+export interface TradeRow {
+  PLAYER_ID: number;
+  PLAYER_NAME: string;
+  TEAM_ABBREVIATION: string | null;
+  rank: number;
+  fpts_pg: number;
+  consensus_rank: number | null;
+  market_gap: number | null; // consensus_rank - rank: positive = buy low
+  naive_rank: number | null;
+  heat_gap: number | null; // rank - naive_rank: positive = hot streak model discounts
+  fpts_delta_14: number | null;
+  risk: number | null;
+  status_override: string;
+  rostered_by: number | null;
+  is_mine: boolean;
+}
+
+export interface TradeTargetsResponse {
+  mode: "ros" | "preseason";
+  market_date: string | null;
+  has_market: boolean;
+  has_naive: boolean;
+  has_trend: boolean;
+  ownership: boolean;
+  my_team_id: number;
+  rows: TradeRow[];
+}
+
+export interface ScheduleTeamRow {
+  team: string;
+  total_games: number;
+  b2b: number;
+  playoff_games: number;
+  by_week: Record<string, number>;
+}
+
+export interface ScheduleStrengthResponse {
+  has_schedule: boolean;
+  target: string;
+  playoff_weeks: number[];
+  playoff_weeks_confirmed: boolean;
+  note?: string;
+  weeks: { week: number; week_name: string; start: string; end: string }[];
+  teams: ScheduleTeamRow[];
+}
+
+export interface WaiverRow {
+  PLAYER_ID: number;
+  PLAYER_NAME: string;
+  TEAM_ABBREVIATION: string | null;
+  rank: number;
+  fpts_pg: number;
+  games: string[];
+  n_games: number;
+  weekly_fpts: number;
+  redist_mpg: number | null; // >0 = inheriting minutes from an OUT teammate (EXP-030)
+  breakout_p: number | null;
+  fpts_delta_14: number | null;
+  status_override: string;
+}
+
+export interface WaiversResponse {
+  mode: "ros" | "preseason";
+  ownership: boolean;
+  n_rostered: number;
+  my_team_id: number;
+  has_schedule: boolean;
+  week?: number | null;
+  week_name?: string;
+  start?: string;
+  end?: string;
+  days?: string[];
+  rows: WaiverRow[];
+}
+
+export interface RosterWeekRow {
+  PLAYER_ID: number;
+  PLAYER_NAME: string;
+  TEAM_ABBREVIATION: string | null;
+  rank: number | null;
+  fpts_pg: number | null;
+  fpts_p10: number | null;
+  fpts_median: number | null;
+  fpts_p90: number | null;
+  risk: number | null;
+  chronic: number;
+  status_override: string;
+  redist_mpg: number | null;
+  fpts_delta_14: number | null;
+  spark: [string, number, number][];
+  games: string[];
+  n_games: number;
+  weekly_fpts: number;
+}
+
+export interface DayGridCell {
+  day: string;
+  games: number;
+  benched: number;
+}
+
+export interface MyTeamResponse {
+  has_team: boolean;
+  my_team_id: number;
+  note?: string;
+  has_positions?: boolean;
+  positions?: Record<string, string[]>;
+  unfilled?: Record<string, number>;
+  has_schedule?: boolean;
+  week?: number | null;
+  week_name?: string;
+  start?: string;
+  end?: string;
+  days?: string[];
+  weekly_total?: number;
+  day_grid?: DayGridCell[];
+  n_out?: number;
+  daily_slots?: number;
+  rows?: RosterWeekRow[];
+}
+
+export interface MatchupSide {
+  team_id: number;
+  total: number;
+  rows: RosterWeekRow[];
+  day_grid: DayGridCell[];
+}
+
+export interface MatchupResponse {
+  has_matchup: boolean;
+  my_team_id: number;
+  note?: string;
+  opp_team_id?: number;
+  opponents?: number[];
+  has_schedule?: boolean;
+  week?: number | null;
+  week_name?: string;
+  start?: string;
+  end?: string;
+  days?: string[];
+  daily_slots?: number;
+  me?: MatchupSide;
+  opp?: MatchupSide;
+  gap?: number;
+}

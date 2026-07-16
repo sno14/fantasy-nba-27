@@ -14,6 +14,12 @@ import DraftBoard from "./views/DraftBoard";
 import DraftRoom from "./views/DraftRoom";
 import Power from "./views/Power";
 import Ros from "./views/Ros";
+import Trends from "./views/Trends";
+import Trades from "./views/Trades";
+import Waivers from "./views/Waivers";
+import MyTeam from "./views/MyTeam";
+import Matchup from "./views/Matchup";
+import Schedule from "./views/Schedule";
 import Weekly from "./views/Weekly";
 import Player from "./views/Player";
 import Compare from "./views/Compare";
@@ -104,16 +110,23 @@ function CompareTray() {
 }
 
 // ---------------------------------------------------------------------------- nav
+// Sectioned sidebar (docs/ui-views-plan.md §A.6): Draft / Season / Research.
 const NAV = [
-  { to: "/", label: "Draft Board", icon: "M4 6h16M4 10h16M4 14h10M4 18h7" },
-  { to: "/room", label: "Draft Room", icon: "M12 3v4M5 8h14l-1.5 11a2 2 0 01-2 2h-7a2 2 0 01-2-2L5 8zM9 12v5M15 12v5" },
-  { to: "/power", label: "Power Rankings", icon: "M4 20V10M10 20V4M16 20v-8M22 20H2" },
-  { to: "/ros", label: "ROS", icon: "M4 17l5-5 4 3 7-8M16 7h4v4" },
-  { to: "/weekly", label: "Weekly", icon: "M4 5h16v15H4zM4 9h16M8 3v4M16 3v4" },
-  { to: "/players", label: "Players", icon: "M12 12a4 4 0 100-8 4 4 0 000 8zM4 20a8 8 0 0116 0" },
-  { to: "/compare", label: "Compare", icon: "M8 4v16M16 4v16M4 9h8M12 15h8" },
-  { to: "/analyst", label: "Analyst", icon: "M9 12l2 2 4-5M12 21a9 9 0 110-18 9 9 0 010 18z" },
-  { to: "/data", label: "Data", icon: "M4 6c0-1.5 3.6-3 8-3s8 1.5 8 3-3.6 3-8 3-8-1.5-8-3zm0 0v12c0 1.5 3.6 3 8 3s8-1.5 8-3V6M4 12c0 1.5 3.6 3 8 3s8-1.5 8-3" },
+  { section: "Draft", to: "/", label: "Draft Board", icon: "M4 6h16M4 10h16M4 14h10M4 18h7" },
+  { section: "Draft", to: "/room", label: "Draft Room", icon: "M12 3v4M5 8h14l-1.5 11a2 2 0 01-2 2h-7a2 2 0 01-2-2L5 8zM9 12v5M15 12v5" },
+  { section: "Draft", to: "/power", label: "Power Rankings", icon: "M4 20V10M10 20V4M16 20v-8M22 20H2" },
+  { section: "Season", to: "/ros", label: "ROS", icon: "M4 17l5-5 4 3 7-8M16 7h4v4" },
+  { section: "Season", to: "/trends", label: "Trends", icon: "M3 17l6-6 4 4 8-9M14 6h7v7" },
+  { section: "Season", to: "/trades", label: "Trade Targets", icon: "M4 7h13l-3-3M4 7l3 3M20 17H7l3-3M20 17l-3 3" },
+  { section: "Season", to: "/waivers", label: "Waivers", icon: "M12 8v8M8 12h8M12 21a9 9 0 110-18 9 9 0 010 18z" },
+  { section: "Season", to: "/myteam", label: "My Team", icon: "M12 11a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM5 20a7 7 0 0114 0M17 8l1.5 1.5L21 7" },
+  { section: "Season", to: "/matchup", label: "Matchup", icon: "M7 12a3 3 0 100-6 3 3 0 000 6zM2 19a5 5 0 0110 0M17 12a3 3 0 100-6 3 3 0 000 6zM12 19a5 5 0 0110 0" },
+  { section: "Season", to: "/weekly", label: "Weekly", icon: "M4 5h16v15H4zM4 9h16M8 3v4M16 3v4" },
+  { section: "Research", to: "/players", label: "Players", icon: "M12 12a4 4 0 100-8 4 4 0 000 8zM4 20a8 8 0 0116 0" },
+  { section: "Research", to: "/compare", label: "Compare", icon: "M8 4v16M16 4v16M4 9h8M12 15h8" },
+  { section: "Research", to: "/analyst", label: "Analyst", icon: "M9 12l2 2 4-5M12 21a9 9 0 110-18 9 9 0 010 18z" },
+  { section: "Research", to: "/schedule", label: "Schedule", icon: "M4 5h16v15H4zM4 9h16M8 13h2M14 13h2M8 17h2M14 17h2" },
+  { section: "Research", to: "/data", label: "Data", icon: "M4 6c0-1.5 3.6-3 8-3s8 1.5 8 3-3.6 3-8 3-8-1.5-8-3zm0 0v12c0 1.5 3.6 3 8 3s8-1.5 8-3V6M4 12c0 1.5 3.6 3 8 3s8-1.5 8-3" },
 ];
 
 function Shell() {
@@ -135,7 +148,12 @@ function Shell() {
             </span>
           </Link>
           <nav className="flex flex-col gap-0.5 px-2.5">
-            {NAV.map((n) => (
+            {NAV.map((n, i) => [
+              i > 0 && NAV[i - 1].section !== n.section && (
+                <div key={`s-${n.section}`} className="px-2.5 pb-0.5 pt-3 text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                  {n.section}
+                </div>
+              ),
               <NavLink
                 key={n.to}
                 to={n.to}
@@ -150,8 +168,8 @@ function Shell() {
                   <path d={n.icon} />
                 </svg>
                 {n.label}
-              </NavLink>
-            ))}
+              </NavLink>,
+            ])}
           </nav>
           <div className="mt-auto space-y-2 px-4 pb-4 text-[11px] text-ink-3">
             {meta && (
@@ -190,6 +208,12 @@ function Shell() {
               <Route path="/room" element={<DraftRoom />} />
               <Route path="/power" element={<Power />} />
               <Route path="/ros" element={<Ros />} />
+              <Route path="/trends" element={<Trends />} />
+              <Route path="/trades" element={<Trades />} />
+              <Route path="/waivers" element={<Waivers />} />
+              <Route path="/myteam" element={<MyTeam />} />
+              <Route path="/matchup" element={<Matchup />} />
+              <Route path="/schedule" element={<Schedule />} />
               <Route path="/weekly" element={<Weekly />} />
               <Route path="/players" element={<Player />} />
               <Route path="/players/:id" element={<Player />} />

@@ -20,7 +20,10 @@ See [ROADMAP.md](ROADMAP.md) for the build plan, current progress, and modeling 
 6. **[docs/implementation-plan.md](docs/implementation-plan.md)** — **the execution spec**:
    a strictly linear, step-by-step build plan with file-level specs, commands, and
    adopt/reject gates. Active work happens from this file.
-7. **[data/manual/bbm_transcripts/README.md](data/manual/bbm_transcripts/README.md)** — the
+7. **[docs/ui-views-plan.md](docs/ui-views-plan.md)** — the web-app view build-out spec
+   (V1–V6 manager views: trends, trade targets, waivers, my-team, matchup, schedule
+   strength) with its own progress tracker; product work, no ledger entries.
+8. **[data/manual/bbm_transcripts/README.md](data/manual/bbm_transcripts/README.md)** — the
    analyst-layer workflow contract: BBM transcript drop zone, the triangulation rubric that
    sizes each fpts_delta (model × BBM mechanism × judgment; target-level sizing — delta =
    triangulated target − model base — so magnitude gaps count without stacking; joint
@@ -92,8 +95,12 @@ src/fantasy_nba/
     (api/draft.py) the room's endpoints: one server-side session holds the picks, so the
                    source toggle is safe mid-draft and undo is just a pop
   api/             FastAPI backend for the web UI (scripts/serve.py): boards with tier
-                   breaks, ROS snapshots, player pages, dataset browser, and the
-                   analyst-proposal review panel (same code paths as the CLI tools)
+                   breaks, ROS snapshots, player pages, dataset browser, the
+                   analyst-proposal review panel (same code paths as the CLI tools),
+                   the draft room (draft.py — session persists to
+                   data/processed/draft_session.json across restarts), and the season
+                   views (season.py: trends / trade targets / waivers / my team /
+                   matchup / schedule strength — docs/ui-views-plan.md)
 frontend/          the web UI (React + Vite + Tailwind; light/dark). `npm run build`
                    emits frontend/dist, which serve.py serves; `npm run dev` proxies
                    /api for frontend development
@@ -165,7 +172,9 @@ data/              raw/ and processed/ caches (gitignored)
 docs/              design docs (see the documentation map above)
 tests/             unit tests: scoring, model arithmetic, as-of engine, absorption,
                    Stage-7 infra (no-leakage / determinism pins), draft room (ESPN payload
-                   traps + the replacement-level invariant)
+                   traps + the replacement-level invariant), season-view API helpers
+                   (trend deltas, market name-join, availability-aware week games,
+                   draft-session persistence round-trip)
 ```
 
 ## Quick start
@@ -241,7 +250,33 @@ Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season 
   range dot-plot; search / team filter / column sorting; checkboxes feed **Compare**.
 - **ROS (in-season)** — nightly `data/processed/ros_board/` snapshots with the
   naive-updater disagreement panel (populates once `update_daily.py` crons from opening
-  night; DARKO/market disagreement stays in `darko_report.py` / `market_report.py`).
+  night; DARKO disagreement stays in `darko_report.py`).
+- **Trends** — risers & fallers: the latest nightly snapshot diffed against one 7/14/30
+  days back (rank/FP-G/MPG deltas + a trailing-month sparkline per player), snapshot-vs-
+  snapshot only. The in-season "who's moving" radar; needs ≥2 nightly snapshots and says
+  so until then. Backed by `/api/trends`.
+- **Trade Targets** — the buy-low / sell-high *disagreement finder* (not advice): market
+  consensus rank vs ours (`pull_market.py` archives — the likely trade price), the
+  naive-vs-model heat gap (hot streaks the model discounts / cold streaks it looks
+  through), and the 14-day trend, side by side with owner chips from the Draft Room
+  picks. No composite score on purpose. Backed by `/api/trade-targets`.
+- **Waivers** — the pickup list: unrostered players (Draft Room picks mark ownership;
+  live ESPN rosters are the named V3b enhancement) ranked by ROS FP/G × games in the
+  chosen week — with games a flagged-out player will miss removed (`out_until:` /
+  `out_for_season` notes) — plus the opportunity chips: `redist_mpg` (inheriting an OUT
+  teammate's minutes, EXP-030), `breakout_p`, and the 14-day trend. Backed by
+  `/api/waivers`.
+- **My Team** — the daily home page for my roster (Draft Room picks): per player the
+  ROS rank/FP-G, 14-day trend + sparkline, season floor→median→ceiling strip, risk,
+  chronic/OUT/redistribution chips, and week volume; plus the team block — projected
+  week total, games-by-day chips vs the 10 startable slots, flagged-out count, and
+  unfilled starting slots (draft-room slot logic; says so when no ESPN map). "My team"
+  is set once in the Draft Room and persists across restarts. Backed by `/api/myteam`.
+- **Matchup** — my week vs an opponent's, **descriptively**: FP/G × games totals, the
+  volume gap, a per-day games bar pair (vs the startable-slot cap), both rosters, and a
+  "stream these idle days" pointer into Waivers. Deliberately **no win probability and
+  no simulation** — the H2H variance layer was descoped (implementation-plan 19.4) and
+  `SD_PG` must never become a weekly sigma. Backed by `/api/matchup`.
 - **Weekly** — the streaming planner: pick an NBA week and rank players by **projected
   FP/G × games that week**, so a 4-game week at 25 FP/G (100) beats a 3-game week at 30
   (90) — the volume edge that drives waiver pickups. A per-day game grid shows when each
@@ -270,7 +305,16 @@ Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season 
   the live Draft Room picks (manual or ESPN); a **Simulate mock draft** button best-available
   snake-fills all teams to preview the league before draft night. Backed by `/api/draft/power`
   + `/api/draft/simulate`.
+- **Schedule** — schedule strength: teams × fantasy-weeks game-count heatmap with the
+  fantasy playoff weeks highlighted (draft tiebreak / trade-deadline tool), plus total
+  games and back-to-backs. Banners that `league.yaml`'s `fantasy_playoff_weeks` is a
+  placeholder until `fantasy_playoff_weeks_confirmed: true` is set (mid-Aug ESPN
+  calendar). Backed by `/api/schedule-strength`.
 - **Data** — browse the raw parquet caches (season stats, game logs, bio, rosters, …).
+
+All six manager views (V1–V6) shipped 2026-07-16 per
+[docs/ui-views-plan.md](docs/ui-views-plan.md) — its tracker stays the live state for
+follow-ups (the named V3b enhancement: live ESPN rosters once in-season adds/drops start).
 
 Frontend dev loop: `python scripts/serve.py` + `cd frontend && npm run dev` (Vite on
 :5173, `/api` proxied). No local data yet? `python scripts/dev_fixtures.py` writes a
@@ -283,6 +327,14 @@ explorer (`python -m streamlit run scripts/explore.py`) still works.
 The live-draft layer: picks arrive, drafted players leave the board, and replacement level is
 recomputed from the *actual* remaining pool and the *actual* remaining slot demand across the
 league. Open it at **`/room`** in the web app (`python scripts/serve.py`).
+
+**The room's state survives restarts** (2026-07-16): manual picks, the source toggle,
+"my team", and the last Connect snapshot (team ids / slots / pick order) persist to
+`data/processed/draft_session.json` on every change and reload at startup — so you set
+"my team" once, and a draft-night server restart costs nothing. **Reset** clears picks
+only (who you are survives). The persisted pick order is a cache of the *last live read*:
+`order_is_placeholder` travels with it, Connect refreshes it, and the never-trust-a-stale-
+order rule below still stands — 19.1b re-reads everything live in October.
 
 **Status: the board + composition views are built and verified.** The prescriptive layer
 (H2H week-win simulator, "take player X") is **not** built and is gated — see

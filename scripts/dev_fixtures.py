@@ -4,8 +4,10 @@ Remote/dev sessions can't reach stats.nba.com and never carry the local parquet 
 (`data/raw`, `data/processed` are gitignored, local-only). This script fabricates a small,
 schema-faithful cache so the FastAPI + React app (`scripts/serve.py`) can run end-to-end:
 draft board (the learned model genuinely trains on the synthetic panel), risk ranges,
-ROS snapshots, draft-sheet decision columns, player pages, the data browser, and the
-weekly planner (a synthetic 2026-27 schedule with realistic 3–4-game weeks).
+ROS snapshots, draft-sheet decision columns, player pages, the data browser, the
+weekly planner (a synthetic 2026-27 schedule with realistic 3–4-game weeks), and the
+season views (a 12-night ros_board archive with engineered risers/fallers + a fake
+market pull — docs/ui-views-plan.md §A.5).
 
 Player names include the real names referenced by `config/analyst_overrides.yaml` /
 `analyst_proposals.yaml` (the analyst engine fails loudly on an unmatched name), but every
@@ -235,28 +237,87 @@ def draft_sheet(ss: pd.DataFrame, cfg, rng: np.random.Generator) -> pd.DataFrame
     return last[["PLAYER_ID", "vor", "vor_rank", "adp", "market_priced"]]
 
 
-def ros_snapshots(ss: pd.DataFrame, cfg, rng: np.random.Generator) -> dict[str, pd.DataFrame]:
-    """Two fake nightly ROS boards (mid-January 2027)."""
-    base = draft_sheet(ss, cfg, rng)  # reuse the fpts ordering via vor_rank
-    last = ss[ss["SEASON"] == SEASONS[-1]][["PLAYER_ID", "PLAYER_NAME", "GP", "MIN"]].copy()
-    m = last.merge(base, on="PLAYER_ID")
+def ros_snapshots(ss: pd.DataFrame, sheet: pd.DataFrame,
+                  rng: np.random.Generator) -> dict[str, pd.DataFrame]:
+    """Twelve fake nightly ROS boards (2027-01-04 … 2027-01-15) with **engineered movers**
+    so the Trends / Trade-targets views demonstrably work (docs/ui-views-plan.md §A.5):
+    ~8 risers ramp +3…+8 fpts/g across the window (minutes rising with them — the real
+    mechanism), ~8 fallers mirror, everyone else drifts ±noise. `naive_fpts_pg` overshoots
+    the recent move (the recency-chaser), so movers show a model-vs-naive heat gap. Six
+    players sit OUT with their top-2 teammates carrying `redist_mpg` (the EXP-030 column)."""
+    last = ss[ss["SEASON"] == SEASONS[-1]][
+        ["PLAYER_ID", "PLAYER_NAME", "TEAM_ABBREVIATION", "GP", "MIN"]].copy()
+    m = last.merge(sheet[["PLAYER_ID", "vor_rank"]], on="PLAYER_ID").reset_index(drop=True)
+    n = len(m)
+    level0 = (34 - 0.16 * m["vor_rank"].to_numpy()).clip(min=4.0)
+    mpg0 = (m["MIN"] / m["GP"]).to_numpy().clip(8, 38)
+
+    delta = np.zeros(n)
+    pool = m.index[(m["vor_rank"] >= 30) & (m["vor_rank"] <= 170)].to_numpy()
+    movers = rng.choice(pool, size=16, replace=False)
+    delta[movers[:8]] = rng.uniform(3.0, 8.0, 8)
+    delta[movers[8:]] = -rng.uniform(3.0, 8.0, 8)
+
+    out_idx = m.sample(6, random_state=7).index
+    redist = np.zeros(n)
+    for oi in out_idx:
+        team = m.loc[oi, "TEAM_ABBREVIATION"]
+        mates = m.index[(m["TEAM_ABBREVIATION"] == team) & (~m.index.isin(out_idx))]
+        for mate in sorted(mates, key=lambda i: -level0[i])[:2]:
+            redist[mate] += float(rng.uniform(1.0, 4.0))
+
+    games0 = rng.integers(26, 38, n)
+    ros0 = rng.integers(34, 44, n)
+    dates = pd.date_range("2027-01-04", "2027-01-15", freq="D")
     out = {}
-    for i, date in enumerate(["2027-01-14", "2027-01-15"]):
-        d = m.copy()
-        d["fpts_pg"] = (34 - 0.16 * d["vor_rank"] + rng.normal(0, 1.5, len(d))).clip(lower=4).round(1)
-        d["games_so_far"] = rng.integers(28, 44, len(d))
-        d["gp"] = rng.integers(20, 38, len(d))
-        d["mpg"] = (d["MIN"] / d["GP"]).round(1)
+    for i, date in enumerate(dates):
+        p = i / (len(dates) - 1)
+        lvl = (level0 + delta * p + rng.normal(0, 0.5, n)).clip(min=2.0)
+        # The naive updater chases the last few days' move ~1.5x — hot movers read hotter.
+        p3 = max(0.0, (i - 3) / (len(dates) - 1))
+        naive = lvl + 1.5 * delta * (p - p3) + rng.normal(0, 1.2, n)
+        d = m[["PLAYER_ID", "PLAYER_NAME", "TEAM_ABBREVIATION"]].copy()
+        d["fpts_pg"] = lvl.round(1)
+        d["mpg"] = (mpg0 + 0.6 * delta * p + rng.normal(0, 0.3, n)).clip(4, 40).round(1)
+        d["games_so_far"] = games0 + i
+        d["gp"] = ros0 - i
         d["fpts_total"] = (d["fpts_pg"] * d["gp"]).round()
         d = d.sort_values("fpts_pg", ascending=False).reset_index(drop=True)
         d["rank"] = np.arange(1, len(d) + 1)
-        d["naive_fpts_pg"] = (d["fpts_pg"] + rng.normal(0, 2.0, len(d))).round(1)
+        # naive/redist/status were computed in m's row order — re-align by PLAYER_ID.
+        aligned = pd.DataFrame({"PLAYER_ID": m["PLAYER_ID"],
+                                "naive_fpts_pg": naive.round(1),
+                                "redist_mpg": redist.round(1),
+                                "status_override": ""})
+        # The real pipeline's note format (models/asof.py): "out_until:YYYY-MM-DD".
+        aligned.loc[out_idx, "status_override"] = "out_until:2027-02-01"
+        d = d.merge(aligned, on="PLAYER_ID", how="left")
         d["naive_rank"] = d["naive_fpts_pg"].rank(ascending=False).astype(int)
-        d["status_override"] = ""
-        d.loc[d.sample(6, random_state=7 + i).index, "status_override"] = "out_until_2027-02-01"
-        out[date] = d[["rank", "PLAYER_ID", "PLAYER_NAME", "games_so_far", "gp", "mpg",
-                       "fpts_pg", "fpts_total", "naive_fpts_pg", "naive_rank", "status_override"]]
+        out[date.date().isoformat()] = d[[
+            "rank", "PLAYER_ID", "PLAYER_NAME", "TEAM_ABBREVIATION", "games_so_far", "gp",
+            "mpg", "fpts_pg", "fpts_total", "naive_fpts_pg", "naive_rank",
+            "status_override", "redist_mpg"]]
     return out
+
+
+def market_board(ss: pd.DataFrame, sheet: pd.DataFrame, rng: np.random.Generator) -> pd.DataFrame:
+    """A fake Hashtag points-league pull (pull_market.py archive schema) — a noisy re-rank
+    of our board with ~10 deliberate big gaps so Trade Targets has buy-low (market ~25
+    ranks colder than us) and sell-high (~25 ranks hotter) rows (ui-views-plan §A.5)."""
+    last = ss[ss["SEASON"] == SEASONS[-1]][["PLAYER_ID", "PLAYER_NAME", "TEAM_ABBREVIATION"]]
+    m = last.merge(sheet[["PLAYER_ID", "vor_rank"]], on="PLAYER_ID")
+    m = m.sort_values("vor_rank").head(220).reset_index(drop=True)
+    score = m["vor_rank"] + rng.normal(0, 5.0, len(m))
+    gap_rows = rng.choice(m.index[10:120], size=10, replace=False)
+    score.iloc[gap_rows[:5]] += 25   # market colder than us -> buy-low rows
+    score.iloc[gap_rows[5:]] -= 25   # market hotter -> sell-high rows
+    m["consensus_rank"] = score.rank(method="first").astype(int)
+    m["consensus_value"] = (2200 - 9 * m["consensus_rank"] + rng.normal(0, 30, len(m))).round()
+    return pd.DataFrame({
+        "consensus_rank": m["consensus_rank"], "player": m["PLAYER_NAME"],
+        "team": m["TEAM_ABBREVIATION"], "pos": "", "consensus_value": m["consensus_value"],
+        "adp": pd.NA,
+    }).sort_values("consensus_rank").reset_index(drop=True)
 
 
 def schedule(rng: np.random.Generator) -> pd.DataFrame:
@@ -317,11 +378,17 @@ def main() -> None:
     schedule(rng).to_parquet(RAW_DIR / "schedule_2026-27.parquet", index=False)
 
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
-    draft_sheet(ss, cfg, rng).to_parquet(PROCESSED_DIR / "draft_sheet_2026-27.parquet", index=False)
+    sheet = draft_sheet(ss, cfg, rng)
+    sheet.to_parquet(PROCESSED_DIR / "draft_sheet_2026-27.parquet", index=False)
     ros_dir = PROCESSED_DIR / "ros_board"
     ros_dir.mkdir(exist_ok=True)
-    for date, df in ros_snapshots(ss, cfg, rng).items():
+    for f in ros_dir.glob("*.parquet"):  # --force must not leave stale snapshot dates behind
+        f.unlink()
+    for date, df in ros_snapshots(ss, sheet, rng).items():
         df.to_parquet(ros_dir / f"{date}.parquet", index=False)
+    market_dir = RAW_DIR / "market"
+    market_dir.mkdir(parents=True, exist_ok=True)
+    market_board(ss, sheet, rng).to_parquet(market_dir / "hashtag_2026-12-28.parquet", index=False)
 
     marker.write_text("Synthetic dev fixtures — generated by scripts/dev_fixtures.py. "
                       "Delete data/raw + data/processed before pulling real data.\n")

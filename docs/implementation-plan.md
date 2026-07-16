@@ -2352,6 +2352,7 @@ nightly in-season loop which starts at opening night; the draft is ~6 weeks soon
 | `docs/breakthrough-plan.md` | diagnosis + phase rationale | step-level specs (live here) |
 | `docs/design-critique.md` | standing review: assumptions, leakage, statistics, decompositions | run order (its actions are folded here) |
 | `docs/implementation-plan.md` | step specs, gates, tracker | results (those go to the ledger) |
+| `docs/ui-views-plan.md` | web-app view specs + their own tracker (product; added 2026-07-16) | model experiments, gates |
 
 When any two disagree, the more specific doc wins and the less specific one gets a pointer,
 in the same commit.
