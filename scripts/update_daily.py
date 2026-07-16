@@ -169,13 +169,57 @@ def apply_redistribution(board: pd.DataFrame, gl: pd.DataFrame, season: str, T: 
     return out
 
 
-def apply_analyst_layer(board: pd.DataFrame) -> pd.DataFrame:
+def _base_then(entries: list[dict], t0_path: Path | None) -> dict[str, float]:
+    """The model's pre-analyst base fpts_pg *when each bridge entry was written*
+    (Step 18.1), keyed by name_key. Recovered from the earliest ros_board snapshot
+    dated on/after the entry (its stored fpts_pg minus the fpts_delta its audit column
+    says was applied), falling back to the frozen preseason board A for entries older
+    than the archive. An entry checkable by neither (e.g. dated today, first night) is
+    skipped — it becomes checkable tomorrow."""
+    from fantasy_nba.models.analyst import (BRIDGE_CATEGORIES, effective_overrides,
+                                            name_key, parse_fpts_delta)
+
+    dates = sorted(p.stem for p in ROS_BOARD_DIR.glob("*.parquet")) \
+        if ROS_BOARD_DIR.exists() else []
+    t0 = pd.read_parquet(t0_path) if t0_path and t0_path.exists() else None
+    snaps: dict[str, pd.DataFrame] = {}
+    out: dict[str, float] = {}
+    for e in effective_overrides(entries):
+        if e["kind"] != "fpts_delta" or e["category"] not in BRIDGE_CATEGORIES:
+            continue
+        snap_date = next((d for d in dates if d >= e["date"].date().isoformat()), None)
+        if snap_date is not None:
+            snap = snaps.setdefault(snap_date, pd.read_parquet(
+                ROS_BOARD_DIR / f"{snap_date}.parquet"))
+            hit = snap[snap["PLAYER_NAME"].map(name_key) == e["name_key"]]
+            if not hit.empty:
+                r = hit.iloc[0]
+                out[e["name_key"]] = float(r["fpts_pg"]) - parse_fpts_delta(
+                    str(r.get("analyst_action", "")))
+                continue
+        if t0 is not None:  # pure-model board A — no delta to strip
+            hit = t0[t0["PLAYER_NAME"].map(name_key) == e["name_key"]]
+            if not hit.empty:
+                out[e["name_key"]] = float(hit.iloc[0]["fpts_pg"])
+    return out
+
+
+def apply_analyst_layer(board: pd.DataFrame, decay: bool = False,
+                        t0_path: Path | None = None) -> pd.DataFrame:
     """The in-season analyst layer (workflow v2): apply the effective
     ``config/analyst_overrides.yaml`` entries to tonight's ROS board via the same
     unit-tested arithmetic as the preseason board B. No file = no entries = board
-    unchanged (plus audit columns when entries exist)."""
+    unchanged (plus audit columns when entries exist).
+
+    Step 18: prints the **staleness report** (18.1) — for each role/hype fpts_delta,
+    tonight's pre-analyst base vs the base when the entry was written; entries the
+    model has caught up to are flagged ``analyst_stale`` on the board and named
+    "consider retiring" (post a later-dated ``none``/reduced entry — never edit).
+    ``decay=True`` (18.2, ``--analyst-decay``, off by default pending its validation
+    gate) tapers bridge deltas by games_so_far via ``analyst.decay_factor``."""
     from fantasy_nba.config import CONFIG_DIR
-    from fantasy_nba.models.analyst import apply_overrides, effective_overrides, load_overrides
+    from fantasy_nba.models.analyst import (apply_overrides, effective_overrides,
+                                            load_overrides, name_key, stale_entries)
 
     path = CONFIG_DIR / "analyst_overrides.yaml"
     if not path.exists():
@@ -183,15 +227,35 @@ def apply_analyst_layer(board: pd.DataFrame) -> pd.DataFrame:
     entries = load_overrides(path)
     if not entries:
         return board
-    out = apply_overrides(board, entries)
-    applied = out[out["analyst_action"] != ""]
-    moved = applied[applied["analyst_action"] != "none"]
+
+    # 18.1 — computed on the PRE-analyst base, before tonight's deltas land.
+    base_now = {name_key(n): float(f) for n, f in
+                zip(board["PLAYER_NAME"], board["fpts_pg"]) if pd.notna(f)}
+    report = stale_entries(entries, base_now, _base_then(entries, t0_path))
+
+    decay_col = "games_so_far" if (decay and "games_so_far" in board.columns) else None
+    if decay and decay_col is None:
+        print("[analyst] --analyst-decay ignored: board has no games_so_far column.")
+    out = apply_overrides(board, entries, decay_from=decay_col)
+
+    moved = out[~out["analyst_action"].isin(["", "none"])]
     print(f"[analyst] {len(effective_overrides(entries))} effective entrie(s); "
-          f"{len(moved)} move the board tonight:")
+          f"{len(moved)} move the board tonight"
+          f"{' (decay ON)' if decay_col else ''}:")
     if not moved.empty:
+        cols = [c for c in ("PLAYER_NAME", "analyst_category", "analyst_action",
+                            "analyst_decay_factor", "model_rank", "rank") if c in moved.columns]
         with pd.option_context("display.width", 200):
-            print(moved[["PLAYER_NAME", "analyst_category", "analyst_action",
-                         "model_rank", "rank"]].to_string(index=False))
+            print(moved[cols].to_string(index=False))
+
+    stale_keys = {r["name_key"]: r for r in report if r["stale"]}
+    keys = out["PLAYER_NAME"].map(name_key)
+    out["analyst_stale"] = keys.map(lambda k: k in stale_keys)
+    for r in report:
+        line = (f"[analyst-stale] {r['name']} ({r['category']} {r['delta']:+g}): base "
+                f"{r['base_then']} -> {r['base_now']} (caught up {r['caught_up']:+g})")
+        print(line + ("  ** model has caught up — consider retiring (post a later-dated "
+                      "none/reduced entry)" if r["stale"] else ""))
     return out
 
 
@@ -235,6 +299,10 @@ def main() -> None:
                         help="Skip the EXP-030 OUT-redistribution layer (plain asof board).")
     parser.add_argument("--no-analyst", action="store_true",
                         help="Skip the analyst-overrides layer (pure model + availability).")
+    parser.add_argument("--analyst-decay", action="store_true",
+                        help="Step 18.2 (OFF by default pending its validation gate): taper "
+                             "role/hype fpts_deltas by games played so far — full through "
+                             "~10 games, gone by ~30, when the EWMA has learned the role.")
     args = parser.parse_args()
 
     T = pd.Timestamp(args.asof or dt.date.today().isoformat())
@@ -289,11 +357,11 @@ def main() -> None:
     # The analyst layer (workflow v2) — approved judgment applies nightly. NOT fault-
     # isolated on purpose: a malformed override must fail the run loudly (a silently
     # dropped entry is a wrong board with no audit trail — same stance as the caps).
+    t0_path = Path(args.t0_board) if args.t0_board else PROCESSED_DIR / f"learned_{season}.parquet"
     if not args.no_analyst:
-        board = apply_analyst_layer(board)
+        board = apply_analyst_layer(board, decay=args.analyst_decay, t0_path=t0_path)
 
     # The naive-updater line (addendum item 5) — needs a frozen T₀ board to anchor on.
-    t0_path = Path(args.t0_board) if args.t0_board else PROCESSED_DIR / f"learned_{season}.parquet"
     if t0_path.exists():
         t0_board = pd.read_parquet(t0_path)
         board = naive_line(t0_board, gl[gl["SEASON"] == season], T, cfg, board)
@@ -305,7 +373,7 @@ def main() -> None:
     print(f"\nSaved ROS board -> {out_path}")
     show = [c for c in ("rank", "PLAYER_NAME", "games_so_far", "gp", "mpg", "redist_mpg",
                         "fpts_pg", "fpts_total", "naive_fpts_pg", "naive_rank",
-                        "status_override", "analyst_action")
+                        "status_override", "analyst_action", "analyst_stale")
             if c in board.columns]
     with pd.option_context("display.width", 200):
         print(board[show].head(args.top).to_string(index=False))

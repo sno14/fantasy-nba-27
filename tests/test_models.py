@@ -1133,3 +1133,119 @@ def test_calibrate_resid_scale_walkforward_monotone_and_best_pick():
     expect = table.loc[(table["coverage"] - 0.83).abs().idxmin(), "scale"]
     assert best == expect
     assert "2015-16" not in cache  # target never projected during calibration
+
+
+# ---------------------------------------------------------------------------
+# Step 18 — analyst-delta lifecycle: staleness flag + optional decay
+# ---------------------------------------------------------------------------
+
+def test_decay_factor_shape():
+    assert analyst.decay_factor(0) == 1.0
+    assert analyst.decay_factor(analyst.DECAY_FULL_GAMES) == 1.0
+    mid = (analyst.DECAY_FULL_GAMES + analyst.DECAY_ZERO_GAMES) / 2
+    assert analyst.decay_factor(mid) == pytest.approx(0.5)
+    assert analyst.decay_factor(analyst.DECAY_ZERO_GAMES) == 0.0
+    assert analyst.decay_factor(100) == 0.0
+
+
+def test_apply_overrides_decay_scales_bridge_deltas_only():
+    board = _analyst_board().assign(games_so_far=[20.0] * 6)  # halfway through the taper
+    entries = [_ov("Player 4", "fpts_delta", 4.0, category="role", pos=0),
+               _ov("Player 5", "fpts_delta", 4.0, category="injury", pos=1)]
+    out = analyst.apply_overrides(board, entries, decay_from="games_so_far")
+    role = out[out["PLAYER_ID"] == 4].iloc[0]
+    injury = out[out["PLAYER_ID"] == 5].iloc[0]
+    # role/hype = bridge -> half strength at 20 games; injury exempt -> full delta.
+    assert role["fpts_pg"] == pytest.approx(28.0 + 2.0)
+    assert role["analyst_decay_factor"] == pytest.approx(0.5)
+    assert injury["fpts_pg"] == pytest.approx(24.0 + 4.0)
+    assert injury["analyst_decay_factor"] == pytest.approx(1.0)
+    # the audit action string keeps the ENTRY's delta (the factor column is the audit)
+    assert role["analyst_action"] == "fpts_delta:+4"
+
+
+def test_apply_overrides_without_decay_is_unchanged_and_validates_column():
+    board = _analyst_board()
+    out = analyst.apply_overrides(board, [_ov("Player 4", "fpts_delta", 4.0)])
+    assert "analyst_decay_factor" not in out.columns
+    assert out[out["PLAYER_ID"] == 4].iloc[0]["fpts_pg"] == pytest.approx(28.0 + 4.0)
+    with pytest.raises(ValueError):
+        analyst.apply_overrides(board, [], decay_from="games_so_far")  # column absent
+
+
+def test_parse_fpts_delta_recovers_snapshot_base():
+    assert analyst.parse_fpts_delta("fpts_delta:+3.5") == 3.5
+    assert analyst.parse_fpts_delta("fpts_delta:-2") == -2.0
+    assert analyst.parse_fpts_delta("none") == 0.0
+    assert analyst.parse_fpts_delta("rank_delta:-8") == 0.0
+    assert analyst.parse_fpts_delta("") == 0.0
+
+
+def test_stale_entries_flags_caught_up_bridges_only():
+    entries = [
+        _ov("Riser Caught", "fpts_delta", 4.0, category="role", pos=0),
+        _ov("Riser Partial", "fpts_delta", 4.0, category="hype", pos=1),
+        _ov("Faller Caught", "fpts_delta", -3.0, category="role", pos=2),
+        _ov("Injury Guy", "fpts_delta", 4.0, category="injury", pos=3),   # exempt
+        _ov("No History", "fpts_delta", 4.0, category="role", pos=4),     # unskippable base
+    ]
+    base_then = {"riser caught": 20.0, "riser partial": 20.0, "faller caught": 30.0,
+                 "injury guy": 20.0}
+    base_now = {"riser caught": 24.5,    # rose >= +4 -> stale
+                "riser partial": 22.0,   # rose only +2 -> not stale
+                "faller caught": 26.5,   # fell >= |-3| -> stale (mirrored rule)
+                "injury guy": 30.0, "no history": 30.0}
+    rep = {r["name"]: r for r in analyst.stale_entries(entries, base_now, base_then)}
+    assert rep["Riser Caught"]["stale"] and rep["Riser Caught"]["caught_up"] == 4.5
+    assert not rep["Riser Partial"]["stale"]
+    assert rep["Faller Caught"]["stale"]
+    assert "Injury Guy" not in rep      # exempt category never reported
+    assert "No History" not in rep      # missing base -> skipped, never guessed
+
+
+def test_stale_entries_opposite_direction_move_is_not_stale():
+    # The base FELL under an upgrade delta — the model disagrees; that is not "caught up".
+    entries = [_ov("Diverging", "fpts_delta", 4.0, category="role")]
+    rep = analyst.stale_entries(entries, {"diverging": 15.0}, {"diverging": 20.0})
+    assert rep[0]["stale"] is False
+
+
+def test_update_daily_staleness_end_to_end(tmp_path, monkeypatch, capsys):
+    """18.1 through the real nightly code path: an old snapshot supplies base-then, the
+    caught-up bridge flags analyst_stale on tonight's board, the report names it."""
+    import importlib.util
+    from pathlib import Path as _P
+
+    spec = importlib.util.spec_from_file_location(
+        "update_daily", _P(__file__).resolve().parents[1] / "scripts" / "update_daily.py")
+    ud = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ud)
+
+    # The archive: a snapshot on the entry date, pre-analyst base 20 (action empty).
+    ros = tmp_path / "ros_board"
+    ros.mkdir()
+    pd.DataFrame({"PLAYER_NAME": ["Bridge Guy"], "fpts_pg": [20.0],
+                  "analyst_action": [""]}).to_parquet(ros / "2027-01-05.parquet")
+    monkeypatch.setattr(ud, "ROS_BOARD_DIR", ros)
+
+    # The overrides file the nightly run reads.
+    import fantasy_nba.config as cfg_mod
+    cfg_dir = tmp_path / "config"
+    cfg_dir.mkdir()
+    (cfg_dir / "analyst_overrides.yaml").write_text(
+        "- name: Bridge Guy\n  date: 2027-01-05\n  category: role\n"
+        "  action: {fpts_delta: 4.0}\n  rationale: new starter per BBM\n", encoding="utf-8")
+    monkeypatch.setattr(cfg_mod, "CONFIG_DIR", cfg_dir)
+
+    # Tonight's pre-analyst board: the model's base has risen 20 -> 24.5 (> the +4 delta).
+    board = pd.DataFrame({"PLAYER_ID": [1], "PLAYER_NAME": ["Bridge Guy"], "rank": [1],
+                          "fpts_pg": [24.5], "gp": [40.0], "fpts_total": [980.0],
+                          "games_so_far": [25.0]})
+    out = ud.apply_analyst_layer(board, decay=True, t0_path=None)
+    row = out.iloc[0]
+    assert bool(row["analyst_stale"]) is True
+    # decay at 25 games -> factor 0.25 of the +4 delta on the risen base.
+    assert row["analyst_decay_factor"] == pytest.approx(0.25)
+    assert row["fpts_pg"] == pytest.approx(24.5 + 1.0)
+    text = capsys.readouterr().out
+    assert "consider retiring" in text and "Bridge Guy" in text
