@@ -387,7 +387,8 @@ def _board_lookup() -> dict[int, dict]:
     b = boards.ranked_board(boards.CURRENT_TARGET, "learned", "safe", True)
     cols = [c for c in ("PLAYER_NAME", "TEAM_ABBREVIATION", "rank", "fpts_pg", "fpts_p10",
                         "fpts_median", "fpts_p90", "risk", "inj_chronic_flag") if c in b.columns]
-    return {int(r["PLAYER_ID"]): {c: r[c] for c in cols} for _, r in b[["PLAYER_ID"] + cols].iterrows()}
+    return {int(r["PLAYER_ID"]): {c: (None if pd.isna(r[c]) else r[c]) for c in cols}
+            for _, r in b[["PLAYER_ID"] + cols].iterrows()}
 
 
 def _roster_week_rows(pids: list[int], week: int | None, target: str) -> tuple[list[dict], dict]:

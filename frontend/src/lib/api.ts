@@ -21,16 +21,20 @@ export interface BoardRow {
   PLAYER_ID: number;
   PLAYER_NAME: string;
   TEAM_ABBREVIATION: string | null;
-  target_age: number;
-  gp: number;
-  mpg: number;
+  // market-seeded rows (rookies / returning vets with no 2025-26 games) carry no model
+  // projection: age/gp/mpg and the simulated ranges arrive as null — render "—".
+  target_age: number | null;
+  gp: number | null;
+  mpg: number | null;
   fpts_pg: number;
   fpts_total?: number;
   draft_value: number;
-  fpts_p10: number;
-  fpts_median: number;
-  fpts_p90: number;
-  risk: number;
+  fpts_p10: number | null;
+  fpts_median: number | null;
+  fpts_p90: number | null;
+  risk: number | null;
+  market_priced?: number | null;
+  seed_class?: string | null;
   analyst_action?: string | null;
   analyst_category?: string | null;
   analyst_date?: string | null;

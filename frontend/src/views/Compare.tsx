@@ -117,7 +117,7 @@ export default function Compare() {
               {metric("Median total", "Median simulated season total", (p) => f0(p.projection.fpts_median as number), (p) => p.projection.fpts_median as number)}
               {metric("Floor (p10)", "10th percentile season total", (p) => f0(p.projection.fpts_p10 as number), (p) => p.projection.fpts_p10 as number)}
               {metric("Ceiling (p90)", "90th percentile season total", (p) => f0(p.projection.fpts_p90 as number), (p) => p.projection.fpts_p90 as number)}
-              {metric("Risk", "Relative width of the p10–p90 band (lower is safer)", (p) => (p.projection.risk as number).toFixed(2), (p) => -(p.projection.risk as number))}
+              {metric("Risk", "Relative width of the p10–p90 band (lower is safer)", (p) => (p.projection.risk == null ? "—" : (p.projection.risk as number).toFixed(2)), (p) => -(p.projection.risk as number))}
               {metric("Proj GP", "Projected games played", (p) => f0(p.projection.gp as number), (p) => p.projection.gp as number)}
               {metric("Proj MPG", "Projected minutes per game", (p) => f1(p.projection.mpg as number))}
               {metric("Age", "Age in the target season", (p) => f0(p.projection.target_age as number))}

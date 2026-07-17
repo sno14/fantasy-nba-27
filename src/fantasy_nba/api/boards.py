@@ -137,9 +137,44 @@ def compute_board(target: str, model: str, apply_analyst: bool, ovr_mtime: float
     sheet_path = PROCESSED_DIR / f"draft_sheet_{target}.parquet"
     if sheet_path.exists():
         sheet = pd.read_parquet(sheet_path)
-        d1 = [c for c in ("vor", "vor_rank", "adp", "market_priced") if c in sheet.columns]
+        d1 = [c for c in ("vor", "vor_rank", "adp", "market_priced", "seed_class")
+              if c in sheet.columns]
         proj = proj.merge(sheet[["PLAYER_ID"] + d1].drop_duplicates("PLAYER_ID"),
                           on="PLAYER_ID", how="left")
+        # D1.5 market-priced rows (rookies + returning vets with zero 2025-26 games — the
+        # Haliburton gap, found 2026-07-17) have no prior-season feature row, so the live
+        # projection above cannot produce them. Append the ones with a real PLAYER_ID as
+        # flagged market prices: no simulated ranges (risk/p10/p90 stay NaN; the UI shows
+        # "—"), and rank_board prices them at their ADP anchor. Id-less rows (rookies
+        # before the October id pass) stay sheet-only — the API's int(PLAYER_ID) contract
+        # excludes them.
+        if "market_priced" in sheet.columns and "PLAYER_ID" in sheet.columns:
+            extra = sheet[(sheet["market_priced"] == 1) & sheet["PLAYER_ID"].notna()
+                          & ~sheet["PLAYER_ID"].isin(proj["PLAYER_ID"])].copy()
+            if not extra.empty:
+                keep = [c for c in ("PLAYER_ID", "PLAYER_NAME", "TEAM_ABBREVIATION",
+                                    "fpts_pg", "fpts_total", *d1) if c in extra.columns]
+                extra = extra[keep]
+                extra["PLAYER_ID"] = extra["PLAYER_ID"].astype(proj["PLAYER_ID"].dtype)
+                if "TEAM_ABBREVIATION" not in extra.columns:
+                    # older sheets predate the market-team column: fall back to last stats team
+                    extra["TEAM_ABBREVIATION"] = extra["PLAYER_ID"].map(
+                        recent.set_index("PLAYER_ID")["TEAM_ABBREVIATION"])
+                proj = pd.concat([proj, extra], ignore_index=True)
+
+    # Current-season team display: the last-stats-row team above predates the offseason,
+    # so overlay the transaction-derived roster map (prior-season primary team + player
+    # movement through the cache; the same map the mid-Oct pass freezes at Oct 1). Players
+    # absent from the map — seeded returning vets, unsigned FAs — keep what they have.
+    if target == CURRENT_TARGET:
+        tx = _raw("transactions")
+        if not tx.empty:
+            from ..models.rosters import preseason_roster_map
+
+            tmap = preseason_roster_map(ss, tx, target)
+            proj["TEAM_ABBREVIATION"] = (
+                proj["PLAYER_ID"].map(dict(zip(tmap["PLAYER_ID"], tmap["team"])))
+                .fillna(proj["TEAM_ABBREVIATION"]))
 
     if ty <= max_year:  # season already played — join actual outcomes
         act = _actual(ss, target, cfg, 0.0).copy()

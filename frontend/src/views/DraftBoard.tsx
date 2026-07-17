@@ -55,8 +55,10 @@ export default function DraftBoard() {
 
   const [rMin, rMax] = useMemo(() => {
     const head = filtered.slice(0, Math.min(filtered.length, topN));
-    if (!head.length) return [0, 1];
-    return [Math.min(...head.map((r) => r.fpts_p10)), Math.max(...head.map((r) => r.fpts_p90))];
+    const p10s = head.map((r) => r.fpts_p10).filter((v): v is number => v != null && Number.isFinite(v));
+    const p90s = head.map((r) => r.fpts_p90).filter((v): v is number => v != null && Number.isFinite(v));
+    if (!p10s.length || !p90s.length) return [0, 1];
+    return [Math.min(...p10s), Math.max(...p90s)];
   }, [filtered, topN]);
 
   // Historical honesty check: of our top-N, how many actually finished top-N?
@@ -123,14 +125,17 @@ export default function DraftBoard() {
       },
       {
         key: "range", label: "Floor → Ceiling", title: "Simulated season-total range (p10 → median → p90)",
-        render: (r) => <RangeStrip p10={r.fpts_p10} p50={r.fpts_median} p90={r.fpts_p90} min={rMin} max={rMax} />,
+        render: (r) =>
+          r.fpts_p10 == null || r.fpts_median == null || r.fpts_p90 == null
+            ? <span className="text-ink-3">—</span>
+            : <RangeStrip p10={r.fpts_p10} p50={r.fpts_median} p90={r.fpts_p90} min={rMin} max={rMax} />,
         hideBelow: "lg",
       },
       { key: "median", label: "Median", align: "right", title: "Median simulated season total", sortValue: (r) => r.fpts_median, render: (r) => f0(r.fpts_median) },
       {
         key: "risk", label: "Risk", align: "right", title: "Relative width of the p10–p90 band",
         sortValue: (r) => r.risk,
-        render: (r) => <RiskMeter value={r.risk} />,
+        render: (r) => (r.risk == null ? <span className="text-ink-3">—</span> : <RiskMeter value={r.risk} />),
         hideBelow: "sm",
       },
     ];
@@ -236,10 +241,13 @@ export default function DraftBoard() {
                 Floor → median → ceiling, top {Math.min(30, filtered.length)} (projected season total)
               </h2>
               <RangePlot
-                rows={filtered.slice(0, 30).map((r) => ({
-                  name: r.PLAYER_NAME, p10: r.fpts_p10, p50: r.fpts_median, p90: r.fpts_p90,
-                  extra: `risk ${r.risk.toFixed(2)}`,
-                }))}
+                rows={filtered
+                  .slice(0, 30)
+                  .filter((r) => r.fpts_p10 != null && r.fpts_median != null && r.fpts_p90 != null)
+                  .map((r) => ({
+                    name: r.PLAYER_NAME, p10: r.fpts_p10!, p50: r.fpts_median!, p90: r.fpts_p90!,
+                    extra: r.risk == null ? "market-priced" : `risk ${r.risk.toFixed(2)}`,
+                  }))}
                 onPick={(name) => {
                   const row = filtered.find((r) => r.PLAYER_NAME === name);
                   if (row) nav(`/players/${row.PLAYER_ID}`);

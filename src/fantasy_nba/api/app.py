@@ -118,7 +118,7 @@ def board(
         "rank", "tier", "PLAYER_ID", "PLAYER_NAME", "TEAM_ABBREVIATION", "target_age",
         "gp", "mpg", "fpts_pg", "fpts_total", "draft_value", "fpts_p10", "fpts_median",
         "fpts_p90", "risk", "analyst_action", "analyst_category", "analyst_date",
-        "model_rank", "vor", "vor_rank", "adp", "market_priced",
+        "model_rank", "vor", "vor_rank", "adp", "market_priced", "seed_class",
         "actual_rank", "act_fpts_pg", "act_fpts_total", "act_gp",
     ) if c in b.columns]
     analyst_applied = bool(

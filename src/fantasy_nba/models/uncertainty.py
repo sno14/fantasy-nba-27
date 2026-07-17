@@ -430,6 +430,19 @@ def rank_board(proj: pd.DataFrame, method: str = "safe", risk_lambda: float = 0.
         val = out["fpts_p90"]
     else:  # safe: blend median with its downside
         val = med - risk_lambda * (med - out["fpts_p10"])
+    miss = val.isna()
+    if miss.any() and "adp" in out.columns:
+        # D1.5 market-priced rows (rookies / returning vets seeded from ADP) have no
+        # simulated ranges, so every stance value is NaN and they would sink to the
+        # bottom. Price them by interpolating THIS stance's value curve at their market
+        # rank instead — they slot where the market says under every stance, without
+        # fabricating ranges (risk/p10/p90 stay NaN). Rows with no market rank either
+        # stay NaN and sink, unranked.
+        real = np.sort(val[~miss].to_numpy(dtype=float))[::-1]
+        pos = np.arange(1, len(real) + 1, dtype=float)
+        anchor = pd.to_numeric(out.loc[miss, "adp"], errors="coerce")
+        val = val.copy()
+        val.loc[miss] = np.interp(anchor.clip(1, len(real)), pos, real)
     out["draft_value"] = val.round(0)
     out = out.sort_values("draft_value", ascending=False).reset_index(drop=True)
     out["rank"] = range(1, len(out) + 1)
