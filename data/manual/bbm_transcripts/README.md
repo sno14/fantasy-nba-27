@@ -6,15 +6,21 @@ committed exception) so every derived override has checkable provenance.
 
 ## File naming
 
-    YYYY-MM-DD_short-slug.txt        # date = video publish date
+    YYYY-MM-DD-short-slug.md         # date = video publish date
+                                     # (contract aligned to practice 2026-07-17: every
+                                     # drop so far is hyphenated .md — was "_slug.txt")
 
-## File header (paste above the transcript text)
+## File header (optional — paste above the transcript text if handy)
 
     Title: <video title>
     URL:   <video url>
     Date:  <YYYY-MM-DD>
     ---
     <full transcript below>
+
+    In practice drops arrive headerless and that's fine: the date comes from the
+    filename, which is what `bbm_notes.csv` cites as source_file. The URL line is the
+    only thing lost — add it when provenance matters.
 
 ## Workflow v2 (user decisions 2026-07-12: a LIVING layer for THIS season)
 
@@ -88,6 +94,34 @@ contains whatever part of the story the model has priced:
     judgment sizes the number. An unusually large delta needs unusually concrete
     mechanisms and a sentence acknowledging its size; April 2027 calibrates whether the
     magnitudes ran hot.
+- **BBM's minutes AND usage numbers get priority weight (amended 2026-07-17, user
+  decision — the Trae Young miss; usage added same day).** His gauge on both has earned
+  trust, and minutes × usage are the biggest correlates of fantasy points — our own
+  backtests say minutes error dominates. So both comparisons must be EXPLICIT, never
+  impressionistic:
+  - Whenever BBM states a minutes number or range ("33 to 35", "he should play 32",
+    "20-plus"), write BOTH numbers into the `triangulation` field: his claim vs the
+    model's mpg base. A gap of **~2+ mpg is presumptively actionable** in either
+    direction — price it with the standard Δmpg formula; overriding the presumption takes
+    a NAMED offsetting mechanism (crowding, efficiency regression, his own hedge), stated
+    in the entry. "The model is already close" hand-waving is what buried the Trae gap
+    (31.8 vs "almost certainly 33 to 35") under two consecutive `none` verdicts.
+  - **Usage claims get the same treatment.** The board carries no usage column, but the
+    base is computable from the cache and verified accurate (Brown 36.2 vs BBM's "36",
+    Randle 26.5 vs "27", George 23.3 vs "23"):
+        USG% = 100 · (FGA + 0.44·FTA + TOV) · (TmMIN/5) / (MIN · (TmFGA + 0.44·TmFTA + TmTOV))
+    from `player_season_stats` + `team_game_logs` (sum team logs by season). When BBM
+    states a usage number or shift ("36 comes down to 28-30", "could the 23 become 25"),
+    write his claim vs the player's computed last-season USG%; a **~2+ usage-point gap is
+    presumptively actionable**, sized at **~0.5-0.8 fpts/g per usage point at starter
+    minutes** (efficiency partially cannibalizes; less at bench minutes) — consistent
+    with the standing ±1-2 usage-only anchor. Compare like-for-like: BBM often cites a
+    post-deadline WINDOW figure (Flagg "31", Buzelis "25"), which sits above the season
+    number the formula gives — note which window his claim describes.
+  - **Audit the base before trusting it:** check the gp behind the model's rate/minutes.
+    A base season under ~25 games is a small-sample-artifact candidate (Kessler's 5-game
+    base → +7.5; Trae's 15-game base faded his rate AND minutes at once) — re-anchor on
+    the last healthy season's level, not on the artifact.
 - Concrete role/depth/injury/usage claims move numbers; generic praise/hype → `none`.
 - Every transcript-derived rationale starts with ``BBM <video-date>:`` + the quote.
 - The `triangulation` field records the model base the sizing used — the number Step 18's

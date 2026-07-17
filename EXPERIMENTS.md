@@ -896,6 +896,31 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   2026-27, FP adds the rookie class → the D1.5 seed goes live); mid-Oct re-pull
   `preseason_game_logs` + `draft_history`, regenerate the sheet from `--model learned_ps`.
 
+### D1 note addendum (dated, no EXP number — product)  ·  2026-07-17
+- **D1.5 extended to returning vets — the Haliburton gap (user-found):** players with zero
+  2025-26 games (no feature row → not on the learned board) but 2024-25 history were caught
+  by NEITHER net — the old seed keyed on presence in *season stats*, so known-but-missing
+  vets fell through. `draft_sheet.py` now seeds every market row missing *from the board*,
+  split by `seed_class` (`rookie` = no stats at all / `returning-vet` = history but no
+  2025-26). Seeded now: Kyrie (sheet rank 124), Haliburton (133), Beasley (145), Lillard
+  (153) — value = board-interpolated market price at ADP, flagged `market_priced`, real
+  PLAYER_IDs + the market's team attached. **API board appends id-carrying seeded rows**
+  (`api/boards.py`) and `rank_board` prices range-less rows by interpolating each stance's
+  value curve at their ADP anchor (risk/p10/p90 stay NaN; the UI renders "—"); id-less
+  rookie rows stay sheet-only until the Oct id pass. Also fixed latent: the old seed wrote
+  the *string* "rookie" into the numeric `risk` column — would have 500'd the draft-room
+  API the first time a row seeded. VanVleet has no FP top-260 ADP yet → still absent
+  everywhere; the Sept market re-pull is his path in.
+- **July transaction refresh ran early (ahead of the Sept gate):** `pull_injuries.py
+  --dataset transactions` 2026-07-17 → cache through 2026-07-13 (+210 rows — the July FA
+  wave; the BBM-claimed moves all confirmed: Brown→PHI, George→BOS, Reid→CHA, Randle→BKN,
+  Kessler→LAL, Ayton→WAS, Trae re-signed WAS 4y/$212.8M, Stewart→MEM, Aldama→DAL, …).
+  **Live-board team display now overlays `preseason_roster_map`** (`api/boards.py`,
+  current target only, display-only; seeded vets keep the market's team): Jaylen Brown
+  et al. read correctly today instead of at the mid-Oct refresh. The calendar's Sept +
+  mid-Oct transaction refreshes stand unchanged — sheet team assignments, EXP-030
+  redistribution and depth features still key off the cache vintage at regeneration time.
+
 ### EXP-029 — analyst pass + dual-board freeze (the graded human layer)  ·  Status: **pending (machinery built 2026-07-10 · workflow-v2 amendment 2026-07-12 below: living entries any time, nightly in-season application, scoring = calibration · scores April 2027)**
 - **Date:** 2026-07-10 (build) ·  **Commit:** this commit  ·  **Step:** implementation-plan Step D2
 - **Hypothesis:** an auditable, written-down analyst pass (the human-judgment layer commercial

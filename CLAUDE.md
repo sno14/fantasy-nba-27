@@ -14,16 +14,21 @@ league). Read in this order before changing anything:
 ## Standing workflows — follow the named doc exactly, don't improvise
 
 - **BBM commentary → analyst layer.** Trigger: a new transcript lands in
-  `data/manual/bbm_transcripts/` or the user shares fantasy-relevant commentary/news.
+  `data/manual/bbm_transcripts/` or the user shares fantasy-relevant commentary/news —
+  **run the `/bbm` skill** (`.claude/skills/bbm/`: state detection, extraction/triangulation
+  mechanics, the review gate).
   Contract: **`data/manual/bbm_transcripts/README.md`** (workflow steps, triangulation
-  rubric, hard rules — read it in full before drafting). Shape: extract player facts →
+  rubric, hard rules — read it in full before drafting; it outranks the skill on judgment). Shape: extract player facts →
   append `data/manual/bbm_notes.csv` → triangulate each flagged player (our board's
   numbers × BBM's basketball mechanism × your own judgment) into
   `config/analyst_proposals.yaml` as `status: proposed`. Sizing is **target-level**:
   `fpts_delta = triangulated ROS fpts/g − model's current base` (`none` when target ≈
   base); `fpts_delta`/`none` only, never `rank_delta`; ignore BBM's rank/tier claims;
   one joint superseding entry per player (never sum deltas); no numeric caps — judgment
-  dictates magnitude. The user reviews; `apply_proposals.py --promote` moves approved
+  dictates magnitude. **BBM's stated minutes and usage numbers carry priority weight**
+  (user decision 2026-07-17): a ~2+ mpg gap vs the model's mpg, or a ~2+ usage-point gap
+  vs cache-computed last-season USG%, is presumptively actionable; a sub-~25-game base
+  season is a small-sample artifact to re-anchor — full rule in the transcripts README. The user reviews; `apply_proposals.py --promote` moves approved
   entries. **Never write into `config/analyst_overrides.yaml` directly** — every entry
   traces to an approved proposal or the mid-Oct calendar pass.
 - **In-season nightly:** `scripts/update_daily.py` (cron from opening night); concrete

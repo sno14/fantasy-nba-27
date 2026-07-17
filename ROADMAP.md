@@ -178,7 +178,10 @@ special-case handling.
 - [x] Final ranked projections + export — **shipped (Step 15, 2026-07-10):**
       `scripts/project.py` defaults to the learned model (risk ranges + `--rank-by`;
       `--asof DATE` for the in-season ROS board), `scripts/draft_sheet.py` is the D1
-      decision sheet (VOR + ADP availability + rookie market-seed), boards persist to
+      decision sheet (VOR + ADP availability + market-seed for board-missing players —
+      extended 2026-07-17 from rookies-only to returning vets with zero 2025-26 games,
+      the user-found Haliburton gap; seeded rows flow onto the live API board at their
+      ADP anchor), boards persist to
       `data/processed/`, and the explorer carries board/ROS/player/data tabs *(the
       Streamlit explorer was superseded 2026-07-14 by the web app — next bullet; it stays
       runnable as the legacy fallback)*.
@@ -537,6 +540,13 @@ eval-only (opt-in `--recency`); the shipped board uses the plain `learned` found
       `--no-analyst`); mid-Oct = re-review + the unchanged dual freeze; the April scoring
       **calibrates** magnitudes + per-source weighting (`BBM <date>:`-tagged subset split
       out) rather than deciding existence.
+      **Living-layer status (2026-07-17):** Batches 1–4 + a user-prompted Trae Young
+      re-triangulation all promoted — 66 proposals, 60 players reviewed, 50 moved on
+      board B. Sizing rubric gained the **minutes & usage priority rule** (user decision
+      2026-07-17, canonical in the transcripts README): BBM's stated minutes/usage vs our
+      base written explicitly per entry; ~2+ mpg or ~2+ usage-point gaps presumptively
+      actionable; sub-~25-game base seasons re-anchored on the last healthy season (the
+      Trae miss / Kessler pattern).
 
 #### 7.F — Usage-coupled rate/efficiency  ← parked (revisit only via 7.A)
 - [ ] Per-minute rates are already well-predicted (EXP-001); direct rate/efficiency modelling was

@@ -99,7 +99,7 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | 9b | 2 | Breakout archetype layer, recall-gated | EXP-026 | ☑ | ☑ (both wirings rejected; breakout_p column ships) |
 | 9c | 2 | Coach changes + preseason-October logs (+ win totals) | EXP-027 | ☑ | ☑ (a coach rejected · b `learned_ps` adopted-Oct, big-riser capture +9pp · c waived) |
 | 9d | 2 | Rookie model (draft slot × landing spot) | EXP-028 | ☑ | ☑ (rejected — pick-order unbeaten; D1.5 market seed stands alone) |
-| D1 | 2.5 | Decision layer: league config, VOR, schedule, rookie seed | — (product) | ◐ D1.1 ✅ · D1.2 VOR ✅ · D1.3 script ✅ (2026-27 schedule publishes ~mid-Aug) · D1.4 VOR+ADP ✅ (playoff cols await ESPN calendar) · D1.5 mechanism ✅ (2026 rookies hit the market pulls ~Sept) | ◐ (see D1 note, 2026-07-10) |
+| D1 | 2.5 | Decision layer: league config, VOR, schedule, rookie seed | — (product) | ◐ D1.1 ✅ · D1.2 VOR ✅ · D1.3 script ✅ (2026-27 schedule publishes ~mid-Aug) · D1.4 VOR+ADP ✅ (playoff cols await ESPN calendar) · D1.5 mechanism ✅ (extended 2026-07-17: returning-vet seed live — Kyrie/Haliburton/Beasley/Lillard; 2026 rookies hit the market pulls ~Sept) | ◐ (see D1 notes, 2026-07-10 + 2026-07-17) |
 | D2 | 2.5 | Analyst pass + dual-board freeze | EXP-029 | ☑ (overrides schema + `apply_analyst.py` + trigger generator, tested 2026-07-10; **workflow v2 2026-07-12**: proposals flow + nightly in-season hook live; explorer board-B toggle 2026-07-13) | ◐ pending (living entries any time via proposals→approval; mid-Oct = re-review + dual freeze; Apr 2027 scoring now *calibrates* — amended gate, Appendix A) |
 | 10 | 3 | As-of-date projection function | EXP-018 | ☑ | ☑ (foundation adopted; naive gate parked) |
 | 11 | 3 | In-season eval + lead-time metric | EXP-019 | ☑ (`eval_asof.py --exp019`; half-lives frozen) | ☑ (adopted diagnostics: +30d reducible gap ≈ 0 · riser-recall 51.7% · lead 52d @ 99% detect vs naive 70% · league-horizon flips 2/12 → both views) |
@@ -206,6 +206,14 @@ Step 13 stays archive-gated — do not log it early.
 > regenerating the sheet and committing the freeze; the analyst layer (per-game deltas) is a
 > separate axis and does **not** substitute for it. In-season this is automatic — `update_daily.py`
 > pulls transactions/injuries incrementally each night.
+>
+> **Addendum (2026-07-17):** a transaction refresh ran early — cache now through
+> 2026-07-13, covering the July FA wave (the BBM-claimed moves all confirmed in PST).
+> The **live board's team display** now overlays `preseason_roster_map` directly
+> (`api/boards.py`, current target only) so July movers read correctly today —
+> display-only; the sheet's team assignments, EXP-030 redistribution and depth features
+> still key off the cache vintage at regeneration time, so the Sept + mid-Oct refreshes
+> above stand unchanged.
 
 **Phase-5 note (2026-07-10 late, post-ship — user direction):** the minutes-economy pair
 (Steps 16–17, EXP-030/031) is added as the new **build-now** work: the user's standing
@@ -1113,6 +1121,20 @@ eyeballed and noted in the ledger as a dated D1 note (no EXP number — product,
 > unmatched deep rows are stale stash names, capped at rank ≤ 160) — the seed goes live
 > with the September market re-pull. Playoff-week board columns land after both
 > publications.
+
+> **D1.5 addendum (2026-07-17) — extended to returning vets (the Haliburton gap,
+> user-found):** the seed keyed on presence in *season stats*, so vets with zero 2025-26
+> games (no feature row → not on the board) but 2024-25 history fell through both nets.
+> Now the seed keys on **board presence**: any market row missing from the board seeds at
+> its consensus rank, split by `seed_class` (`rookie` / `returning-vet`); vets get real
+> PLAYER_IDs + the market's team. Seeded 2026-07-17: Kyrie 124 · Haliburton 133 · Beasley
+> 145 · Lillard 153. The API board (`api/boards.py`) **appends id-carrying seeded rows**
+> and `rank_board` prices range-less rows at their ADP anchor under every stance
+> (risk/p10/p90 stay NaN → UI "—"); id-less rookie rows stay sheet-only until the Oct id
+> pass. Also fixed latent: the seed wrote string "rookie" into the numeric `risk` column —
+> a draft-room-API crash waiting for the first seeded row. VanVleet: no FP top-260 ADP
+> yet → still absent; the Sept re-pull is his path in. Ledger: D1 note addendum
+> 2026-07-17.
 
 ## Step D2 — EXP-029: the analyst pass + dual-board freeze (the graded human layer)
 

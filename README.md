@@ -28,8 +28,10 @@ See [ROADMAP.md](ROADMAP.md) for the build plan, current progress, and modeling 
    sizes each fpts_delta (model × BBM mechanism × judgment; target-level sizing — delta =
    triangulated target − model base — so magnitude gaps count without stacking; joint
    re-triangulation for multi-mechanism players; uncapped, judgment-sized), the two hard
-   rules (fpts_delta/none only; ignore BBM's rank claims), and the proposals → approval →
-   overrides lifecycle.
+   rules (fpts_delta/none only; ignore BBM's rank claims), the **minutes & usage priority
+   rule** (2026-07-17: BBM's stated minutes/usage numbers vs our base written explicitly;
+   ~2+ mpg or ~2+ usage-point gaps presumptively actionable; sub-~25-game base seasons
+   re-anchored), and the proposals → approval → overrides lifecycle.
 
 ## Setup
 
@@ -136,7 +138,10 @@ scripts/
   pull_schedule.py season schedule (D1.3): regular-season filter + per-week/B2B/playoff-week
                    derivations; 2026-27 publishes ~mid-Aug (vintage warning until then)
   draft_sheet.py   the decision sheet (D1): VOR vs league replacement + ADP availability +
-                   rookie market-seed (market_priced) + breakout_p/ps_* pass-through
+                   market-seed for board-missing players (rookies AND returning vets with
+                   zero 2025-26 games — the Haliburton gap, 2026-07-17; `market_priced` +
+                   `seed_class`, real PLAYER_IDs + market team on vets) + breakout_p/ps_*
+                   pass-through
   analyst_triggers.py  D2.1 pre-draft review list: top-200 board-vs-consensus rank gaps +
                    breakout flags + severe-injury returnees (18m) + rookies
   apply_analyst.py D2.2 analyst overrides (config/analyst_overrides.yaml): board A -> board B,
@@ -254,7 +259,12 @@ Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season 
   ceiling shift with it, an Analyst column + adjusted count appear, and past-season
   backtest boards always stay pure model; the D1 decision columns (VOR, ADP) join
   automatically when the target's draft-sheet parquet exists, with **value/reach chips**
-  (ADP vs our rank) and **tier breaks** (unusually large draft-value gaps); an optional
+  (ADP vs our rank) and **tier breaks** (unusually large draft-value gaps); the sheet's
+  **market-priced rows** (returning vets now; rookies once the Sept market pull lists
+  them + they get ids in Oct) appear on the current-season board at their ADP anchor with
+  "—" for risk/ranges (a price, not a projection); the current season's **team column
+  follows the transaction-derived roster map** (July movers show their new teams; restart
+  the server after a transactions re-pull); an optional
   range dot-plot; search / team filter / column sorting; checkboxes feed **Compare**.
 - **ROS (in-season)** — nightly `data/processed/ros_board/` snapshots with the
   naive-updater disagreement panel (populates once `update_daily.py` crons from opening
