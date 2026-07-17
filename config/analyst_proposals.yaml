@@ -28,6 +28,15 @@
 # (2026-07-13, superseding the same-day ±3/±5): the tiers mild ≈1 / moderate ≈2 /
 # strong ≈3 are anchors, not limits — judgment dictates magnitude; unusually large
 # deltas need unusually concrete, enumerated mechanisms. April 2027 calibrates.
+#
+# MINUTES & USAGE RULE (user decision 2026-07-17 — the Trae Young miss): BBM's stated
+# minutes AND usage numbers get priority weight. Write his claim vs the base into every
+# triangulation — minutes vs the model's mpg; usage vs last-season USG% computed from the
+# cache (formula in the transcripts README; verified vs his own citations). A ~2+ mpg or
+# ~2+ usage-point gap is presumptively actionable (either direction) unless a NAMED
+# mechanism offsets it; usage sizes at ~0.5-0.8 fpts/g per point at starter minutes.
+# Audit the base's gp first — a sub-~25-game base season is a small-sample artifact
+# (Kessler, Trae); re-anchor on the last healthy season.
 
 # ============ Batch 1 — BBM 2026-06-29 free-agency episode (proposed 2026-07-12) ============
 # Source: data/manual/bbm_transcripts/2026-06-30-nba-roles.md; evidence in bbm_notes.csv.
@@ -565,3 +574,508 @@
     by an overtly crowded backcourt and no PG duties. Claude: none holds — the joint read
     (role-up but minutes/usage-capped) still nets to the base; superseding entry so the audit
     trail shows the crowding was weighed, not missed."
+
+# ============ Batch 4 — BBM 2026-07-14 (late-season surges), 2026-07-16 (shooting risers/
+# fallers), 2026-07-17 (analytics conversion rates) — proposed 2026-07-17 ============
+# Sources: data/manual/bbm_transcripts/2026-07-{14,16,17}-*.md; evidence in bbm_notes.csv.
+# NOTE: 2026-07-15-statistical-correlations.md is a byte-identical duplicate of the 07-14 file
+# (paste error) — the real correlations episode (both later episodes reference it as
+# "yesterday's show") is MISSING; extraction pending a re-drop.
+# The three episodes triangulate jointly: 07-14 separates real post-deadline risers from
+# tank-chaos artifacts (exactly what a prior-season board mis-prices, in BOTH directions —
+# several fakes sit high on OUR board because the model learned the surge); 07-16 separates
+# shooting luck from role change; 07-17 grades conversion-rate luck (deflections→steals etc.),
+# which spot-checks show our model's own shrinkage already prices (Green 0.97 stl, Gordon 0.66,
+# Sharpe 1.02 — all pre-regressed), so per the Batch-2 precedent those claims are `none`/notes
+# unless a role mechanism rides along. Four entries SUPERSEDE earlier ones (Garland, Paul
+# George, Ty Jerome net-DOWN, Paul Reed) — whole-player re-triangulations from the current
+# base per the one-entry rule. Three carry large deltas (Filipowski -6.5, Collier -6.0,
+# Sheppard -5.0) with mechanisms enumerated per the no-cap rubric.
+# Availability facts routed OUT of this layer (flagged for Steven / overrides.yaml): Butler
+# out ≥ half season (07-17), Moody "not going to play all season" (07-14, ambiguous), Kyrie
+# return-by-opening-night (07-14). Rookies (Caleb Wilson, Bruce Thornton, Lindenberg,
+# Kingston Flemings) deferred to the October sheet as usual.
+
+- name: Nickeil Alexander-Walker
+  date: 2026-07-17
+  category: role
+  action: {fpts_delta: 3.5}
+  preview: "rank 103 · 27.8 mpg · 27.94 fpts/g -> 31.44"
+  rationale: "BBM 2026-07-14: 10th per game post-ASB at 34 mpg (22 pts, 3.5 threes, 1.6 stl)
+    and — unlike the fakes — 'a lot of the conditions that enabled it to happen are still
+    there': Trae was traded and remains gone, 'the Hawks didn't really bring anyone in,'
+    'Kingston Flemings is not starting over him.' Only the 51/45/94 shooting 'we have to cut
+    off.'"
+  status: approved
+  triangulation: "Model: rank 103 at 27.8 mpg / 27.94 fpts — a season blend still carrying his
+    pre-trade supporting role. BBM: the minutes/usage/touches are structural and persist; the
+    shooting is the only fake part. Claude: +5-6 mpg of ROS role at ~1.0 fpts/min x 0.85 fade
+    is ~+4.5, shaved for the efficiency regression his base season embeds (the model's rate
+    shrinkage only partly absorbs a 45%-from-3 half) -> +3.5. Cross-checks: 07-16 flags the
+    FT/3PT luck (negative), 07-17 finds his deflection->steal conversion LOW while defending
+    more (positive) — they roughly cancel."
+
+- name: Cooper Flagg
+  date: 2026-07-17
+  category: role
+  action: none
+  preview: "rank 17 · no change (board already prices the star turn)"
+  rationale: "BBM 2026-07-14: 16th post-deadline with 31 usage in 32 mpg; 'he is a
+    fully-fledged budding superstar and superstars have 31 usage'; Kyrie's return may trim
+    usage but 'they don't really have anyone who handles the ball or dribbles apart from
+    Kyrie,' and year-2 efficiency should rise."
+  status: approved
+  triangulation: "Model: rank 17 at 34.4 mpg / 45.09 fpts — the board already prices the
+    post-deadline role, not the season average. BBM: usage dent (Kyrie back) vs efficiency
+    gain — offsetting. Claude: target ≈ base -> none (assurance). Kyrie's own return/trade
+    status is the watch item."
+
+- name: Darius Garland
+  date: 2026-07-17
+  category: role
+  action: {fpts_delta: 3.5}
+  preview: "rank 90 · 27.9 mpg · 30.13 fpts/g -> 33.63  (supersedes the 2026-07-13 +2.0)"
+  rationale: "BBM 2026-07-14: the 07-13 entry's destination uncertainty is RESOLVED — he was
+    traded to the Clippers at the February deadline and stays; 37th per game post-deadline
+    (34 fpts/g in only 29 mpg); with Kawhi gone and lower-usage Ingram in he is 'almost
+    certainly the number one ball handler'; 'if he's healthy, he should play 32'; and
+    Hachimura-for-Collins is 'probably an offensive downgrade' that concentrates usage
+    further. 'I implore skepticism around Garland' — but on health, not role."
+  status: approved
+  triangulation: "Re-triangulation of the whole player (supersedes +2.0, whose discount was
+    'the exact LA team/role is uncertain' — no longer true). Model: base 30.13 at 27.9 mpg.
+    BBM: he already produced 34 fpts/g in 29 mpg on this exact roster post-deadline; at 32
+    mpg that scales to ~35-36 before trimming the 44% 3PT back toward ~40. Claude: target ~34
+    (his demonstrated level, efficiency-trimmed, minutes-raised) -> +3.5. Health/GP risk
+    stays on the availability axis (his gp already carries the discount)."
+
+- name: Kyle Filipowski
+  date: 2026-07-17
+  category: role
+  action: {fpts_delta: -6.5}
+  preview: "rank 75 · 27.4 mpg · 32.53 fpts/g -> 26.03  (LARGE — tank-chaos artifact unwound)"
+  rationale: "BBM 2026-07-14: the 39th-post-deadline run (a 123-spot rise) came in a Utah tank
+    where 'Filipowski was their center' amid 40-48-minute absurdity; now 'Nurkic... I would
+    expect the starting center,' the roster refills (Markkanen/Bailey/Peterson/George) and the
+    team is 'good and probably makes the playoffs' — 'he's not going to roll 24 usage and be a
+    top 40 player. It's almost impossible.' 'You should be trading away Filipowski in dynasty
+    leagues now.' 07-16 adds only a mild positive (FT 65->75, still below average)."
+  status: approved
+  triangulation: "Model: rank 75 at 27.4 mpg / 32.53 fpts — the board BOUGHT the fake surge
+    (the Kessler mis-read, inverted). BBM: firm, mechanism-rich demotion to backup C. Claude:
+    a true backup (~18-19 mpg at his 1.19 fpts/min) targets ~23-24 (full ~-9); I stop at -6.5
+    (target ~26) because Nurkic is 'not particularly a pillar of health and reliability,'
+    which guarantees spot-start windows. Sized deliberately large — same family as the
+    approved Vucevic -6.0; the approved Nurkic +2.5 is the other side of this same depth
+    chart (consistent, not double-counted)."
+
+- name: Reed Sheppard
+  date: 2026-07-17
+  category: role
+  action: {fpts_delta: -5.0}
+  preview: "rank 72 · 27.0 mpg · 32.01 fpts/g -> 27.01  (LARGE — surge-priced role won't exist)"
+  rationale: "BBM 2026-07-14: the 45th-post-deadline run happened with no VanVleet, no Adams
+    and injuries everywhere; now VanVleet is back ('Reed has almost got no chance to start —
+    he was so reluctant to start him anyway'), Tate returns, Adams takes the 5 pushing Sengun
+    to the 4 'which pushes everyone else down,' and Houston ADDED Marcus Smart and Bogdanovic:
+    a set 10-man rotation. 'The opportunity for 29 minutes... I don't think it exists. I
+    really don't.' 07-16 adds: the 2pt jump (37->49) is real skill growth; the 41% from 3
+    won't hold."
+  status: approved
+  triangulation: "Model: rank 72 at 27.0 mpg — priced on the surge window. BBM: the skill is
+    real, the OPPORTUNITY is what's fake. Claude: ~22-23 mpg bench role at his 1.19 fpts/min
+    is ~26-27 with the shooting trimmed -> -5.0. Sized deliberately large: a named, refilled
+    10-man rotation is as concrete as depth-chart mechanisms get."
+
+- name: Matas Buzelis
+  date: 2026-07-17
+  category: role
+  action: {fpts_delta: 2.0}
+  preview: "rank 70 · 27.8 mpg · 31.91 fpts/g -> 33.91"
+  rationale: "BBM 2026-07-14: 50th post-deadline (19-7 with 3 threes and ~2 blk) and unlike
+    the fakes 'he showed us what he can do' — Donovan's leash, not talent, was the constraint;
+    'the 31 could jump to 33 minutes,' though the 25 usage may dip (Giddey/Powell as 1-2,
+    rookie Caleb Wilson starting next to him) and the blocks may soften at the 3. BBM
+    2026-07-17: his 24.5% rim-contest->block conversion is regression-prone — reinforcing
+    the blocks caution."
+  status: approved
+  triangulation: "Model: rank 70 at 27.8 mpg — still carrying the pre-deadline bench blend.
+    BBM: a real breakout with ~+5 mpg of role, tempered on usage and blocks. Claude: +5 mpg x
+    1.15 fpts/min x 0.85 is ~+5 raw; halved for the usage dip (Powell arrival) and the block
+    conversion regression -> +2.0."
+
+- name: Maxime Raynaud
+  date: 2026-07-17
+  category: role
+  action: {fpts_delta: -3.5}
+  preview: "rank 130 · 25.9 mpg · 27.02 fpts/g -> 23.52"
+  rationale: "BBM 2026-07-14: 'if you ever see something from Sacramento, especially late in
+    the season, your instinct should be [it's] probably terrible' — the 62nd-post-deadline run
+    came with Sabonis not playing at all post-ASB and LaVine/Murray/Hunter out; 'now Sabonis
+    is there. So Raynaud will be the backup,' Murray and Hunter reclaim the forward minutes,
+    and the 59%/82% shooting won't hold. His own hedge: 'maybe Sabonis gets traded. So
+    there's some real value here.'"
+  status: approved
+  triangulation: "Model: rank 130 at 25.9 mpg — surge-priced. BBM: backup pricing with a
+    live escape hatch. Claude: a true backup is ~19 mpg / ~20 fpts (full ~-7), but the
+    Sabonis-to-Detroit sign-and-trade rumor (logged 06-29) is real enough to blend -> -3.5.
+    Re-triangulate immediately if Sabonis moves."
+
+- name: Isaiah Collier
+  date: 2026-07-17
+  category: role
+  action: {fpts_delta: -6.0}
+  preview: "rank 107 · 28.9 mpg · 30.21 fpts/g -> 24.21  (LARGE — 6.5 ast/g priced off a role that won't exist)"
+  rationale: "BBM 2026-07-14: 60th post-ASB 'because Keyonte George was injured and everyone
+    else was sitting'; with the room whole (George/Peterson ahead, Bailey and Sensabaugh also
+    back) 'Collier might play 20 minutes a night max. He's got no hope of repeating that.'
+    07-16 adds: the FG jump (42->50) is real two-point growth, but he 'can't shoot at all
+    from the outside' and 'there's just no opportunity for him.'"
+  status: approved
+  triangulation: "Model: rank 107 at 28.9 mpg / 6.54 ast — priced as a near-30-minute lead
+    guard; assists are 2x, so the role collapse bites double. BBM: a firm ~20-mpg ceiling on
+    a team trying to win. Claude: 20 mpg at his rate is ~21 (full ~-9); I stop at -6.0
+    (target ~24, a ~23-mpg blend) for Utah's guard-injury history and trade churn. Sized
+    deliberately large — the same surge-artifact shape as Filipowski."
+
+- name: Ace Bailey
+  date: 2026-07-17
+  category: role
+  action: {fpts_delta: -3.0}
+  preview: "rank 91 · 29.7 mpg · 29.09 fpts/g -> 26.09"
+  rationale: "BBM 2026-07-14: 78th post-deadline — 'will it stick? No, because Markkanen and
+    [the vets] and Keyonte and Peterson are all going to be there and they weren't
+    post-trade-deadline'; 'most likely Ace Bailey comes off the bench.'"
+  status: approved
+  triangulation: "Model: rank 91 at 29.7 mpg — surge-priced starter minutes. BBM: bench role
+    on a team trying to be good. Claude: a ~24-25 mpg bench role is ~24-25 fpts (full ~-4.5),
+    tempered because a year-2 lottery talent on Utah tends to force his way back up by
+    spring -> -3.0."
+
+- name: Jeremiah Fears
+  date: 2026-07-17
+  category: role
+  action: {fpts_delta: -2.0}
+  preview: "rank 51 · 30.0 mpg · 33.48 fpts/g -> 31.48"
+  rationale: "BBM 2026-07-14: 117th post-deadline (from 181) is 'a little bit interesting,
+    but we also have a full season of Dejounte Murray now after he was in and out of the
+    lineup returning from the Achilles.' BBM 2026-07-17: on-ball share correlates 0.88-0.90
+    with (potential) assists — Murray's full-time on-ball presence is exactly what compresses
+    a young guard's assist lane."
+  status: approved
+  triangulation: "Model: rank 51 at 30.0 mpg / 33.48 fpts — aggressive; it learned Fears'
+    best stretch, much of it in Murray's absences. BBM: mild counter-hype, not a demolition.
+    Claude: Murray back full-time compresses Fears' on-ball share (assists 2x) in a crowded
+    perimeter (Fears/Murray/Jones/Murphy) -> mild-moderate -2.0."
+
+- name: Gui Santos
+  date: 2026-07-17
+  category: hype
+  action: none
+  preview: "rank 352 · no change (skepticism confirms — never on our board)"
+  rationale: "BBM 2026-07-14: the 72nd-post-ASB run rode Butler's injury and Steph's
+    absences; 'I don't feel confident about Gui being in that role and playing 31 minutes...
+    and all that will just come unstuck when Jimmy returns anyway.'"
+  status: approved
+  triangulation: "Model: rank 352 — never bought it. Claude: none — logged (the Mitchell
+    Robinson / Paul Reed anti-hype shape) so October-us doesn't chase the name if camp
+    reports inflate him. The one revisit trigger: Butler's half-season absence (07-17) handing
+    him an opening-night 30-mpg role anyway."
+
+- name: Brandin Podziemski
+  date: 2026-07-17
+  category: role
+  action: {fpts_delta: 1.0}
+  preview: "rank 74 · 29.4 mpg · 29.48 fpts/g -> 30.48"
+  rationale: "BBM 2026-07-14 + 2026-07-17: 61st post-ASB (a 92-spot rise) listed WITHOUT the
+    skepticism he applied to the other Warriors; 'he might handle the ball even more with
+    Jimmy Butler out for at least half the season,' and his 47% potential-assist conversion
+    (league 58%) has bounce-back room — 'we might see a really strong streak of assists from
+    Podz early in the year.'"
+  status: approved
+  triangulation: "Model: rank 74 at 29.4 mpg — the role is largely priced. BBM: two mild
+    positives (Butler's absence, conversion luck normalizing), no minutes leap. Claude: mild
+    +1.0 — assists are 2x so the rebound is real but small, and Butler's midseason return
+    caps it."
+
+- name: Ayo Dosunmu
+  date: 2026-07-17
+  category: role
+  action: none
+  preview: "rank 118 · no change (new-team minutes up vs efficiency regression — a wash)"
+  rationale: "BBM 2026-07-16: 'probably going to start and play 30-plus minutes for the
+    Wolves alongside Edwards, LaMelo, McDaniels' — but he 'is going to be a very popular
+    target' priced off career-best shooting (3PT 33->44, FT 78->88): 'what if that all comes
+    back to earth?' Plus 'he has to navigate the usage gap with LaMelo and Ant.' BBM
+    2026-07-17: his 71% deflection->steal conversion is also regression-prone."
+  status: approved
+  triangulation: "Model: rank 118 at 27.8 mpg — cannot see the Minnesota move, so the starter
+    role is genuinely unpriced; but the base is built on the same career-best-efficiency
+    season that is due to regress. Claude: +2-3 mpg of role (~+2) against 3PT/FT/steal
+    regression (~-2) nets to the base -> none. The audit value is the warning: do NOT chase
+    him at his market price."
+
+- name: Jaylon Tyson
+  date: 2026-07-17
+  category: hype
+  action: none
+  preview: "rank 214 · no change (shooting fake, role unresolved)"
+  rationale: "BBM 2026-07-16: shot 45% from three while 'double-banging it' — opportunity
+    from the Strus/Hunter/Wade absences plus lights-out shooting; 'you shouldn't go in
+    expecting 45. You probably shouldn't expect 35.' Strus is back for a full season and
+    'does Tyson pencil in as a starter? Maybe, maybe not — maybe LeBron is there.'"
+  status: approved
+  triangulation: "Model: rank 214 at 21.9 mpg — already skeptical. BBM: efficiency fake, role
+    conditional. Claude: none — target ≈ base; logged against camp hype."
+
+- name: Aaron Nesmith
+  date: 2026-07-17
+  category: role
+  action: {fpts_delta: 2.5}
+  preview: "rank 181 · 27.9 mpg · 23.21 fpts/g -> 25.71"
+  rationale: "BBM 2026-07-16: the collapse was Haliburton-shaped — rim finishing 67->49 ('49
+    is embarrassing'), 2pt 59->46, FG 51->41, all in the season without the league's best
+    table-setter; 'is Haliburton worth 10 percentage points? I could argue that. Yeah.'
+    Closing verdict: 'I'm very confident Nesmith's going to improve.'"
+  status: approved
+  triangulation: "Model: rank 181 at 27.9 mpg — priced on the no-Haliburton season; a
+    teammate's Achilles return is exactly the exogenous mechanism the board cannot see. BBM:
+    high conviction with concrete percentages. Claude: FG back to ~48 on his volume is ~+2
+    pts plus flow-on FT/threes -> +2.5. Haliburton's own GP risk is a separate axis."
+
+- name: Anfernee Simons
+  date: 2026-07-17
+  category: role
+  action: {fpts_delta: -3.0}
+  preview: "rank 140 · 28.3 mpg · 25.81 fpts/g -> 22.81"
+  rationale: "BBM 2026-07-16: 'we know he's a backup now in Philadelphia,' and the 70% rim
+    finishing (up from 58; career lower-half of the league) that propped his scoring — 'I
+    would expect that Simons's numbers come down.'"
+  status: approved
+  triangulation: "Model: rank 140 at 28.3 mpg — priced on the bigger prior role; cannot see
+    the Philly bench spot behind Maxey with Brown absorbing the wing usage. BBM: role down
+    AND efficiency luck unwinding — compounding legs. Claude: ~24 mpg bench scorer with the
+    rim rate regressed is ~22-23 -> -3.0."
+
+- name: Paul George
+  date: 2026-07-17
+  category: role
+  action: {fpts_delta: 3.5}
+  preview: "rank 106 · 28.8 mpg · 28.99 fpts/g -> 32.49  (supersedes the 2026-07-13 +2.5)"
+  rationale: "BBM 2026-07-16 adds a second leg to the 07-13 usage-promotion story: his rim
+    finishing fell 68->57 in a suspension/injury season after THREE consecutive years at
+    60%+ — 'if he just jumps back to 63, his field goals go up... he gets one to two more
+    shots per game'; 'there's no real reason to think that he's going to maintain that bad of
+    a finishing rate.'"
+  status: approved
+  triangulation: "Re-triangulation of the whole player per the one-entry rule. Model: base
+    28.99 at 28.8 mpg. Mechanisms: (1) clear-#2 usage promotion behind Tatum (the approved
+    +2.5); (2) rim-finishing regression UP against three years of 60%+ priors (~+1 to +1.5
+    alone). Joint: they reinforce — more usage AND better conversion — but share the same
+    possessions, so +3.5, not the sum. Chronic-knee availability stays on the gp/overrides
+    axis."
+
+- name: Jayson Tatum
+  date: 2026-07-17
+  category: role
+  action: {fpts_delta: 2.5}
+  preview: "rank 22 · 34.5 mpg · 45.05 fpts/g -> 47.55"
+  rationale: "BBM 2026-07-16: his return games came in the first run back from the Achilles —
+    'recovery from big injuries, ACLs and Achilles, hurts players' efficiencies almost every
+    time in their first run back' (rim 69->60) — and 'I feel pretty confident he gets back to
+    his best.' The Brown trade (07-13 episode) vacates the #2 usage share on top."
+  status: approved
+  triangulation: "Model: rank 22 at 45.05 fpts — the base has eaten the suppressed
+    return-year games; his healthy level was a ~50-fpts first-rounder. BBM: year-2
+    post-Achilles efficiency rebound + vacated usage. Claude: I won't write the full
+    return-to-peak (age 28+ and real post-Achilles attrition exist) — target ~47.5 -> +2.5.
+    GP risk stays on the model's own gp axis."
+
+- name: Payton Pritchard
+  date: 2026-07-17
+  category: role
+  action: {fpts_delta: 1.5}
+  preview: "rank 71 · 28.1 mpg · 30.55 fpts/g -> 32.05"
+  rationale: "BBM 2026-07-16: last season 'the role would increase and the usage would
+    increase and they did... he just couldn't shoot'; the 2pt number should rebound toward
+    59; and the Brown trade removes the 'incredible ball-hog-ness' whose late-clock leftovers
+    cratered White, Pritchard AND Hauser together — structural, not individual luck."
+  status: approved
+  triangulation: "Model: rank 71 at 28.1 mpg — the role is priced (it happened); the shooting
+    floor is what drags the base. BBM: an efficiency rebound with a structural cause plus
+    that cause's removal. Claude: mild-moderate +1.5; the start-vs-30-minute-bench question
+    doesn't much matter (similar minutes either way)."
+
+- name: Derrick White
+  date: 2026-07-17
+  category: role
+  action: {fpts_delta: 1.0}
+  preview: "rank 47 · 31.7 mpg · 33.45 fpts/g -> 34.45"
+  rationale: "BBM 2026-07-16: 2pt 59->49 while carrying secondary creation; 'I expect he
+    moves back into a tertiary role as the third usage guy behind George and behind Tatum...
+    that two-point number can at least hit back to 52-ish.'"
+  status: approved
+  triangulation: "Model: rank 47 — the base carries the bad-shooting season. BBM: modest,
+    structural efficiency rebound (the same Brown-departure logic as Pritchard). Claude: mild
+    +1.0 — he trades a little volume for better conversion; nets slightly positive."
+
+- name: Onyeka Okongwu
+  date: 2026-07-17
+  category: role
+  action: none
+  preview: "rank 58 · no change (the down year IS the base; no bounce-back priced or promised)"
+  rationale: "BBM 2026-07-16: his fall tracked Trae's exit — 2pt 63->57, and he abandoned rim
+    attempts for threes; 'they don't have Trae Young again. So maybe he isn't able to get
+    back that rim rate and that rim percentage.' BBM 2026-07-17: his 68% potential-assist
+    conversion was also above-average-lucky."
+  status: approved
+  triangulation: "Model: rank 58 — the base IS the post-Trae down season, so no recovery is
+    priced; the only question is whether to project one, and BBM argues no. Claude: none —
+    target ≈ base from both directions (no Trae = no rim-rate rescue; assist-conversion luck
+    argues mildly down, shot-diet re-adaptation mildly up)."
+
+- name: Zach LaVine
+  date: 2026-07-17
+  category: role
+  action: {fpts_delta: 1.5}
+  preview: "rank 115 · 31.6 mpg · 29.50 fpts/g -> 31.00"
+  rationale: "BBM 2026-07-17: his 46% potential-assist conversion (league 58%) was dragged by
+    passing to Westbrook/Clifford — 'with no Westbrook there, with no D[e]Rozan there, and
+    with maybe just improved luck of shots going in, we see a sizable increase in his
+    assists.'"
+  status: approved
+  triangulation: "Model: rank 115 / 3.42 ast — the base carries the conversion-starved
+    season. BBM: teammate quality + luck normalization, both now favourable. Claude: +1 to
+    +1.5 ast at 2x is +2-3 raw, discounted for 'I don't know where LaVine is going to be this
+    season' (role drift, Sacramento chaos) -> +1.5."
+
+- name: Keegan Murray
+  date: 2026-07-17
+  category: role
+  action: {fpts_delta: 1.0}
+  preview: "rank 133 · 30.2 mpg · 26.73 fpts/g -> 27.73"
+  rationale: "BBM 2026-07-17: the same Sacramento conversion drag (46% potential-assist
+    conversion, bad-teammate + luck); and the Batch-1 conditional — 'we assume DeRozan is
+    gone so Keegan Murray can do more' — is now roster fact: DeRozan AND Westbrook are gone."
+  status: approved
+  triangulation: "Model: rank 133 at 30.2 mpg. BBM: the 06-29 usage-vacancy claim hardened
+    from assumption to fact, plus a small conversion rebound. Claude: mild +1.0 — the vacancy
+    is shared (LaVine/Monk/the returning Hunter) and he missed the whole stretch run, so
+    health re-proof is pending."
+
+- name: Alex Sarr
+  date: 2026-07-17
+  category: role
+  action: {fpts_delta: 1.5}
+  preview: "rank 122 · 26.5 mpg · 33.88 fpts/g -> 35.38"
+  rationale: "BBM 2026-07-16: a deliberate shot-diet change (fewer threes, rim attacks) took
+    his FG 39->48 — 'still not very good for a center. I think he can actually keep that
+    going up and up and up'; 'I would expect in year three Sarr's numbers go up even further
+    field goal wise,' with the Trae Young playmaking factor explicitly attached (the same
+    effect he shows on Ayton and Okongwu's history)."
+  status: approved
+  triangulation: "Model: rank 122 at 26.5 mpg / 33.88 fpts — a strong per-game base already.
+    BBM: a continuing efficiency trajectory with a concrete cause (shot diet + Trae's rim
+    service). Claude: mild +1.5 — FG 48 -> ~52 on his volume is ~+1-2 fpts; Ayton's arrival
+    adds frontcourt competition for touches, capping it."
+
+- name: Deandre Ayton
+  date: 2026-07-17
+  category: role
+  action: {fpts_delta: -1.5}
+  preview: "rank 73 · 26.6 mpg · 28.10 fpts/g -> 26.60"
+  rationale: "BBM 2026-07-16: 'Ayton's not going to start — [he] is going to play behind
+    Davis and S[arr]'; the FG spike (57->67) keeps Trae-assisted support so 'I wouldn't just
+    pencil in a big drop in field goals'; and 'how confident are we in Anthony Davis staying
+    healthy? Could Ayton find roles of 30 minutes a night at some point? Maybe.'"
+  status: approved
+  triangulation: "Model: rank 73 at 26.6 mpg — priced near-starter minutes; the third-big
+    role is unpriced. BBM: depth chart down, efficiency supported. Claude: mild -1.5 rather
+    than a full backup write-down — the AD-health path to 30-minute stretches is genuinely
+    live and Trae keeps the per-minute value high. [Transcription note: 'behind Davis and S'
+    read as Davis and Sarr.]"
+
+- name: Ty Jerome
+  date: 2026-07-17
+  category: role
+  action: {fpts_delta: 2.0}
+  preview: "rank 152 · 22.2 mpg · 28.66 fpts/g -> 30.66  (supersedes the 2026-07-12 +2.5 — trimmed)"
+  rationale: "BBM 2026-07-17: the starter question has HARDENED ('people are assuming that
+    Jerome is going to be the starting point guard. I think that's fair. He will be') — but
+    'there's so much of what happened last season you cannot read into: he will not have that
+    usage,' and ~70% of his potential assists converted (league 58%; his own Cleveland year
+    52%) — 'do we really believe Ty Jerome is converting at that level? No is your answer.'"
+  status: approved
+  triangulation: "Re-triangulation of the whole player. Model: base 28.66 fpts at 22.2 mpg —
+    but that 1.29 fpts/min rate is itself inflated by the usage he won't keep and the
+    assist-conversion luck. BBM: role UP (firmer than 06-29), per-minute rate DOWN. Claude:
+    ~29 mpg at a deflated ~1.05-1.10 fpts/min lands ~30.5-31 -> +2.0, a net TRIM of the
+    standing +2.5. The legs move opposite ways; one joint entry nets them."
+
+- name: Paul Reed
+  date: 2026-07-17
+  category: role
+  action: none
+  preview: "rank 190 · no change (still the backup; the blocked starter path is unchanged)"
+  rationale: "BBM 2026-07-17: 'the Pistons shipped off Isaiah Stewart. So Reed is now the
+    primary backup... his impact was so good they said we just got to get him more minutes';
+    his 29% rim-contest->block conversion is career-long skill, not luck."
+  status: approved
+  triangulation: "Supersedes the 06-29-sourced none with the Stewart departure now confirmed.
+    Model: rank 190 at 16.7 mpg — backup pricing, which 'primary backup' still is. BBM:
+    impact real, minutes still capped (Duren unsigned but expected resolved; a veteran add
+    still likely). Claude: none holds; the revisit trigger is unchanged — if camp opens with
+    Reed starting, re-triangulate immediately."
+
+- name: Jake LaRavia
+  date: 2026-07-17
+  category: role
+  action: {fpts_delta: -2.0}
+  preview: "rank 100 · 28.6 mpg · 24.94 fpts/g -> 22.94"
+  rationale: "BBM 2026-07-16: 'he's going to have a pretty sizable role with the Lakers...
+    he's going to play 20-plus minutes' — a DEEPER-LEAGUES framing, guessed sixth behind
+    Luka/Reaves/Mamukelashvili/Kessler and 'probably Grimes'; his 3PT (42->32) is a rebound
+    candidate, but from that smaller role."
+  status: approved
+  triangulation: "Model: rank 100 at 28.6 mpg — the board prices him ABOVE BBM's read (20-24
+    mpg): a rare case where OUR model is the optimist. BBM: casual but consistent ('for
+    deeper leagues... he's going to be there'). Claude: -4 to -5 mpg at his 0.87 fpts/min is
+    ~-4 raw, heavily discounted for BBM's vagueness and the 3PT-rebound offset -> -2.0. The
+    negative-on-a-liked-player case the rubric explicitly allows."
+
+# ============ Batch 4 addendum — Trae Young re-triangulation (user prompt 2026-07-17) ============
+# Steven asked why Trae ranks 60. The decomposition surfaced a mechanism BOTH prior passes
+# missed: Batch 2's none (07-13) and the Batch 4 skip anchored on the MINUTES question
+# ("model's 31.8 ≈ BBM's 33-35") and never audited the per-game RATE base — which is built
+# on a 15-game injured season (25.6 mpg, traded mid-year). Same small-sample shape as the
+# approved Kessler +7.5, in milder form. The availability axis (gp 56, chronic flag, safe-
+# stance discount) is deliberately untouched — that is the model's own territory and most
+# of the gap to his ADP (10.5) lives there by design.
+
+- name: Trae Young
+  date: 2026-07-17
+  category: role
+  action: {fpts_delta: 4.5}
+  preview: "rank 60 · 31.8 mpg · 37.92 fpts/g -> 42.42  (LARGE — 15-game-sample base; supersedes the 2026-07-13 none)"
+  rationale: "BBM 2026-07-08: 'he'll almost certainly play 33 to 35' (five straight prior
+    seasons at 34-36 mpg) and assists 'could climb back toward 11.' BBM 2026-07-16: last
+    season's efficiency spike came in only ~26 mpg — 'if he played his 35 minutes with this
+    new efficiency, he would have been probably a top 15 player,' hedged that the spike
+    itself won't fully hold. New roster fact (transactions cache): Washington re-signed him
+    2026-07-06 for 4yr/$212.8M — the franchise centerpiece, with Ayton and Sarr as rim
+    partners BBM himself credits to 'the Trae Young factor.'"
+  status: approved
+  triangulation: "Re-triangulation of the whole player (supersedes the 07-13 none, which
+    checked minutes only). Model: 37.92 fpts at 31.8 mpg = 1.19 fpts/min — but the base
+    season is 15 GAMES at 25.6 mpg, and his per-minute rate did NOT collapse (1.34 last
+    season; 1.26-1.31 healthy: 45.3 fpts/g in 2024-25, 47.0 in 2023-24 at 36 mpg). The
+    model faded minutes AND rate off a tiny sample — the Kessler mis-read in milder form.
+    BBM: two episodes, same direction, minutes claim firm. Claude: minutes leg +2.7 mpg x
+    1.19 x 0.85 is ~+2.7; rate-restoration leg (1.19 -> ~1.25, still below his healthy
+    norm, tempered for the rebounding-zero drag and BBM's efficiency hedge) is ~+2 at 34
+    mpg. Joint, bounded by the shared possessions -> +4.5 (target ~42.4, his per-game rank
+    ~22). Sized deliberately large per the no-cap rubric: the base is a 15-game artifact
+    and the healthy-level evidence is two full seasons deep. PER-GAME belief only — gp 56,
+    the chronic flag and the safe-stance downside discount all stand (availability is the
+    model's axis; the residual gap to his ADP 10.5 is the market pricing health we
+    deliberately don't)."
