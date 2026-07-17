@@ -29,7 +29,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from ..config import CONFIG_DIR, PROCESSED_DIR, RAW_DIR, ROOT
+from ..config import CONFIG_DIR, MANUAL_DIR, PROCESSED_DIR, RAW_DIR, ROOT
 from ..models.analyst import apply_overrides, name_key, parse_overrides
 from ..models.uncertainty import rank_board
 from ..scoring import load_scoring
@@ -257,6 +257,46 @@ def players() -> dict:
     return {"rows": _records(b[["PLAYER_ID", "PLAYER_NAME", "TEAM_ABBREVIATION", "rank"]])}
 
 
+def _player_provenance(player_name: str) -> dict:
+    """The analyst-layer provenance behind board B for one player, surfaced on the Player
+    page (data/manual/bbm_transcripts workflow): the extracted BBM facts
+    (``data/manual/bbm_notes.csv``) and the **full** analyst-override history
+    (``config/analyst_overrides.yaml`` — append-only, so superseded and ``none`` verdicts
+    show too), newest first, with the currently-effective entry flagged. Both join on the
+    same ``name_key`` the layer itself uses; absent files degrade to empty lists."""
+    from ..models.analyst import load_overrides, name_key
+
+    key = name_key(player_name)
+
+    notes: list[dict] = []
+    npath = MANUAL_DIR / "bbm_notes.csv"
+    if npath.exists():
+        nf = pd.read_csv(npath)
+        if "player" in nf.columns:
+            nf = nf[nf["player"].map(name_key) == key]
+            if "date" in nf.columns:
+                nf = nf.sort_values("date", ascending=False)
+            notes = _records(nf[[c for c in ("date", "team", "claim_type", "direction",
+                                             "quote", "source_file") if c in nf.columns]])
+
+    overrides: list[dict] = []
+    opath = CONFIG_DIR / "analyst_overrides.yaml"
+    if opath.exists():
+        mine = [e for e in load_overrides(opath) if e["name_key"] == key]
+        mine.sort(key=lambda e: (e["date"], e["_pos"]), reverse=True)  # newest first
+        for i, e in enumerate(mine):
+            unit = {"fpts_delta": "fpts/g", "rank_delta": "rank"}.get(e["kind"], "")
+            overrides.append({
+                "date": e["date"].date().isoformat(),
+                "category": e["category"],
+                "action": "none" if e["kind"] == "none" else f"{e['value']:+g} {unit}".strip(),
+                "rationale": e["rationale"],
+                "effective": i == 0,   # newest-dated (tie broken by file pos) is what applies
+            })
+
+    return {"bbm_notes": notes, "overrides": overrides}
+
+
 @app.get("/api/player/{player_id}")
 def player(player_id: int) -> dict:
     _require_data()
@@ -315,6 +355,7 @@ def player(player_id: int) -> dict:
         "career": _records(per_game[career_cols]),
         "game_log_season": latest,
         "game_log": games,
+        **_player_provenance(row["PLAYER_NAME"]),
     }
 
 

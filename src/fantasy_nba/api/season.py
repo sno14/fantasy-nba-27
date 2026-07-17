@@ -233,6 +233,7 @@ def trade_targets() -> dict:
         "market_date": market_date, "has_market": not market.empty,
         "has_naive": has_naive, "has_trend": bool(trend_by_pid),
         "ownership": bool(owner_of), "my_team_id": own["my_team_id"],
+        "roster_source": own["roster_source"], "rosters_asof": own["rosters_asof"],
         "rows": rows,
     }
 
@@ -363,6 +364,7 @@ def waivers(week: int | None = Query(default=None),
     rows.sort(key=lambda x: (x["weekly_fpts"] if has_schedule else -x["rank"]), reverse=True)
     return {
         "mode": mode, "ownership": bool(rostered), "n_rostered": len(rostered),
+        "roster_source": own["roster_source"], "rosters_asof": own["rosters_asof"],
         "my_team_id": own["my_team_id"], "has_schedule": has_schedule,
         **({k: meta[k] for k in ("week", "week_name", "start", "end", "days")} if meta
            else {"week": week}),
@@ -476,6 +478,7 @@ def myteam(week: int | None = Query(default=None),
     days = meta.get("days", [])
     return {
         "has_team": True, "my_team_id": own["my_team_id"],
+        "roster_source": own["roster_source"], "rosters_asof": own["rosters_asof"],
         "has_positions": own["has_positions"],
         "positions": {str(p): own["positions"].get(p, []) for p in mine},
         "unfilled": own["unfilled"].get(own["my_team_id"], {}),
@@ -527,6 +530,7 @@ def matchup(week: int | None = Query(default=None),
     opp_total = round(sum(r["weekly_fpts"] for r in opp_rows), 1)
     return {
         "has_matchup": True, "my_team_id": me, "opp_team_id": opp, "opponents": others,
+        "roster_source": own["roster_source"], "rosters_asof": own["rosters_asof"],
         "has_schedule": bool(meta),
         **({k: meta[k] for k in ("week", "week_name", "start", "end", "days")} if meta
            else {"week": week}),

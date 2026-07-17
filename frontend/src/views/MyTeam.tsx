@@ -142,7 +142,12 @@ export default function MyTeam() {
             }
           />
         </Field>
-        <div className="flex gap-2 pb-1 text-[12px]">
+        <div className="flex items-center gap-2 pb-1 text-[12px]">
+          {data.roster_source === "espn_live" && (
+            <Chip tone="up" title={`Roster is live ESPN (adds/drops), pulled ${data.rosters_asof ?? ""}. Refresh it from the Waivers view.`}>
+              live ESPN roster
+            </Chip>
+          )}
           <Link className="text-accent hover:underline" to="/trades">
             Trade Targets →
           </Link>

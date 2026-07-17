@@ -127,11 +127,31 @@ export interface CareerRow {
   FPTS: number;
 }
 
+// Analyst-layer provenance for the Player page (data/manual/bbm_transcripts workflow).
+export interface BbmNote {
+  date: string;
+  team: string | null;
+  claim_type: string; // injury | role | depth | rank | hype
+  direction: string; // up | down | (blank)
+  quote: string;
+  source_file: string;
+}
+
+export interface OverrideHistoryEntry {
+  date: string;
+  category: string; // role | injury | hype | rookie | other
+  action: string; // "+2.5 fpts/g" | "none"
+  rationale: string;
+  effective: boolean; // the currently-applied (latest-dated) entry; others are superseded
+}
+
 export interface PlayerDetail {
   projection: BoardRow & Record<string, number | string | null>;
   career: CareerRow[];
   game_log_season: string | null;
   game_log: { GAME_DATE: string; MIN: number; PTS: number }[];
+  bbm_notes: BbmNote[];
+  overrides: OverrideHistoryEntry[];
 }
 
 export interface Proposal {
@@ -296,6 +316,16 @@ export function invalidate(prefix: string) {
   for (const k of cache.keys()) if (k.startsWith(prefix)) cache.delete(k);
 }
 
+/** POST with no body; throws the server `detail` on failure. Used by the mutating views. */
+export async function post<T = unknown>(path: string): Promise<T> {
+  const res = await fetch(path, { method: "POST" });
+  if (!res.ok) {
+    const b = (await res.json().catch(() => null)) as { detail?: string } | null;
+    throw new Error(b?.detail ?? `${res.status} ${res.statusText}`);
+  }
+  return (await res.json()) as T;
+}
+
 export interface Loaded<T> {
   data: T | null;
   error: string | null;
@@ -391,6 +421,8 @@ export interface TradeTargetsResponse {
   has_naive: boolean;
   has_trend: boolean;
   ownership: boolean;
+  roster_source: RosterSource;
+  rosters_asof: string | null;
   my_team_id: number;
   rows: TradeRow[];
 }
@@ -428,10 +460,16 @@ export interface WaiverRow {
   status_override: string;
 }
 
+// V3b: ownership source for the season views. "espn_live" = live in-season ESPN rosters
+// were pulled (they follow adds/drops); "draft" = the draft-session picks (the default).
+export type RosterSource = "draft" | "espn_live";
+
 export interface WaiversResponse {
   mode: "ros" | "preseason";
   ownership: boolean;
   n_rostered: number;
+  roster_source: RosterSource;
+  rosters_asof: string | null;
   my_team_id: number;
   has_schedule: boolean;
   week?: number | null;
@@ -472,6 +510,8 @@ export interface MyTeamResponse {
   has_team: boolean;
   my_team_id: number;
   note?: string;
+  roster_source?: RosterSource;
+  rosters_asof?: string | null;
   has_positions?: boolean;
   positions?: Record<string, string[]>;
   unfilled?: Record<string, number>;
@@ -499,6 +539,8 @@ export interface MatchupResponse {
   has_matchup: boolean;
   my_team_id: number;
   note?: string;
+  roster_source?: RosterSource;
+  rosters_asof?: string | null;
   opp_team_id?: number;
   opponents?: number[];
   has_schedule?: boolean;

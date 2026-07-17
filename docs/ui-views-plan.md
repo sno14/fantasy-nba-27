@@ -43,11 +43,30 @@ projection edge converts to wins.
 | V3 | Waiver wire — unrostered pool × this-week games × opportunity | ☑ | ☑ | ☑ | ☑ 2026-07-16 |
 | V4 | My Team — roster dashboard | ☑ | ☑ | ☑ (shared helpers) | ☑ 2026-07-16 |
 | V5 | Matchup planner — descriptive H2H week totals | ☑ | ☑ | ☑ (shared helpers) | ☑ 2026-07-16 |
+| V3b | Live ESPN rosters — in-season ownership from `mRoster` | ☑ | ☑ | ☑ | ☑ 2026-07-17 |
 
 Build order: **A → V1 → V6 → V2 → V3 → V4 → V5.** V3–V5 share the ownership helper (§A.4)
 which ships with A; V4/V5 reuse V3's week-games join; V5 reuses V4's per-roster totals.
 
 ## Session hand-off notes (append, dated, newest first)
+
+- **2026-07-17 (session 4): V3b live ESPN rosters shipped.** `EspnPollFeed.league_rosters()`
+  reads the `mRoster` view → `{team_id: [espn_id]}` (pure `feed.parse_rosters()`, robust to
+  the entry-level `playerId` and nested `playerPoolEntry.player.id` shapes, drops `<=0`
+  placeholders, keeps non-contiguous team ids — pinned by three fixture tests). The API stores
+  live rosters on the session (`live_rosters`, persisted, str↔int key round-trip) and
+  `current_rosters()` **prefers them** over the pick-derived rosters when present, via a
+  synthetic-pick `_live_state()` that reuses every roster/positions/unfilled derivation — so
+  every season view (Waivers/My Team/Matchup/Trades) follows in-season adds/drops with no
+  per-view change. New endpoints `POST /api/draft/rosters/{refresh,clear}` (refresh never
+  raises — a stalled/unauthorized poll surfaces `espn_error`; an **empty** `mRoster` does NOT
+  overwrite pick ownership, so a pre-draft click can't wipe a simulated draft). Every
+  ownership response now carries `roster_source` + `rosters_asof`. Frontend: a "↻ ESPN rosters"
+  button + "use picks" revert on Waivers (invalidates the four season caches, then reloads),
+  and a "live ESPN rosters" chip on My Team/Matchup. **Verified against the real league
+  (507458037):** the live `mRoster` call succeeds and parses empty (undrafted → `n_rostered:0`,
+  the honest fallback), and the override/persist/clear paths are covered by two API tests.
+  Suite 156 green, tsc + build clean. This closes the last open item in this plan.
 
 - **2026-07-16 (session 3): draft-session persistence.** User question exposed that the
   room's Session (my_team_id, source, manual picks, Connect snapshot) was in-memory only
@@ -113,8 +132,9 @@ uses; unmatched names drop out silently (rookie tails are expected misses).
 **A.4 Ownership helper — `current_rosters()` in `api/draft.py` (public, next to
 `_state()`):** returns `{"my_team_id", "rosters": {team_id: [nba_player_ids]}, "n_picks",
 "source"}` from the live draft session (manual or ESPN picks; simulate fills it too). This
-is the **post-draft** ownership source V2–V5 use. *In-season live rosters (adds/drops) are
-a named later enhancement, V3b below — do not block V3 on it.*
+is the **post-draft** ownership source V2–V5 use. *In-season live rosters (adds/drops) now
+override the picks when pulled — V3b, shipped 2026-07-17; `current_rosters()` also returns
+`roster_source`/`rosters_asof` to say which source is active.*
 
 **A.5 Fixture extension (`scripts/dev_fixtures.py`):** the two ros_board snapshots become
 **twelve** (2027-01-04 … 2027-01-15, daily), generated with a persistent per-player level
@@ -236,11 +256,14 @@ snapshot date (else the first week).
 search/team/topN · chips: "＋4.1 MPG (redist)" when `redist_mpg > 0.5`, breakout %, OUT
 status, 14d trend arrows. Banner when `ownership: false`.
 
-**V3b (named later enhancement — do NOT build now):** live ESPN rosters
-(`EspnPollFeed` + `mRoster` view → `{team_id: [espn_ids]}` → nba ids via the cached player
-map), refresh button, replaces draft-picks ownership after waivers start moving. Needs
-cookie auth already in `.env`; add a `league_rosters()` method to the feed with a pinned
-fixture test (same discipline as 19.1's payload traps).
+**V3b (SHIPPED 2026-07-17):** live ESPN rosters — `EspnPollFeed.league_rosters()` reads the
+`mRoster` view → `{team_id: [espn_ids]}` (pure `feed.parse_rosters()`, pinned by fixture
+tests same as 19.1's payload traps), stored on the session and mapped to nba ids via the
+cached player map. `current_rosters()` **prefers live rosters over the draft picks** when
+present (a synthetic-pick `_live_state()` reuses the roster/slot logic), so all of V2–V5
+follow in-season adds/drops. `POST /api/draft/rosters/refresh` (button on Waivers) /
+`…/clear` (revert). Never overwrites pick ownership with an empty `mRoster` (pre-draft
+safety). Uses the cookie auth already in `.env`. See the 2026-07-17 hand-off note.
 
 ## V4 — My Team   `/myteam`
 

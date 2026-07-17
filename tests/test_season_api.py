@@ -149,3 +149,79 @@ def test_session_load_tolerates_missing_and_corrupt_files(tmp_path, monkeypatch)
     monkeypatch.setattr(d, "SESSION_PATH", tmp_path / "bad.json")
     d._load_session()  # corrupt -> start fresh, never crash at import
     assert fresh.my_team_id == 0 and not fresh.picks
+
+
+def test_v3b_live_rosters_override_picks(tmp_path, monkeypatch):
+    """V3b: once live ESPN rosters are pulled they are the ownership source for the season
+    views — they follow in-season adds/drops the draft picks can't. A draft-day pick that
+    isn't on the live roster must NOT appear as owned."""
+    from fantasy_nba.api import draft as d
+    from fantasy_nba.draft.feed import Pick
+    from fantasy_nba.draft.ids import PlayerMap
+
+    monkeypatch.setattr(d, "SESSION_PATH", tmp_path / "s.json")
+    pmap = PlayerMap(to_nba={9001: 201, 9002: 202, 9003: 303},
+                     eligible_of={201: {"PG"}, 202: {"C"}, 303: {"SF"}},
+                     names={201: "A", 202: "B", 303: "C"})
+    s = d.Session(my_team_id=15, team_ids=[15, 3],
+                  picks=[Pick(overall=1, team_id=15, espn_player_id=9001)],  # drafted 201
+                  live_rosters={15: [9002], 3: [9003]},                      # but dropped for 202
+                  live_rosters_asof="2026-11-01T00:00:00+00:00")
+    s.pmap = pmap
+    monkeypatch.setattr(d, "_session", s)
+
+    own = d.current_rosters()
+    assert own["roster_source"] == "espn_live"
+    assert own["rosters"] == {15: [202], 3: [303]}          # live rosters, not the pick (201)
+    assert own["rosters_asof"] == "2026-11-01T00:00:00+00:00"
+
+    d.clear_rosters()                                        # revert to the draft picks
+    back = d.current_rosters()
+    assert back["roster_source"] == "draft" and back["rosters"] == {15: [201]}
+
+
+def test_v3b_live_rosters_persist_across_restart(tmp_path, monkeypatch):
+    from fantasy_nba.api import draft as d
+
+    monkeypatch.setattr(d, "SESSION_PATH", tmp_path / "s.json")
+    saved = d.Session(my_team_id=15, live_rosters={15: [9002], 3: [9003]},
+                      live_rosters_asof="2026-11-01T00:00:00+00:00")
+    monkeypatch.setattr(d, "_session", saved)
+    d._save_session()
+
+    fresh = d.Session()
+    monkeypatch.setattr(d, "_session", fresh)
+    d._load_session()
+    assert fresh.live_rosters == {15: [9002], 3: [9003]}    # str->int keys restored
+    assert fresh.live_rosters_asof == "2026-11-01T00:00:00+00:00"
+
+
+def test_player_provenance_joins_notes_and_flags_effective(tmp_path, monkeypatch):
+    """Player-page provenance: BBM facts join by name_key, and the append-only override
+    history is newest-first with exactly the latest-dated entry flagged `effective`."""
+    from fantasy_nba.api import app as a
+
+    manual = tmp_path / "manual"
+    manual.mkdir()
+    pd.DataFrame([
+        {"date": "2026-06-29", "player": "Brandon Miller", "team": "CHA",
+         "claim_type": "role", "direction": "up", "quote": "usage bump", "source_file": "x.md"},
+        {"date": "2026-06-29", "player": "Someone Else", "team": "BOS",
+         "claim_type": "hype", "direction": "up", "quote": "nope", "source_file": "x.md"},
+    ]).to_csv(manual / "bbm_notes.csv", index=False)
+    (tmp_path / "analyst_overrides.yaml").write_text(
+        "- name: Brandon Miller\n  date: 2026-07-12\n  category: role\n"
+        "  action: {fpts_delta: 2.0}\n  rationale: 'first take'\n"
+        "- name: Brandon Miller\n  date: 2026-07-20\n  category: role\n"
+        "  action: {fpts_delta: 3.5}\n  rationale: 'updated, bigger'\n",
+        encoding="utf-8")
+    monkeypatch.setattr(a, "MANUAL_DIR", manual)
+    monkeypatch.setattr(a, "CONFIG_DIR", tmp_path)
+
+    prov = a._player_provenance("Brandon Miller")
+    assert len(prov["bbm_notes"]) == 1 and prov["bbm_notes"][0]["team"] == "CHA"  # name_key join
+    assert [o["date"] for o in prov["overrides"]] == ["2026-07-20", "2026-07-12"]  # newest first
+    assert prov["overrides"][0]["effective"] and not prov["overrides"][1]["effective"]
+    assert prov["overrides"][0]["action"] == "+3.5 fpts/g"
+
+    assert a._player_provenance("Nobody Here") == {"bbm_notes": [], "overrides": []}

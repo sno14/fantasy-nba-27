@@ -244,6 +244,37 @@ def parse_settings(payload: dict | list) -> LeagueSettings:
     )
 
 
+def parse_rosters(payload: dict | list) -> dict[int, list[int]]:
+    """``mRoster`` payload -> ``{team_id: [espn_player_id]}`` for every team (V3b).
+
+    **Empty on an undrafted season** (verified 2026-07-15: ``mRoster`` carries no roster
+    entries until players are actually on teams) — the caller then keeps the draft-session
+    picks as the ownership source. Post-draft this is the truth the picks miss: it moves with
+    every in-season add/drop, which is the whole point of V3b.
+
+    Robust to two shapes ESPN uses: ``playerId`` on the entry, or the id nested under
+    ``playerPoolEntry.player.id``; both are read. Placeholder rows (``id <= 0``) are dropped,
+    the same discipline as :func:`parse_picks`. ``teamId`` is **not** a contiguous 1..N index
+    (module docstring) — team ids come straight off ``teams[].id``, never a range.
+    """
+    d = payload[0] if isinstance(payload, list) and payload else payload
+    if not isinstance(d, dict):
+        raise EspnApiError(f"Unexpected mRoster payload type: {type(payload).__name__}")
+    out: dict[int, list[int]] = {}
+    for t in d.get("teams") or []:
+        if "id" not in t:
+            continue
+        ids: list[int] = []
+        for e in ((t.get("roster") or {}).get("entries")) or []:
+            pid = int(e.get("playerId", 0) or 0)
+            if pid <= 0:  # fall back to the nested player id ESPN sometimes uses
+                pid = int(((e.get("playerPoolEntry") or {}).get("player") or {}).get("id", 0) or 0)
+            if pid > 0:
+                ids.append(pid)
+        out[int(t["id"])] = ids
+    return out
+
+
 def _draft_detail(payload: dict | list) -> dict:
     d = payload[0] if isinstance(payload, list) and payload else payload
     if not isinstance(d, dict):
@@ -364,6 +395,18 @@ class EspnPollFeed:
                             extra_headers={"X-Fantasy-Filter": json.dumps(flt)})
         d = payload[0] if isinstance(payload, list) and payload else payload
         return [e["player"] for e in (d.get("players") or []) if e.get("player")]
+
+    def league_rosters(self) -> dict[int, list[int]]:
+        """Live in-season rosters from ``mRoster`` -> ``{team_id: [espn_player_id]}`` (V3b).
+
+        The ownership source once the season starts: as managers add/drop, this diverges
+        from the draft-day picks and becomes the truth for the Waivers / My Team / Matchup
+        views (docs/ui-views-plan.md §V3b). **Empty on an undrafted season** (``mRoster`` has
+        no entries yet, verified 2026-07-15) — the API keeps the pick-based ownership until
+        real rosters exist. The espn ids are mapped to our ``PLAYER_ID`` by the caller via the
+        cached player map (:mod:`.ids`), exactly like a pick's ``espn_player_id``.
+        """
+        return parse_rosters(_get_json(self.base_url, {"view": "mRoster"}, self._cookies))
 
 
 def _get_json(url: str, params: dict, cookies: dict,

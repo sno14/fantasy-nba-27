@@ -195,8 +195,9 @@ special-case handling.
       views spec'd with their own tracker — **all six (V1–V6) shipped 2026-07-16**:
       Trends, Trade Targets, Waivers, My Team, Matchup (descriptive-only, honoring the
       19.4 no-win-probability constraint), Schedule strength (+ sectioned nav, a
-      12-night fixture archive with engineered movers, and a fixture market pull). The
-      named follow-up is V3b: live ESPN rosters once in-season adds/drops start.
+      12-night fixture archive with engineered movers, and a fixture market pull).
+      **V3b (live ESPN rosters — `EspnPollFeed.league_rosters()` / `mRoster`, in-season
+      ownership that overrides the draft picks for V2–V5) shipped 2026-07-17.**
 
 **Next frontiers (post-ship, in rough return order):** **the minutes economy (Phase 5) is
 COMPLETE 2026-07-11** — Step 16 / EXP-030 OUT-redistribution adopted-tentative (nightly

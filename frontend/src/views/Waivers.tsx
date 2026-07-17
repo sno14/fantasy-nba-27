@@ -5,10 +5,19 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { WaiversResponse, WeeksResponse, useApi } from "../lib/api";
+import { WaiversResponse, WeeksResponse, invalidate, post, useApi } from "../lib/api";
 import { f1, signed } from "../lib/format";
 import { Column, DataTable } from "../components/DataTable";
 import { Card, Chip, EmptyNote, ErrorNote, Field, SearchInput, Select, Spinner } from "../components/ui";
+
+// V3b refresh response (POST /api/draft/rosters/refresh) — see api/draft.py.
+interface RosterRefresh {
+  n_rostered?: number;
+  mapped?: number;
+  n_teams?: number;
+  espn_error?: string;
+  note?: string | null;
+}
 
 export default function Waivers() {
   const nav = useNavigate();
@@ -16,10 +25,37 @@ export default function Waivers() {
   const [team, setTeam] = useState("All");
   const [q, setQ] = useState("");
   const [topN, setTopN] = useState(100);
+  const [rosterBusy, setRosterBusy] = useState(false);
+  const [rosterMsg, setRosterMsg] = useState<string | null>(null);
 
   const weeks = useApi<WeeksResponse>("/api/weeks").data;
   const url = week != null ? `/api/waivers?week=${week}` : "/api/waivers";
-  const { data, error, loading } = useApi<WaiversResponse>(url);
+  const { data, error, loading, reload } = useApi<WaiversResponse>(url);
+
+  // V3b: pull live ESPN rosters, then re-read every ownership-driven view.
+  async function syncRosters(clear: boolean) {
+    setRosterBusy(true);
+    setRosterMsg(null);
+    try {
+      const r = await post<RosterRefresh>(`/api/draft/rosters/${clear ? "clear" : "refresh"}`);
+      setRosterMsg(
+        clear
+          ? "Reverted to Draft Room picks."
+          : r.espn_error
+            ? `ESPN error: ${r.espn_error}`
+            : r.n_rostered
+              ? `Loaded ${r.n_rostered} rostered players across ${r.n_teams} teams` +
+                (r.mapped != null && r.mapped < r.n_rostered ? ` (${r.mapped} mapped)` : "")
+              : (r.note ?? "ESPN rosters are empty (undrafted)."),
+      );
+      for (const p of ["/api/waivers", "/api/myteam", "/api/matchup", "/api/trade-targets"]) invalidate(p);
+      reload();
+    } catch (e) {
+      setRosterMsg((e as Error).message);
+    } finally {
+      setRosterBusy(false);
+    }
+  }
 
   // Adopt the server's default week once, so the picker shows where we landed.
   useEffect(() => {
@@ -134,13 +170,42 @@ export default function Waivers() {
           />
         </Field>
         <SearchInput value={q} onChange={setQ} placeholder="Search players…" className="w-52" />
+        <Field label="Rosters">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={rosterBusy}
+              onClick={() => void syncRosters(false)}
+              title="Pull live ESPN league rosters (mRoster) so ownership follows in-season adds/drops — V3b. Empty pre-draft; falls back to Draft Room picks."
+              className="rounded-md border border-line px-2 py-1 text-[12px] font-medium hover:bg-surface-2 disabled:opacity-50"
+            >
+              {rosterBusy ? "Syncing…" : "↻ ESPN rosters"}
+            </button>
+            {data?.roster_source === "espn_live" && (
+              <button
+                type="button"
+                disabled={rosterBusy}
+                onClick={() => void syncRosters(true)}
+                title="Stop using live ESPN rosters; revert ownership to the Draft Room picks"
+                className="rounded-md border border-line px-2 py-1 text-[12px] text-ink-3 hover:bg-surface-2 disabled:opacity-50"
+              >
+                use picks
+              </button>
+            )}
+          </div>
+        </Field>
         {data && (
           <div className="flex flex-wrap items-center gap-2 pb-1 text-[12px] text-ink-3">
             <span>{data.mode === "ros" ? "vs latest nightly ROS board" : "preseason board"}</span>
+            {data.roster_source === "espn_live" && (
+              <Chip tone="up" title={`Ownership is live ESPN rosters (adds/drops), pulled ${data.rosters_asof ?? ""}`}>
+                live ESPN rosters{data.rosters_asof ? ` · ${data.rosters_asof.slice(0, 16).replace("T", " ")}` : ""}
+              </Chip>
+            )}
             {data.ownership ? (
               <span>· {data.n_rostered} rostered players hidden</span>
             ) : (
-              <Chip tone="neutral" title="Rostered players are marked once the Draft Room has picks (draft, connect ESPN, or Simulate) — until then everyone shows">
+              <Chip tone="neutral" title="Rostered players are marked once the Draft Room has picks (draft, connect ESPN, or Simulate), or once you pull live ESPN rosters — until then everyone shows">
                 no rosters yet — showing everyone
               </Chip>
             )}
@@ -149,6 +214,7 @@ export default function Waivers() {
                 no schedule — season ranking only
               </Chip>
             )}
+            {rosterMsg && <span className="text-ink-3">· {rosterMsg}</span>}
           </div>
         )}
       </div>

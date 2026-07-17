@@ -85,6 +85,44 @@ def test_manual_feed_add_and_undo():
     assert m.poll() == [] and m.undo() is None   # undo past empty must not raise
 
 
+def _roster_payload() -> dict:
+    """`mRoster` shape (V3b). Team ids are non-contiguous (15, 3) like the real league, and
+    the second team uses the nested `playerPoolEntry.player.id` form ESPN also emits — both
+    must parse to the same flat id list."""
+    return {"teams": [
+        {"id": 15, "roster": {"entries": [
+            {"playerId": 1001, "lineupSlotId": 0},
+            {"playerId": 1002, "lineupSlotId": 12},
+        ]}},
+        {"id": 3, "roster": {"entries": [
+            {"playerPoolEntry": {"player": {"id": 2001}}, "lineupSlotId": 4},
+        ]}},
+    ]}
+
+
+def test_parse_rosters_reads_both_id_shapes_and_keeps_team_ids():
+    r = feed.parse_rosters(_roster_payload())
+    assert r == {15: [1001, 1002], 3: [2001]}   # non-contiguous ids preserved, nested id read
+
+
+def test_parse_rosters_empty_on_undrafted_season():
+    """mRoster carries no entries until players are on teams — must be empty, not raise, so
+    ownership falls back to the draft picks (V3b's honest degraded state)."""
+    payload = {"teams": [{"id": 15, "roster": {"entries": []}}, {"id": 3}]}
+    assert feed.parse_rosters(payload) == {15: [], 3: []}
+    assert feed.parse_rosters({"teams": []}) == {}
+    # list-wrapped payload (ESPN sometimes returns [ {...} ]) is unwrapped like the other views
+    assert feed.parse_rosters([_roster_payload()]) == {15: [1001, 1002], 3: [2001]}
+
+
+def test_parse_rosters_drops_placeholder_ids():
+    """Same discipline as parse_picks: a <=0 id is a placeholder, never a rostered player."""
+    payload = {"teams": [{"id": 7, "roster": {"entries": [
+        {"playerId": -1}, {"playerId": 0}, {"playerId": 555},
+    ]}}]}
+    assert feed.parse_rosters(payload) == {7: [555]}
+
+
 def test_scrub_payload_removes_cookies():
     dirty = {"draftDetail": {"picks": []}, "espn_s2": "SECRET", "nested": {"SWID": "{X}"}}
     clean = feed.scrub_payload(dirty)

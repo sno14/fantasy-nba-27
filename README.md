@@ -268,8 +268,9 @@ Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season 
   naive-vs-model heat gap (hot streaks the model discounts / cold streaks it looks
   through), and the 14-day trend, side by side with owner chips from the Draft Room
   picks. No composite score on purpose. Backed by `/api/trade-targets`.
-- **Waivers** — the pickup list: unrostered players (Draft Room picks mark ownership;
-  live ESPN rosters are the named V3b enhancement) ranked by ROS FP/G × games in the
+- **Waivers** — the pickup list: unrostered players (Draft Room picks mark ownership, or
+  **live ESPN rosters** via the "↻ ESPN rosters" button — V3b, which follows in-season
+  adds/drops the picks miss) ranked by ROS FP/G × games in the
   chosen week — with games a flagged-out player will miss removed (`out_until:` /
   `out_for_season` notes) — plus the opportunity chips: `redist_mpg` (inheriting an OUT
   teammate's minutes, EXP-030), `breakout_p`, and the 14-day trend. Backed by
@@ -295,7 +296,10 @@ Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season 
   publishes ~mid-August, so the tab says so until then). Backed by `/api/weeks` +
   `/api/weekly`.
 - **Players** — drill into one player: projected line (board B), season range, career
-  per-game history with FP/G, and per-game minutes trend/volatility from the game logs.
+  per-game history with FP/G, and per-game minutes trend/volatility from the game logs,
+  plus an **Analyst-layer & BBM provenance** panel — the append-only `analyst_overrides.yaml`
+  history for that player (newest first, effective vs superseded, with rationales) and the
+  extracted `data/manual/bbm_notes.csv` facts behind them (why board B differs from the model).
 - **Compare** — 2–4 players side by side: projections, ranges, careers overlaid.
 - **Analyst** — the workflow-v2 proposal review panel: each
   `config/analyst_proposals.yaml` entry with rationale, triangulation, and its live
@@ -321,8 +325,8 @@ Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season 
 - **Data** — browse the raw parquet caches (season stats, game logs, bio, rosters, …).
 
 All six manager views (V1–V6) shipped 2026-07-16 per
-[docs/ui-views-plan.md](docs/ui-views-plan.md) — its tracker stays the live state for
-follow-ups (the named V3b enhancement: live ESPN rosters once in-season adds/drops start).
+[docs/ui-views-plan.md](docs/ui-views-plan.md), with **V3b (live ESPN rosters) shipped
+2026-07-17** — its tracker stays the live state for any further follow-ups.
 
 Frontend dev loop: `python scripts/serve.py` + `cd frontend && npm run dev` (Vite on
 :5173, `/api` proxied). No local data yet? `python scripts/dev_fixtures.py` writes a

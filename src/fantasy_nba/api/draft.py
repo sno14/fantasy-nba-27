@@ -65,6 +65,11 @@ class Session:
     settings: dict | None = None
     pmap: PlayerMap | None = None
     espn_error: str | None = None      # surfaced to the UI rather than raised — never block
+    # V3b: live in-season ESPN rosters (espn team_id -> [espn_player_id]). When present they
+    # replace the pick-derived ownership for the season views, because mid-season adds/drops
+    # diverge from draft night. None = use the draft picks (the pre-season / no-refresh state).
+    live_rosters: dict[int, list[int]] | None = None
+    live_rosters_asof: str | None = None
 
     def feed(self) -> ManualFeed:
         m = ManualFeed()
@@ -98,6 +103,9 @@ def _save_session() -> None:
             "picks": [p.__dict__ for p in s.picks],
             "team_ids": s.team_ids, "pick_order": s.pick_order,
             "settings": s.settings,
+            "live_rosters": ({str(t): v for t, v in s.live_rosters.items()}
+                             if s.live_rosters else None),
+            "live_rosters_asof": s.live_rosters_asof,
         }, indent=1), encoding="utf-8")
     except OSError:
         pass  # persistence is a convenience — never take the room down over it
@@ -118,6 +126,9 @@ def _load_session() -> None:
         s.team_ids = [int(t) for t in d.get("team_ids", [])]
         s.pick_order = [int(t) for t in d.get("pick_order", [])]
         s.settings = d.get("settings")
+        lr = d.get("live_rosters")
+        s.live_rosters = ({int(t): [int(x) for x in v] for t, v in lr.items()} if lr else None)
+        s.live_rosters_asof = d.get("live_rosters_asof")
     except (ValueError, TypeError, KeyError):
         pass  # corrupt/stale cache → start fresh rather than crash at import
 
@@ -180,6 +191,38 @@ def _state() -> DraftState:
     )
 
 
+def _roster_source() -> str:
+    """"espn_live" once a V3b refresh has stored non-empty live rosters, else "draft"."""
+    return "espn_live" if (_session.live_rosters and any(_session.live_rosters.values())) else "draft"
+
+
+def _now_iso() -> str:
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _live_state() -> DraftState:
+    """A DraftState whose rosters ARE the live ESPN rosters (V3b) — one synthetic pick per
+    rostered player, so every roster / positions / unfilled-slot derivation the pick path
+    uses is reused unchanged. The espn ids resolve to PLAYER_IDs through the same cached
+    player map as a real pick's ``espn_player_id``."""
+    s = _session
+    league = _league_cfg()
+    lr = s.live_rosters or {}
+    team_ids = list(s.team_ids) or sorted(lr) or _synthetic_teams(league)
+    picks, n = [], 0
+    for tid, espn_ids in lr.items():
+        for eid in espn_ids:
+            n += 1
+            picks.append(Pick(overall=n, team_id=int(tid), espn_player_id=int(eid)))
+    return DraftState(
+        picks=picks, my_team_id=s.my_team_id, league=league,
+        eligible_of=(s.pmap.eligible_of if s.pmap else {}),
+        to_nba=(s.pmap.to_nba if s.pmap else {}),
+        team_ids=team_ids, pick_order=list(s.pick_order) or team_ids,
+    )
+
+
 def _league_cfg() -> dict:
     """ESPN's live settings when we have them, else config/league.yaml.
 
@@ -235,21 +278,29 @@ def _roster_panel(state: DraftState, board: pd.DataFrame) -> list[dict]:
 
 
 def current_rosters() -> dict:
-    """Post-draft ownership for the season views (docs/ui-views-plan.md §A.4): the live
-    draft session's rosters keyed by team id, values NBA player ids (DraftState already
-    maps ESPN→NBA at pick ingestion). Manual picks, ESPN picks, and Simulate all land
-    here. In-season live rosters (adds/drops) are the named V3b enhancement — until then
-    this is the honest source and it's empty before anyone drafts. Also carries the
-    slot facts the season views reuse rather than reimplement: per-player ESPN
-    eligibility and each team's unfilled starting slots (empty maps without the
+    """Ownership for the season views (docs/ui-views-plan.md §A.4): rosters keyed by team id,
+    values NBA player ids (DraftState maps ESPN→NBA at ingestion). Two sources, chosen here so
+    every season view is consistent:
+
+    * ``roster_source == "espn_live"`` — a **V3b** refresh has pulled live in-season ESPN
+      rosters (``mRoster``); these follow adds/drops the draft picks can't, so they win once
+      present. ``rosters_asof`` timestamps the pull.
+    * ``roster_source == "draft"`` — the draft-session picks (manual / ESPN / Simulate). The
+      pre-season default, and the fallback when no live rosters have been pulled.
+
+    Also carries the slot facts the season views reuse rather than reimplement: per-player
+    ESPN eligibility and each team's unfilled starting slots (empty maps without the
     Connect-ESPN player map — no positions, no slot math, said honestly)."""
-    state = _state()
+    live = _roster_source() == "espn_live"
+    state = _live_state() if live else _state()
     rosters = {int(t): [int(p) for p in pids] for t, pids in state.rosters.items() if pids}
     remaining = state.remaining_slots()
     return {
         "my_team_id": int(state.my_team_id),
         "source": _session.source,
-        "n_picks": len(state.picks),
+        "roster_source": "espn_live" if live else "draft",
+        "rosters_asof": _session.live_rosters_asof if live else None,
+        "n_picks": len(_session.picks),
         "rosters": rosters,
         "positions": {int(p): sorted(state.eligible_of.get(p, []))
                       for pids in rosters.values() for p in pids},
@@ -515,6 +566,50 @@ def refresh() -> dict:
     except EspnApiError as e:
         s.espn_error = str(e)
         return {"n_picks": len(s.picks), "espn_error": str(e)}
+
+
+@router.post("/rosters/refresh")
+def refresh_rosters() -> dict:
+    """V3b — pull live in-season ESPN rosters (``mRoster``) and make them the ownership source
+    for every season view (Waivers / My Team / Matchup / Trades). Independent of the pick
+    source toggle: rosters can be refreshed whether picks come from ESPN or were typed/simulated.
+
+    Never raises into the UI — a stalled or unauthorized poll surfaces as ``espn_error`` and
+    leaves the current ownership untouched. An **empty** roster set (undrafted season, or
+    ``mRoster`` not yet populated) does **not** overwrite the pick-based ownership: it reports
+    ``n_rostered: 0`` so a pre-season click can't wipe a simulated or hand-entered draft."""
+    s = _session
+    try:
+        feed = EspnPollFeed(league_id=s.league_id or _env("ESPN_LEAGUE_ID"), season=s.season)
+        rosters = feed.league_rosters()
+        s.espn_error = None
+    except EspnApiError as e:
+        s.espn_error = str(e)
+        return {"espn_error": str(e), "roster_source": _roster_source()}
+    total = sum(len(v) for v in rosters.values())
+    if total == 0:
+        return {"n_rostered": 0, "roster_source": _roster_source(),
+                "note": "ESPN rosters are empty (undrafted, or mRoster not yet populated) — "
+                        "ownership stays on the draft picks until real rosters exist."}
+    s.live_rosters = {int(t): [int(x) for x in v] for t, v in rosters.items()}
+    s.live_rosters_asof = _now_iso()
+    _save_session()
+    to_nba = s.pmap.to_nba if s.pmap else {}
+    mapped = sum(1 for v in rosters.values() for e in v if int(e) in to_nba)
+    return {"n_rostered": total, "mapped": mapped, "n_teams": len(rosters),
+            "rosters_asof": s.live_rosters_asof, "roster_source": "espn_live",
+            "has_positions": bool(to_nba),
+            "note": None if to_nba else "Connect ESPN once to cache the player map — without "
+                    "it these rosters have no PLAYER_ID join and no positions."}
+
+
+@router.post("/rosters/clear")
+def clear_rosters() -> dict:
+    """Drop the V3b live rosters and revert every season view to the draft-session picks."""
+    _session.live_rosters = None
+    _session.live_rosters_asof = None
+    _save_session()
+    return {"roster_source": "draft"}
 
 
 @router.post("/pick")

@@ -135,6 +135,67 @@ export default function Player() {
         )}
       </Card>
 
+      {(d.overrides.length > 0 || d.bbm_notes.length > 0) && (
+        <Card className="space-y-3 p-4">
+          <h2 className="text-[13px] font-semibold text-ink-2">
+            Analyst layer &amp; BBM provenance
+            <span className="ml-2 font-normal text-ink-3">why board B differs from the model</span>
+          </h2>
+
+          {d.overrides.length > 0 && (
+            <div className="space-y-1.5">
+              <div className="text-[11px] uppercase tracking-wide text-ink-3">
+                Override history — append-only, newest first ({d.overrides.length})
+              </div>
+              {d.overrides.map((o, i) => (
+                <div key={i} className="rounded-lg border border-bdr/60 px-3 py-2 text-[13px]">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="tnum text-ink-3">{o.date}</span>
+                    <Chip tone="neutral">{o.category}</Chip>
+                    <span
+                      className={`font-semibold tnum ${
+                        o.action.startsWith("+") ? "text-up" : o.action.startsWith("-") ? "text-down" : "text-ink-2"
+                      }`}
+                    >
+                      {o.action}
+                    </span>
+                    {o.effective ? (
+                      <Chip tone="accent" title="The latest-dated entry — the one currently applied to board B">
+                        effective
+                      </Chip>
+                    ) : (
+                      <span className="text-[11px] text-ink-3" title="Superseded by a later-dated entry (append-only; latest wins)">
+                        superseded
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-ink-2">{o.rationale}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {d.bbm_notes.length > 0 && (
+            <div className="space-y-1.5">
+              <div className="text-[11px] uppercase tracking-wide text-ink-3">
+                BBM facts — data/manual/bbm_notes.csv ({d.bbm_notes.length})
+              </div>
+              {d.bbm_notes.map((n, i) => (
+                <div key={i} className="text-[13px] text-ink-2">
+                  <span className="tnum text-ink-3">{n.date}</span>{" "}
+                  <Chip tone={n.direction === "up" ? "up" : n.direction === "down" ? "down" : "neutral"}>
+                    {n.claim_type}
+                    {n.direction === "up" ? " ▲" : n.direction === "down" ? " ▼" : ""}
+                  </Chip>{" "}
+                  <span>{n.quote}</span>
+                  <span className="ml-1 text-[11px] text-ink-3">— {n.source_file}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="p-4">
           <h2 className="text-[13px] font-semibold text-ink-2">Fantasy points per game, by season</h2>

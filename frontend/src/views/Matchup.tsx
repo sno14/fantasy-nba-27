@@ -104,8 +104,15 @@ export default function Matchup() {
             options={(data.opponents ?? []).map((t) => ({ value: String(t), label: `Team ${t}` }))}
           />
         </Field>
-        <div className="pb-1 text-[12px] text-ink-3">
-          projected totals = FP/G × games — <span className="font-medium">volume, not a win probability</span>
+        <div className="flex items-center gap-2 pb-1 text-[12px] text-ink-3">
+          {data.roster_source === "espn_live" && (
+            <Chip tone="up" title={`Rosters are live ESPN (adds/drops), pulled ${data.rosters_asof ?? ""}. Refresh from the Waivers view.`}>
+              live ESPN rosters
+            </Chip>
+          )}
+          <span>
+            projected totals = FP/G × games — <span className="font-medium">volume, not a win probability</span>
+          </span>
         </div>
       </div>
 
