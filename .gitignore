@@ -50,3 +50,10 @@ Thumbs.db
 
 # TypeScript incremental build state
 *.tsbuildinfo
+
+# Ad-hoc board export (regenerate with scripts/export_rankings_html.py)
+/fpts_rankings.html
+
+# Stray root lockfile — the only JS package root is frontend/
+/package-lock.json
+
