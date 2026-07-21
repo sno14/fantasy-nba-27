@@ -1079,3 +1079,282 @@
     the chronic flag and the safe-stance downside discount all stand (availability is the
     model's axis; the residual gap to his ADP 10.5 is the market pricing health we
     deliberately don't)."
+
+# ============ Batch 5 — BBM 2026-07-20 bounceback-candidates episode (proposed 2026-07-20) ============
+# Source: data/manual/bbm_transcripts/2026-07-20-bounceback-candidates.md; evidence in bbm_notes.csv.
+# A "bad for fixable reasons" survey — injury-artifact / role-suppression / bad-environment cases, exactly
+# what a prior-season-role board mis-prices. FOUR players already carry entries and are re-triangulated
+# WHOLE from the current model base into one superseding entry: Coby White, John Collins, Zach LaVine net
+# UP; Trae Young is REAFFIRMED at the standing +4.5 — a `none` here would ERASE the delta (latest-dated
+# wins), so "reviewed, unchanged" on an already-adjusted player must RESTATE the same delta. Two carry
+# large deltas (Sabonis +4.0, Zubac +3.5): both minutes/small-sample re-anchors (Sabonis 19 gp; Zubac's
+# board mpg sits below even last season's actual) with shooting/block normalization on top — sized per the
+# no-cap rubric with the size acknowledged. Jalen Green and Jalen Williams net to none/mild because the
+# board already priced their minutes recovery. ROSTER FLAG for Steven: BBM says "Giannis is now gone" from
+# Milwaukee — contradicts the 07-13 stays-Milwaukee read; destination unstated, not triangulable here
+# (routed to the transactions-cache check). End-of-show name-drops (Cam Thomas / Nick Richards / Darius
+# Bazley + garbled names) carried NO mechanism -> CSV notes only, deferred.
+
+- name: Coby White
+  date: 2026-07-20
+  category: role
+  action: {fpts_delta: 2.0}
+  preview: "rank 82 · 30.8 mpg · 32.25 fpts/g -> 34.25  (supersedes the 2026-07-13 +1.5)"
+  rationale: "BBM 2026-07-20: the down year was injury-driven (a calf strain reinjured multiple times held
+    him to ~25 mpg in Chicago before the Charlotte trade); as the Charlotte starting PG 'he's playing 32
+    minimum,' the 34% Charlotte usage 'is not going to stick,' and his FT (90->82) and 3PT (hit 42% over his
+    last month) are bounce-back candidates; career-best 5.1 ast at 37 mpg, 'could we get to six?'"
+  status: approved
+  triangulation: "Re-triangulation of the whole player (supersedes the 07-13 role-only +1.5). Model base:
+    32.25 fpts at 30.8 mpg — already near BBM's '32 minimum,' so the minutes leg is largely priced (~1.2-mpg
+    gap, under the ~2 threshold). What's NEW vs 07-13 is the efficiency-bounce leg: the blended 50-game
+    season carried a depressed .817 FT (career .84-.90) and cold 3PT — a real, unpriced recovery. Usage
+    settles DOWN from the unsustainable Charlotte 34 (offsetting the scoring); assists tick to ~5.5 (2x).
+    Net a mild raise -> +2.0. The defensive zero (.5 stl / .19 blk in a 4x league) still caps him."
+
+- name: Jalen Green
+  date: 2026-07-20
+  category: role
+  action: none
+  preview: "rank 87 · 30.6 mpg · no change (minutes recovery already priced; usage-down offsets the shooting bounce)"
+  rationale: "BBM 2026-07-20: the 26 mpg was an injury artifact (three hamstring strains, continual
+    ramp-up); as a Phoenix starter 'why won't he play four extra minutes to get to 30... 33 that's seven
+    extra,' with FT (81->75) and 3PT (35->31) bouncing back — but usage '32 probably goes back to 28-29.'"
+  status: approved
+  triangulation: "Model base: 30.6 mpg — the board ALREADY recovered his minutes from the 25.9-mpg injured
+    season to a full starter load, so BBM's positive leg is priced (30.6 sits inside his stated 30-33
+    range). The rest nets out: usage DOWN ~31->28 (~-1.5 to -2 fpts) roughly cancels the FT/3PT efficiency
+    bounce (~+1.5). His steal spike is separately confirmed fake and already regressed by the model (07-17:
+    0.97 stl). Target ~= base -> none. Audit value: don't chase a big Green bounceback — the board already
+    sits at his healthy level."
+
+- name: Myles Turner
+  date: 2026-07-20
+  category: role
+  action: {fpts_delta: 2.0}
+  preview: "rank 117 · 26.8 mpg · 29.23 fpts/g -> 31.23"
+  rationale: "BBM 2026-07-20: last season's collapse (27 mpg, career-low 18 usage, FG 48->44, random
+    benchings) was a dysfunctional Milwaukee under Doc Rivers ('the whole organization was screwed'); Rivers
+    is out, Taylor Jenkins is in, and 'one year removed from being really quite good' — 'those 27 minutes
+    should push to 29' toward 14 pts / 6 reb / 2 threes / 2 blocks."
+  status: approved
+  triangulation: "Model base: 26.8 mpg / 29.23 fpts — priced on the down year (USG 18.1 and TS .584 both
+    career lows vs .626/.612 the prior two seasons). Minutes: BBM's 29 vs the board's 26.8 is a ~2.2-mpg
+    gap (actionable) riding a named environment change. His elite blocks (board 1.99, 4x) are already
+    priced. Sizing: +2.2 mpg x 1.09 fpts/min x 0.85 is ~+2.0, plus a usage/FG% recovery from a career-low
+    base — tempered because BBM is measured ('will he be awesome? don't think so') and post-Giannis
+    Milwaukee could be bad/tanky -> +2.0."
+
+- name: Trae Young
+  date: 2026-07-20
+  category: role
+  action: {fpts_delta: 4.5}
+  preview: "rank 60 · 31.8 mpg · 37.92 fpts/g -> 42.42  (REAFFIRMS the 2026-07-17 +4.5 — a `none` would erase it)"
+  rationale: "BBM 2026-07-20: a fourth episode on the same thesis — 'do you realize Trae played just 25.5
+    mpg?' with a career-low 27 usage; his explicit projected line is 24 pts / 8-9 ast / 2.5 threes / a steal
+    / 86 FT and 'throw nine minutes onto his totals.' The 'play off ball MORE' report was a misquote (just
+    'off ball'); he remains the Wizards' starting PG and lead ball-handler."
+  status: approved
+  triangulation: "Reaffirmation — restates the standing 07-17 +4.5; NOT a new mechanism. BBM's explicit
+    07-20 line computes to ~42.8 fpts (24 pts, 9 ast at 2x, 2.5 threes, ~2.5 reb, 1 stl at 4x, ~6.5 ftm,
+    netting fga/fta/tov) — essentially IDENTICAL to the current adjusted target 42.42, so the +4.5 is
+    confirmed, not moved. The mechanic matters: a `none` dated 07-20 would win latest-dated and ZERO the
+    delta, so recording 'reviewed, unchanged' on an already-adjusted player means restating the same delta.
+    Per-game belief only; gp 56 / chronic flag / safe-stance discount all still stand on the availability
+    axis."
+
+- name: John Collins
+  date: 2026-07-20
+  category: role
+  action: {fpts_delta: 2.5}
+  preview: "rank 102 · 26.6 mpg · 28.37 fpts/g -> 30.87  (supersedes the 2026-07-13 +1.5)"
+  rationale: "BBM 2026-07-20 sharpens the 07-13 Detroit story from vague ('might play more minutes') to
+    concrete: Detroit's power-forward depth behind him is 'putrid' (only Ausar Thompson / Ron Holland), so
+    'he's going to play the 30-31 minutes that Toby did versus the 27 he played last season'; ~20 usage
+    'ticks up one or two%,' and he's a consistent ~8-reb player who got only 5 in 27 mpg. FT 85->77 should
+    bounce."
+  status: approved
+  triangulation: "Re-triangulation of the whole player (supersedes the 07-13 +1.5, whose discount was the
+    then-vague minutes case). Model base: 26.6 mpg — BBM's 30-31 is a ~4-mpg gap (clearly actionable) with a
+    named depth-chart mechanism. Sizing: +4 mpg x 1.067 fpts/min x 0.85 is ~+3.6 from minutes alone, plus
+    rebound/FT recovery — but heavily capped because usage barely moves (+1-2%), he offers 'none' of the
+    self-creation Detroit needs, and the frontcourt still crowds him (Duren, a possible Sabonis/Robinson
+    add). Net -> +2.5 (a +1.0 raise of the standing entry)."
+
+- name: Zach LaVine
+  date: 2026-07-20
+  category: role
+  action: {fpts_delta: 2.0}
+  preview: "rank 115 · 31.6 mpg · 29.50 fpts/g -> 31.50  (supersedes the 2026-07-17 +1.5)"
+  rationale: "BBM 2026-07-20 adds a usage/ball-handling leg to the 07-17 assist-conversion story: Schroder,
+    Westbrook and DeRozan are ALL gone (he'd been sharing touches with all of them) — 'expect more usage and
+    more importantly more ball-handling opportunities.' Tempered: an incoming rookie 'is going to have the
+    ball,' and 'I don't know where LaVine is going to be' (trade risk)."
+  status: approved
+  triangulation: "Re-triangulation of the whole player (supersedes the 07-17 assist-only +1.5). Model base:
+    29.50 fpts / USG 23.4 / 3.42 ast. Two legs now: (1) the 07-17 assist-conversion normalization (46% ->
+    league ~58% with the bad passing targets gone); (2) a modest usage bump from the vacated touches
+    (23->~25, ~+1-1.5 fpts). They share the same vacated-touches cause, so joint -> +2.0, not the sum — held
+    down by the rookie competing for the ball and a live trade risk (per-game belief only; any rest/trade gp
+    cut is an overrides.yaml matter)."
+
+- name: Domantas Sabonis
+  date: 2026-07-20
+  category: role
+  action: {fpts_delta: 4.0}
+  preview: "rank 46 · 30.0 mpg · 37.47 fpts/g -> 41.47  (LARGE — 19-game small-sample base, re-anchored)"
+  rationale: "BBM 2026-07-20: last season was ~19 games (injured, then re-injured) at 23 usage / 29.7 mpg /
+    16-11-4 with everything depressed — FG 59->54, 3PT 38-42->19 (a fluke-low), FT and blocks off; 'the year
+    before he was the 26th-ranked player... I don't expect that, but I'd find it very difficult to believe
+    Sabonis stays this bad,' with DeRozan no longer siphoning touches."
+  status: approved
+  triangulation: "Model base: 37.47 fpts (15.2/11.7/4.9) — faded off a 19-GAME 2025-26 sample (the
+    Kessler/Trae small-sample shape): his last healthy season (2024-25, 70 gp) was 19.1/13.9/6.0 at TS .655,
+    a ~top-30 line worth ~45 fpts. The board sits ~8 fpts below that; BBM wants a PARTIAL bounceback, not the
+    full return. The recovery is efficiency/usage/assist-driven (minutes stay ~30 — BBM agrees he won't play
+    more), led by the 3PT normalizing off the absurd .185. Target ~41.5, roughly halfway back -> +4.0. Sized
+    deliberately large per the no-cap rubric (sub-25-game base + fluke shooting); capped short of peak for
+    age (~30), Sacramento's chaos, and a live trade rumor. Re-triangulate if he is dealt."
+
+- name: Ivica Zubac
+  date: 2026-07-20
+  category: role
+  action: {fpts_delta: 3.5}
+  preview: "rank 97 · 27.4 mpg · 29.45 fpts/g -> 32.95  (LARGE — board mpg sits below even last season's actual)"
+  rationale: "BBM 2026-07-20: his career-high-minutes year (33 mpg) was 60th-ranked; last season was 30 mpg
+    then only 6 cameo games in Indiana after an ankle injury; the backup is only Jay Huff ('Zubac is way
+    better'), Potter gone, and Carlisle 'should give him more than 30 minutes, 31, 32 maybe.' FG% dropped,
+    usage 20->18.5, and his blocks fell under 1 for the first time in 3 years — all bounce-back candidates."
+  status: approved
+  triangulation: "Model base: just 27.4 mpg — BELOW even last season's actual 30.1 and ~4 mpg under BBM's
+    31-32 as Indiana's clear, unbacked-up starter (a large, actionable minutes gap; the board looks to have
+    faded on the 6 cameo games). Sizing: +4 mpg x 1.075 fpts/min x 0.85 is ~+3.3, plus block recovery
+    (0.83 -> ~1.1, at 4x = ~+1.1) and an FG% rebound (.598 -> career ~.63). Discounted for BBM's own hedge
+    ('unless he Miles-Turners him') and Indiana pace/role uncertainty -> +3.5. Sized large: a concrete,
+    uncontested starter role the board under-minutes."
+
+- name: Jalen Williams
+  date: 2026-07-20
+  category: role
+  action: {fpts_delta: 1.0}
+  preview: "rank 49 · 32.1 mpg · 40.03 fpts/g -> 41.03"
+  rationale: "BBM 2026-07-20: 28 mpg / 17 pts on cratered efficiency (62 TS -> 56) after a wrist injury +
+    multiple hamstrings; 3PT 30% (37% the year before) should bump, blocks .3->.6 'could double,' steals
+    1.2->1.4, 'a bit more usage on a team that lost Wiggins, Joe, and Lou Dort,' 'just give him four extra
+    minutes.'"
+  status: approved
+  triangulation: "Model base: 40.03 fpts at 32.1 mpg — the board ALREADY recovered his minutes (from 28.4)
+    and prices ~his healthy 2024-25 line (~41.7 fpts computed), so most of the bounceback BBM describes is
+    priced (minutes, 3PT normalization, block/steal recovery all already in the base). The one
+    genuinely-unpriced sliver is the perimeter-vacancy usage bump (three rotation wings gone), real but
+    capped hard by OKC's SGA/Holmgren hierarchy -> a mild +1.0. Mostly an assurance that the board is
+    correctly aggressive here."
+
+- name: Malik Monk
+  date: 2026-07-20
+  category: role
+  action: none
+  preview: "rank 180 · 25.8 mpg · no change (skepticism confirms our modest rank)"
+  rationale: "BBM 2026-07-20: 'Malik Monk's not going to elevate back into a 29-minute-a-night role. It does
+    seem pretty clear that coach Doug Christie and the front office hate him.'"
+  status: approved
+  triangulation: "Model base: rank 180 at 25.8 mpg — ALREADY below the 29 BBM says won't return, so his
+    skepticism CONFIRMS our pricing (the Paul Reed / Mitchell Robinson anti-hype shape). Claude: none —
+    logged so October-us doesn't chase a Monk minutes-rebound narrative."
+
+- name: Collin Gillespie
+  date: 2026-07-20
+  category: role
+  action: none
+  preview: "rank 146 · 24.5 mpg · no change (thin mention; bench role consistent)"
+  rationale: "BBM 2026-07-20: 'started a lot of games when Grayson/Booker/Green were out'; with the room
+    healthy he's coming off the bench — the spot-start production won't repeat."
+  status: approved
+  triangulation: "Model base: rank 146 at 24.5 mpg. A passing aside, not a sized claim — a healthy Phoenix
+    guard room (Booker/Green starting) makes him a bench guard, consistent with an already-modest rank.
+    Claude: none, BUT flagged — IF the board's 24.5 mpg embeds his injury-driven starts, a true bench role
+    argues lower; too thin to size now, deferred to the October depth pass."
+
+# ============ Batch 6 — Giannis-to-Miami trade re-triangulation (roster fact, Steven 2026-07-20) ============
+# NOT a BBM-transcript batch: Steven confirmed the destination for the 07-20 "Giannis is gone from
+# Milwaukee" flag — Giannis was traded to MIAMI. Rationales are prefixed "Roster fact (Steven 2026-07-20)",
+# NOT "BBM <date>:", so April's BBM-subset calibration doesn't miscount them. Each player is re-triangulated
+# from its CURRENT model base. ASSUMPTIONS (the exact return package is unknown — sized off the cache roster
+# + prior BBM batches; flagged per entry): (a) the Milwaukee guard room stays Rollins / Herro / KPJ (Herro
+# was moved to MIL in the June episode; assumed NOT re-routed in the Giannis deal); (b) Bam stays Miami's
+# starting center. If Herro was part of the return, void his entry. Giannis's ~35% usage (34.6 healthy /
+# 35.8 last year) is the vacated pool the Milwaukee entries split — Turner already carries part of it (+2.0,
+# promoted 07-20), so these are sized as the REMAINDER, not the whole pool. Three supersede earlier `none`s
+# (Giannis, Herro, Rollins); two are new (KPJ, Bam).
+
+- name: Giannis Antetokounmpo
+  date: 2026-07-20
+  category: role
+  action: none
+  preview: "rank 42 · 31.5 mpg · 49.75 fpts/g · no change (alpha wherever; corrects the stale MIL rationale)"
+  rationale: "Roster fact (Steven 2026-07-20): traded to MIAMI — the 07-13 'stays Milwaukee' entry is now
+    factually wrong on destination. He joins Bam Adebayo but is unambiguously the alpha (34.6% usage healthy,
+    31.5 mpg base already at BBM's '32 at least')."
+  status: proposed
+  triangulation: "Model base: 49.75 fpts / 31.5 mpg / ~35% usage — a top-5 per-game engine. A Miami move does
+    not change a usage-alpha's per-game value (he was the hub next to Lopez/Lillard; he's the hub next to
+    Bam — Bam cedes to him, not the reverse). Minutes already priced. Target ~= base -> none. This entry
+    exists to CORRECT the destination in the ledger; the per-game action is genuinely unchanged. The gp-50
+    availability discount stays on the model's axis."
+
+- name: Tyler Herro
+  date: 2026-07-20
+  category: role
+  action: {fpts_delta: 2.0}
+  preview: "rank 39 · 33.2 mpg · 38.65 fpts/g -> 40.65  (supersedes the 2026-07-13 none; ASSUMES Herro stays a Buck)"
+  rationale: "Roster fact (Steven 2026-07-20) + BBM 06-29/07-13 context: Herro was moved to Milwaukee in
+    June; with Giannis's ~35% usage now permanently gone from MIL, the 07-13 'jammed room / won't be PG /
+    bad team' none is stale — he becomes the clear #1 scoring option on a Giannis-less Bucks."
+  status: proposed
+  triangulation: "Re-triangulation from the current base (38.65, built on his Miami role — the board sees
+    neither the MIL move NOR Giannis's exit). Model USG 24.8%. Mechanism: a 24-27% usage bucket-getter
+    inheriting the primary-scorer role on a barren offense -> usage toward ~27-28 (~+1.5-2 fpts). Capped
+    because Milwaukee projects BAD (fewer possessions/wins), Rollins/KPJ still handle the ball (07-13: 'won't
+    be the PG'), and his peripherals are thin -> +2.0. ASSUMPTION-FLAGGED: if Herro was part of the Giannis
+    return package, void this entry."
+
+- name: Ryan Rollins
+  date: 2026-07-20
+  category: role
+  action: {fpts_delta: 1.0}
+  preview: "rank 64 · 27.8 mpg · 32.98 fpts/g -> 33.98  (supersedes the 2026-07-12 none)"
+  rationale: "Roster fact (Steven 2026-07-20): Giannis permanently gone from Milwaukee. Rollins's 2025-26
+    breakout (74 gp, 23.6% usage, 5.4 ast) came LARGELY in Giannis's absence (Giannis played only 36 gp), so
+    the board's base already reflects a mostly-Giannis-less Rollins."
+  status: proposed
+  triangulation: "Model base: 32.98 / 23.6% usage — already a Giannis-absent-heavy blend. The only unpriced
+    sliver is the ~36 overlap games where Giannis suppressed his usage; removing Giannis permanently lifts
+    those -> a MILD +. But Herro's arrival + KPJ crowd the same vacancy (the Batch-1 'crowded creation room'
+    flag stands), so most of the Giannis pool goes to Herro/Turner, not Rollins -> +1.0."
+
+- name: Kevin Porter Jr.
+  date: 2026-07-20
+  category: role
+  action: {fpts_delta: 1.0}
+  preview: "rank 108 · 25.7 mpg · 29.96 fpts/g -> 30.96"
+  rationale: "Roster fact (Steven 2026-07-20): third guard on a Giannis-less Milwaukee; a share of the
+    vacated ~35% usage reaches him, behind Herro and Rollins."
+  status: proposed
+  triangulation: "Model base: 29.96 / 23.6% usage / 25.7 mpg. Mechanism: a mild vacated-usage lift, but he's
+    third in the pecking order (Herro/Rollins ahead) on a bad team and a role/trade-uncertain piece -> mild
+    +1.0."
+
+- name: Bam Adebayo
+  date: 2026-07-20
+  category: role
+  action: {fpts_delta: -3.0}
+  preview: "rank 16 · 33.1 mpg · 40.65 fpts/g -> 37.65"
+  rationale: "Roster fact (Steven 2026-07-20): Giannis joins Miami as the clear offensive alpha. Bam was the
+    Heat's primary option (24.8% usage, 4.15 ast as a hub big); Giannis's arrival compresses his usage and —
+    critically — his playmaking."
+  status: proposed
+  triangulation: "Model base: 40.65 / 24.8% usage / 4.15 ast. Mechanism: Giannis (34%+ usage, ball-dominant)
+    takes the hub role -> Bam's usage ~25 -> ~21-22 (~-2 to -2.5 fpts) AND his 4.15 ast (2x, a big slice of
+    his fantasy value) compresses toward ~3 as Giannis runs the offense (~-2 fpts). His minutes (33),
+    rebounds (10) and defense (stl/blk) are sticky, and Giannis's gravity yields easier looks — cushioning
+    it -> -3.0. Sized moderate: a real usage+assist compression, floored by his elite non-scoring base."

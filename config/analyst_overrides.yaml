@@ -601,3 +601,106 @@
     that the spike itself won''t fully hold. New roster fact (transactions cache):
     Washington re-signed him 2026-07-06 for 4yr/$212.8M — the franchise centerpiece,
     with Ayton and Sarr as rim partners BBM himself credits to ''the Trae Young factor.'''
+- name: Coby White
+  date: 2026-07-20
+  category: role
+  action:
+    fpts_delta: 2.0
+  rationale: 'BBM 2026-07-20: the down year was injury-driven (a calf strain reinjured
+    multiple times held him to ~25 mpg in Chicago before the Charlotte trade); as
+    the Charlotte starting PG ''he''s playing 32 minimum,'' the 34% Charlotte usage
+    ''is not going to stick,'' and his FT (90->82) and 3PT (hit 42% over his last
+    month) are bounce-back candidates; career-best 5.1 ast at 37 mpg, ''could we get
+    to six?'''
+- name: Jalen Green
+  date: 2026-07-20
+  category: role
+  action: none
+  rationale: 'BBM 2026-07-20: the 26 mpg was an injury artifact (three hamstring strains,
+    continual ramp-up); as a Phoenix starter ''why won''t he play four extra minutes
+    to get to 30... 33 that''s seven extra,'' with FT (81->75) and 3PT (35->31) bouncing
+    back — but usage ''32 probably goes back to 28-29.'''
+- name: Myles Turner
+  date: 2026-07-20
+  category: role
+  action:
+    fpts_delta: 2.0
+  rationale: 'BBM 2026-07-20: last season''s collapse (27 mpg, career-low 18 usage,
+    FG 48->44, random benchings) was a dysfunctional Milwaukee under Doc Rivers (''the
+    whole organization was screwed''); Rivers is out, Taylor Jenkins is in, and ''one
+    year removed from being really quite good'' — ''those 27 minutes should push to
+    29'' toward 14 pts / 6 reb / 2 threes / 2 blocks.'
+- name: Trae Young
+  date: 2026-07-20
+  category: role
+  action:
+    fpts_delta: 4.5
+  rationale: 'BBM 2026-07-20: a fourth episode on the same thesis — ''do you realize
+    Trae played just 25.5 mpg?'' with a career-low 27 usage; his explicit projected
+    line is 24 pts / 8-9 ast / 2.5 threes / a steal / 86 FT and ''throw nine minutes
+    onto his totals.'' The ''play off ball MORE'' report was a misquote (just ''off
+    ball''); he remains the Wizards'' starting PG and lead ball-handler.'
+- name: John Collins
+  date: 2026-07-20
+  category: role
+  action:
+    fpts_delta: 2.5
+  rationale: 'BBM 2026-07-20 sharpens the 07-13 Detroit story from vague (''might
+    play more minutes'') to concrete: Detroit''s power-forward depth behind him is
+    ''putrid'' (only Ausar Thompson / Ron Holland), so ''he''s going to play the 30-31
+    minutes that Toby did versus the 27 he played last season''; ~20 usage ''ticks
+    up one or two%,'' and he''s a consistent ~8-reb player who got only 5 in 27 mpg.
+    FT 85->77 should bounce.'
+- name: Zach LaVine
+  date: 2026-07-20
+  category: role
+  action:
+    fpts_delta: 2.0
+  rationale: 'BBM 2026-07-20 adds a usage/ball-handling leg to the 07-17 assist-conversion
+    story: Schroder, Westbrook and DeRozan are ALL gone (he''d been sharing touches
+    with all of them) — ''expect more usage and more importantly more ball-handling
+    opportunities.'' Tempered: an incoming rookie ''is going to have the ball,'' and
+    ''I don''t know where LaVine is going to be'' (trade risk).'
+- name: Domantas Sabonis
+  date: 2026-07-20
+  category: role
+  action:
+    fpts_delta: 4.0
+  rationale: 'BBM 2026-07-20: last season was ~19 games (injured, then re-injured)
+    at 23 usage / 29.7 mpg / 16-11-4 with everything depressed — FG 59->54, 3PT 38-42->19
+    (a fluke-low), FT and blocks off; ''the year before he was the 26th-ranked player...
+    I don''t expect that, but I''d find it very difficult to believe Sabonis stays
+    this bad,'' with DeRozan no longer siphoning touches.'
+- name: Ivica Zubac
+  date: 2026-07-20
+  category: role
+  action:
+    fpts_delta: 3.5
+  rationale: 'BBM 2026-07-20: his career-high-minutes year (33 mpg) was 60th-ranked;
+    last season was 30 mpg then only 6 cameo games in Indiana after an ankle injury;
+    the backup is only Jay Huff (''Zubac is way better''), Potter gone, and Carlisle
+    ''should give him more than 30 minutes, 31, 32 maybe.'' FG% dropped, usage 20->18.5,
+    and his blocks fell under 1 for the first time in 3 years — all bounce-back candidates.'
+- name: Jalen Williams
+  date: 2026-07-20
+  category: role
+  action:
+    fpts_delta: 1.0
+  rationale: 'BBM 2026-07-20: 28 mpg / 17 pts on cratered efficiency (62 TS -> 56)
+    after a wrist injury + multiple hamstrings; 3PT 30% (37% the year before) should
+    bump, blocks .3->.6 ''could double,'' steals 1.2->1.4, ''a bit more usage on a
+    team that lost Wiggins, Joe, and Lou Dort,'' ''just give him four extra minutes.'''
+- name: Malik Monk
+  date: 2026-07-20
+  category: role
+  action: none
+  rationale: 'BBM 2026-07-20: ''Malik Monk''s not going to elevate back into a 29-minute-a-night
+    role. It does seem pretty clear that coach Doug Christie and the front office
+    hate him.'''
+- name: Collin Gillespie
+  date: 2026-07-20
+  category: role
+  action: none
+  rationale: 'BBM 2026-07-20: ''started a lot of games when Grayson/Booker/Green were
+    out''; with the room healthy he''s coming off the bench — the spot-start production
+    won''t repeat.'
