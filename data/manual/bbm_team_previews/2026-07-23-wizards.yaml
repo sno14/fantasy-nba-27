@@ -1,0 +1,139 @@
+# WAS minutes+usage ledger — BBM team-preview snapshot (Ben Strobe, Locked On Wizards).
+# DATED SNAPSHOT as of preview_date: model_* columns are the learned_2026-27 base then; not live.
+# Schema + contract: ./README.md. Full sizing rules: ../bbm_transcripts/README.md (Team-preview mode).
+team: WAS
+team_full: Washington Wizards
+preview_date: 2026-07-23
+source_file: 2026-07-23-wizards-season-preview.md
+win_proj: 40            # from 17 last yr — a 23-win jump; competitive, play-in mix
+availability_note: >
+  TEAM-LEVEL AVAILABILITY SIGNAL -> config/overrides.yaml candidate for Steven (NOT the analyst layer):
+  the tanking / fake-injury / load-management era is over — "we don't have that, are they going to get
+  pulled after three quarters... sit out 75% of games in March? that's just not going to be on the card."
+  A GP/availability-ceiling uplift for the whole WAS rotation vs last season's rest-driven DNPs.
+  Also player-specific injury flags below (Davis, Sarr) route to overrides.yaml, not here.
+budget_min: 240
+rows:
+  # ---- projected starting five ----
+  - player: Trae Young         # "Trey Young" (transcription)
+    model_mpg: 31.8
+    bbm_mpg: "33-35"
+    model_usg: 26.2   # 2025-26 = 15-gp WAS small sample; healthy 28-29 (24-25: 28.5)
+    bbm_usg: "offensive engine, ball in his hands most; NOT the 37-38 peak; assist% up (playmaker role)"
+    verdict: "hold +4.5"
+    proposal: false
+    note: "Existing 07-20 +4.5 stands (4th episode on the same thesis). Preview's usage-hierarchy chapter CONFIRMS the 33-35 / primary-creator line already priced. Base is a 15-gp artifact — delta already re-anchors it."
+  - player: Kyshawn George      # "Keshan George" (transcription)
+    model_mpg: 25.1
+    bbm_mpg: "~30 (org-favorite starter)"
+    model_usg: 22.2   # rising: 24-25 was 15.6
+    bbm_usg: "~22, off-ball next to Trae (C&S) — usage flat, minutes are the lever"
+    verdict: "+3.5"
+    proposal: true
+    note: "The org's favorite young player ('best... right up there with Sarr'), won the starting 2 over Coulibaly. Model 25.1 mpg vs ~30 starter role = +5 mpg; capped by the wing logjam + flat off-ball usage."
+  - player: AJ Dybantsa         # "Debonsa / Debansa" — #1 overall pick
+    model_mpg: null
+    bbm_mpg: "~28 early ('maybe 28 not 34', carefully handled)"
+    model_usg: null
+    bbm_usg: "summer-league high usage; gets to rim + FTs (89% at rim), 3PT shaky (1-11); defensive stocks"
+    verdict: "defer(rookie)"
+    proposal: false
+    note: "Not on the learned board. Centerpiece; minutes eased early because of the wing depth. Carry to the October sheet."
+  - player: Anthony Davis
+    model_mpg: 32.6
+    bbm_mpg: "~30 (soft — 'if he's on the floor'; no hard number stated)"
+    model_usg: 27.2   # 20-gp sample; healthy 30.1 (24-25)
+    bbm_usg: "offense scales DOWN (lost the 3; Zion/Giannis-style rim-only) but rim contests/reb/blk anchor rises"
+    verdict: "none"
+    proposal: false
+    note: "No explicit minutes number from BBM -> minutes-priority presumption not triggered; per-game fpts ≈ base (fewer shots offset by more contests/rebounds as the defensive anchor). The REAL Davis story is GAMES PLAYED (failed to play 5 straight in Dallas) -> overrides.yaml availability candidate, not a per-game delta."
+  - player: Alex Sarr           # "Alex Sar" (transcription)
+    model_mpg: 26.5
+    bbm_mpg: "~30 (entrenched starting C)"
+    model_usg: 25.2
+    bbm_usg: "rim-focused shot diet (FG 39->48) + Trae gravity; 'all-star level' conviction"
+    verdict: "+2.5"
+    proposal: true
+    note: "Supersedes 07-17 +1.5 (efficiency-only). Adds the Trae-gravity + Davis-pairing role-security leg (Davis takes the defensive pressure off Sarr's rim). Foot fracture to start -> overrides.yaml (availability), separate from this per-game delta."
+  # ---- bench / rotation ----
+  - player: Deandre Ayton       # "DeAndre Aton" (transcription)
+    model_mpg: 26.6
+    bbm_mpg: "~20 (backup C behind Sarr + Davis)"
+    model_usg: 16.4
+    bbm_usg: "'not going to start — behind Davis and Sarr'; FG spike Trae-supported"
+    verdict: "hold -1.5"
+    proposal: false
+    note: "Existing 07-17 -1.5 stands. Preview confirms the 3-deep frontcourt + the Davis-fragility upside (one injury from starting) already noted in that entry."
+  - player: Bilal Coulibaly     # "Bilal Kulibali / Bill Bil" (transcription)
+    model_mpg: 31.1
+    bbm_mpg: "~22 (bench wing — lost the starting 2 to George)"
+    model_usg: 19.3
+    bbm_usg: "stagnated; 3PT 34->29; open looks w/ Trae but shooting is the swing; defense keeps him usable"
+    verdict: "-4.0"
+    proposal: true
+    note: "Concentrated to -4.0 (user 2026-07-24). Model 31.1 mpg = last year's tank-team starter minutes. George won the job over him; now a bench wing in a logjam. Cushioned by defense + real lineup volatility (the 'Bilal above everyone' history could flip it back)."
+  - player: Tre Johnson         # "Trey Johnson" (transcription) — sophomore
+    model_mpg: 26.2
+    bbm_mpg: "~16 (bench shooter, squeezed)"
+    model_usg: 22.0
+    bbm_usg: "'best shooter on the team'; last year got sink-or-swim on-ball reps that now go to Trae"
+    verdict: "-2.0"
+    proposal: true
+    note: "Lightened to -2.0 (user 2026-07-24, shooting niche). Sophomore squeezed by the George start + Dybantsa + Middleton. Shooting keeps a niche; development upside tempers the cut."
+  - player: Bub Carrington      # "Bub Carrington" — sophomore
+    model_mpg: 27.9
+    bbm_mpg: "~14 (backup PG; on-ball role goes to Trae)"
+    model_usg: 17.4
+    bbm_usg: "last year's 'de facto point guard... didn't work out too great' — that role is now Trae's"
+    verdict: "-4.5"
+    proposal: true
+    note: "Concentrated to -4.5 (user 2026-07-24, cleanest displacement). Model 27.9 mpg = 82-gp tank-team starter role, directly displaced by Trae. Floor cushioned only because WAS lacks another backup PG."
+  - player: Will Riley          # sophomore
+    model_mpg: 27.2
+    bbm_mpg: "~15 (deep wing, squeezed; spot-mentioned as ball-handling depth)"
+    model_usg: 19.6
+    bbm_usg: "'playing a million minutes' end of last (tank) season; now one of the squeezed wings"
+    verdict: "-2.0"
+    proposal: true
+    note: "Lightened to -2.0 (user 2026-07-24, dev runway). Model 27.2 mpg expects growth; the preview says the opposite — buried in the wing logjam now that the team is competitive. Development upside tempers it."
+  - player: Khris Middleton     # "Chris Middleton" (transcription)
+    model_mpg: 19.3
+    bbm_mpg: "~16-18 (vet, fills behind Dybantsa; 'not sure how much he plays')"
+    model_usg: 19.8
+    bbm_usg: "mentorship signing; low-cost, hedged role"
+    verdict: "none"
+    proposal: false
+    note: "Model's modest 19.3 mpg already matches BBM's hedged ~16-18 read (gap < 2). No move."
+  - player: Cam Whitmore
+    model_mpg: 18.4
+    bbm_mpg: "~8 (deep; end-of-show 'rotation-caliber body' name-drop)"
+    model_usg: 22.5   # 21-gp sample
+    bbm_usg: "no mechanism; buried in the wing logjam"
+    verdict: "note-only"
+    proposal: false
+    note: "No specific claim. Model already low (rank 362); the logjam makes even 18.4 optimistic, but no BBM minutes number to price."
+  - player: Justin Champagnie
+    model_mpg: 20.2
+    bbm_mpg: "~10 (deep; OReb/defense niche)"
+    model_usg: 16.1
+    bbm_usg: "'brings value defensively crashing the offensive glass'"
+    verdict: "note-only"
+    proposal: false
+    note: "Model minutes ~ match last season; deep role, no mechanism to move."
+  - player: Felix Okpara        # "Felix Okara" (transcription) — 2026 draft
+    model_mpg: null
+    bbm_mpg: ""
+    model_usg: null
+    bbm_usg: ""
+    verdict: "defer(rookie)"
+    proposal: false
+    note: "Draft pick, not on the board, no role detail. Defer to October."
+sum_model_mpg: 312.9     # 12 non-rookie rotation players — model is badly blind to this depth chart
+sum_bbm_mpg: 240         # realistic competitive 10-man core (Riley/Whitmore/Champagnie = fringe/DNP-CD nights)
+budget_note: >
+  The starkest budget in the batch: the model hands out ~313 mpg to 12 holdovers because it prices each on
+  their own TANK-TEAM history, blind to Trae + Davis + Dybantsa + Middleton arriving. A competitive 10-man
+  rotation fits ~240, so ~70+ minutes must evaporate. They come off the young-wing/guard logjam — George is
+  the winner (starter, +3.5); the four nameable losers are Coulibaly, Tre Johnson, Bub Carrington (on-ball
+  role taken by Trae), and Will Riley (concentrated per user 2026-07-24: Carrington -4.5 / Coulibaly -4.0 take the brunt, Tre Johnson / Will Riley -2.0 each keep a niche). This is exactly the depth-chart redistribution the box-score model
+  can't do (EXP-030 / role-change lever) — handed over by the beat analyst.

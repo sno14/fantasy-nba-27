@@ -27,6 +27,28 @@ md5sum data/manual/bbm_transcripts/*.md | sort            # catch duplicate-past
   any new mechanism on them means a whole-player re-triangulation from the CURRENT base
   (one superseding entry, never a stacked delta).
 
+## 1b — If it's a team preview (whole-roster, closed-minutes mode)
+
+A `*-season-preview.md` file (or any transcript that walks ONE team's full roster: outlook →
+moves → starting five → per-player → usage hierarchy → win prediction) runs the same pipeline
+with a ledger front-end. **Full contract: the "Team-preview mode" section of the transcripts
+README** — read it; this is just the checklist.
+
+1. **Build + persist the minutes+usage ledger FIRST** →
+   `data/manual/bbm_team_previews/<date>-<team>.yaml` (schema in that dir's README). One row
+   per rotation player: model `mpg`/`fpts_pg` + computed last-season `USG%` vs BBM's stated
+   minutes/usage. Current-team assignment via `preseason_roster_map` (the live board's source).
+2. **Budget cross-check:** `sum(bbm_mpg) ≈ 240`. Over ~245 / under ~235 → rebalance before
+   sizing. Every +Δmpg must come out of a nameable teammate whose −delta is itself a proposal.
+3. **Coverage = full rotation; output = movers only.** Give every rotation player a ledger
+   verdict; only target ≠ base becomes a proposal. A compact coverage table (player | verdict)
+   + a pointer to the ledger file goes in the proposals batch header.
+4. **Route the preview-only signals:** rookies → `defer(rookie)`, ledger+notes, no proposal
+   (feeds the Oct sheet); team availability/tanking/rest → `config/overrides.yaml` candidate
+   flagged to Steven; scheme/pace/wins → conviction context, not a standalone delta.
+
+Then rejoin the normal flow at step 3 (triangulate the movers) → 4 (validate) → **STOP**.
+
 ## 2 — Extract → append `data/manual/bbm_notes.csv`
 
 One row per player-specific fact: `date,player,team,claim_type,direction,quote,source_file`

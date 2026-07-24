@@ -165,6 +165,64 @@ append-only** — the flag is a nudge, never an auto-edit. `--analyst-decay` (18
 auto-taper bridge deltas by games played (full ≤ ~10, gone by ~30) but is **off by default**
 until its validation gate runs on real in-season dates (implementation-plan 18.2).
 
+## Team-preview mode (added 2026-07-24) — the whole-roster, closed-minutes variant
+
+**Trigger:** a transcript that walks ONE team's full roster — filename `*-season-preview.md`,
+chapter skeleton `franchise outlook -> offseason moves -> projected starting five ->
+per-player deep dives -> usage hierarchy -> rotation depth -> win prediction`. Locked On's
+team-by-team previews (a Locked On <team> beat guest joins Josh) are the archetype.
+
+**Why they earn their own front-end:** a team is a **closed ~240-minute system**. Unlike a
+topic episode that names a riser in isolation, a preview discusses the WHOLE rotation — so
+every minutes bump can be checked against a *nameable* loser, the depth chart is stated
+outright, and usage is given as a ranked list. This is the depth-chart redistribution the
+model can't derive from box scores (role-change-lever / EXP-030), handed to us by a beat
+analyst. **Everything in the rules above still governs the sizing — only the extraction
+structure changes.**
+
+**The minutes+usage ledger is the spine (persisted, user decision 2026-07-24).** Before
+writing a single proposal, build a per-team ledger — one row per rotation player — and persist
+it to `data/manual/bbm_team_previews/<date>-<team>.yaml` (schema + contract in that
+directory's README). It is a **dated snapshot** (like `bbm_notes.csv`), not a live table:
+
+1. Pull every rotation player's model base (`mpg`, `fpts_pg`, `gp`) and compute last-season
+   `USG%` (the formula above) — the `model_*` columns. Current-team assignment via
+   `preseason_roster_map` (the live board's source).
+2. Record BBM's stated minutes and usage per player, verbatim/normalized — the `bbm_*` columns
+   (blank when he gives none). His projected starting five + rotation-depth comments are the
+   source.
+3. **Cross-check the budget:** `sum(bbm_mpg) ~= 240` (5x48). A sum materially over ~245 or
+   under ~235 means the implied minutes don't fit — re-read and rebalance before sizing. This
+   is the check topic episodes can't offer: a riser's +Δmpg must come out of a nameable
+   teammate's row, and **that teammate's negative delta is itself a legitimate proposal**.
+4. Size each row's `verdict` with the standard target-level rule + the minutes/usage priority
+   rule; the ledger makes both comparisons explicit for the whole team at once.
+
+**Coverage = the full projected rotation (user decision 2026-07-24); output = movers only.**
+Triangulate every rotation player (~10-12) so the systematic sweep is visible and auditable —
+but only players whose triangulated target ≠ base become entries in `analyst_proposals.yaml`.
+The rest are recorded as ledger rows (verdict `none` / `defer(rookie)` / `note-only`) and,
+where they carry a fact, `bbm_notes.csv` rows. The proposals **batch header** carries a compact
+coverage table (player | verdict) and cites the ledger file, so review shows nothing was
+silently skipped.
+
+**Routing the preview-only signals:**
+
+- **Rookies** (previews are dense with them — a #1 pick is often the centerpiece): capture
+  role/minutes context in the ledger row + notes, verdict `defer(rookie)`, **no proposal** —
+  there's no learned base to size against. This context feeds the mid-Oct market seed / sheet.
+- **Team-level availability / tanking / rest signals** (e.g. Wizards 2026-07-23: "the
+  fake-injury, load-management era is over — they'll actually play their guys"): an
+  availability-ceiling shift → **`config/overrides.yaml` candidate for Steven**, NEVER the
+  analyst layer (the same hard rule as any out-timeline). Record it in the ledger's
+  `availability_note` and flag it in the batch report.
+- **Scheme / pace / competitiveness** (win-total jump, new defensive identity): context that
+  supports minute *stability* and reduces blowout benchings — informs conviction on the
+  minutes deltas, not a standalone delta. Note it; don't price it alone.
+
+Provenance, hard rules, and the review gate are unchanged: the ledger and proposals are
+committed; `fpts_delta` / `none` only; ignore his ranks; STOP for Steven.
+
 ## Scoring = calibration (amended 2026-07-12)
 
 The layer is a **standing supplement** by user decision — it does not have to beat the

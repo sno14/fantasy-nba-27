@@ -704,3 +704,143 @@
   rationale: 'BBM 2026-07-20: ''started a lot of games when Grayson/Booker/Green were
     out''; with the room healthy he''s coming off the bench — the spot-start production
     won''t repeat.'
+- name: Coby White
+  date: 2026-07-24
+  category: role
+  action:
+    fpts_delta: 2.5
+  rationale: 'BBM 2026-07-22 (Hornets preview): ''Kobe is the guy since he''s going
+    to be handling the rock so much'' — with no trusted backup PG, ''do you feel comfortable
+    sitting Kobe? I certainly don''t'', so the minutes floor is very secure; he absorbs
+    LaMelo''s on-ball CREATION (''assist usage percentage has gone up to about average'')
+    and ''double his minutes... to like 30''.'
+- name: Kon Knueppel
+  date: 2026-07-24
+  category: role
+  action:
+    fpts_delta: 2.0
+  rationale: 'BBM 2026-07-22: asked who takes on more of LaMelo''s vacated creation
+    load between Miller and Knueppel — ''I think it''s Khan Caniple more so''; a ''focus
+    scoring'' option and ''a good passer''. The 06-29 read (''probably more for Knueppel
+    to do'', no specific mechanism -> none) is now a NAMED usage/creation elevation.'
+- name: Moussa Diabaté
+  date: 2026-07-24
+  category: role
+  action:
+    fpts_delta: 4.0
+  rationale: 'BBM 2026-07-22: the projected STARTING center (''I do think they will
+    go with Diabate in that starting spot''), ''play your 28'' minutes; Hustle Player
+    of the Year whose value is steals + offensive rebounds + switchable defense (''he
+    affects winning''), with short-roll passing improving. Short, non-shooter, so
+    usage stays low.'
+- name: Ryan Kalkbrenner
+  date: 2026-07-24
+  category: role
+  action:
+    fpts_delta: -3.5
+  rationale: 'BBM 2026-07-22: ''I do think he''s at the very end of the center rotation''
+    — the best rim protector of the bigs but buried behind Diabate (starter), Naz
+    Reid at the 5, and the rookie Steinbach; ''he''ll get some time'' but they ''decided
+    to play Musa a lot more''.'
+- name: Sion James
+  date: 2026-07-24
+  category: role
+  action:
+    fpts_delta: -2.0
+  rationale: 'BBM 2026-07-22: ''Sion James on-ball minutes, they''ve not gone well
+    at all... a real concern, especially in the non-Kobe minutes'' — a deep wing on
+    a team Walker calls ''real dudes one through eight'', so the touches and minutes
+    are squeezed.'
+- name: Kyshawn George
+  date: 2026-07-24
+  category: role
+  action:
+    fpts_delta: 3.5
+  rationale: 'BBM 2026-07-23 (Wizards preview): the organization''s favorite young
+    player — ''the best overall basketball player in this group... right up there
+    with Alex Sarr'' — who won the starting two-guard job over Coulibaly; two-way
+    versatility, shoots well off the catch, now plays off-ball next to Trae Young.'
+- name: Alex Sarr
+  date: 2026-07-24
+  category: role
+  action:
+    fpts_delta: 2.5
+  rationale: 'BBM 2026-07-23: ''very bullish that this dude is going to benefit greatly
+    from playing in an offensive system with an actual playmaker like Trae Young...
+    he could be an all-star level player''; the rim-focused shot diet (FG 39->48)
+    continues, and pairing with Anthony Davis takes the defensive pressure off Sarr''s
+    rim.'
+- name: Bilal Coulibaly
+  date: 2026-07-24
+  category: role
+  action:
+    fpts_delta: -4.0
+  rationale: 'BBM 2026-07-23: George won the starting two-guard job over him — ''I
+    personally think Keshan''s a better player''; Coulibaly has ''stagnated'' (3PT
+    34->29), and while he''ll get open looks with Trae, the shooting is the swing
+    skill. Now a bench wing in a crowded room.'
+- name: Bub Carrington
+  date: 2026-07-24
+  category: role
+  action:
+    fpts_delta: -4.5
+  rationale: 'BBM 2026-07-23: last season''s ''de facto point guard situation — Bub
+    Carrington getting some of the run, didn''t work out too great''; that on-ball
+    role is now Trae Young''s. Backup guard on a suddenly-crowded roster.'
+- name: Tre Johnson
+  date: 2026-07-24
+  category: role
+  action:
+    fpts_delta: -2.0
+  rationale: 'BBM 2026-07-23: ''the best shooter on the team'', but a candidate for
+    the starting two who lost it to George; last year they let him play ''sink or
+    swim'' with the ball early — those on-ball reps now go to Trae.'
+- name: Will Riley
+  date: 2026-07-24
+  category: role
+  action:
+    fpts_delta: -2.0
+  rationale: 'BBM 2026-07-23: ''at the end of last season Will Riley was playing a
+    million minutes'' — but that was the tank team; he''s now one of the squeezed
+    young wings (''they''ve got all these other guys they can throw in there'').'
+- name: Giannis Antetokounmpo
+  date: 2026-07-20
+  category: role
+  action: none
+  rationale: 'Roster fact (Steven 2026-07-20): traded to MIAMI — the 07-13 ''stays
+    Milwaukee'' entry is now factually wrong on destination. He joins Bam Adebayo
+    but is unambiguously the alpha (34.6% usage healthy, 31.5 mpg base already at
+    BBM''s ''32 at least'').'
+- name: Tyler Herro
+  date: 2026-07-20
+  category: role
+  action:
+    fpts_delta: 2.0
+  rationale: 'Roster fact (Steven 2026-07-20) + BBM 06-29/07-13 context: Herro was
+    moved to Milwaukee in June; with Giannis''s ~35% usage now permanently gone from
+    MIL, the 07-13 ''jammed room / won''t be PG / bad team'' none is stale — he becomes
+    the clear #1 scoring option on a Giannis-less Bucks.'
+- name: Ryan Rollins
+  date: 2026-07-20
+  category: role
+  action:
+    fpts_delta: 1.0
+  rationale: 'Roster fact (Steven 2026-07-20): Giannis permanently gone from Milwaukee.
+    Rollins''s 2025-26 breakout (74 gp, 23.6% usage, 5.4 ast) came LARGELY in Giannis''s
+    absence (Giannis played only 36 gp), so the board''s base already reflects a mostly-Giannis-less
+    Rollins.'
+- name: Kevin Porter Jr.
+  date: 2026-07-20
+  category: role
+  action:
+    fpts_delta: 1.0
+  rationale: 'Roster fact (Steven 2026-07-20): third guard on a Giannis-less Milwaukee;
+    a share of the vacated ~35% usage reaches him, behind Herro and Rollins.'
+- name: Bam Adebayo
+  date: 2026-07-20
+  category: role
+  action:
+    fpts_delta: -3.0
+  rationale: 'Roster fact (Steven 2026-07-20): Giannis joins Miami as the clear offensive
+    alpha. Bam was the Heat''s primary option (24.8% usage, 4.15 ast as a hub big);
+    Giannis''s arrival compresses his usage and — critically — his playmaking.'

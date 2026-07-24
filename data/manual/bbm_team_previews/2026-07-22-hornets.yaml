@@ -1,0 +1,121 @@
+# CHA minutes+usage ledger — BBM team-preview snapshot (Walker Male, Locked On Hornets).
+# DATED SNAPSHOT as of preview_date: model_* columns are the learned_2026-27 base then; not live.
+# Schema + contract: ./README.md. Full sizing rules: ../bbm_transcripts/README.md (Team-preview mode).
+team: CHA
+team_full: Charlotte Hornets
+preview_date: 2026-07-22
+source_file: 2026-07-22-hornets-season-preview.md
+win_proj: 43            # from 44 last yr — roughly flat, "play-in mix", competitive
+availability_note: >
+  Lottery-reform / competitiveness note (Walker, general): the bottom of the league pushes up —
+  "a game in March where Washington's actually playing their guys" turns former blowouts into
+  coin-flips. Team-wide minute STABILITY signal (fewer garbage-time-only nights), not a per-player
+  delta. No CHA-specific rest/tanking claim -> nothing routed to overrides.yaml this preview.
+budget_min: 240
+rows:
+  # ---- projected starting five ----
+  - player: Coby White        # "Kobe White" (transcription); already established CHA in Batch 1
+    model_mpg: 30.8
+    bbm_mpg: "~32 (can't be sat — no backup PG)"
+    model_usg: 28.3
+    bbm_usg: "primary creator; absorbs LaMelo's playmaking, assists up 'to about average'"
+    verdict: "+2.5"
+    proposal: true
+    note: "THE guy per Walker; 'double his minutes to ~30', handles the rock most. Supersedes 07-20 +2.0."
+  - player: Kon Knueppel       # "Con Canipple / Khan Caniple" (transcription)
+    model_mpg: 32.8
+    bbm_mpg: "~32 (already maxed on the board)"
+    model_usg: 21.6
+    bbm_usg: "the trusted SECONDARY creator ('Khan more so' than Miller) + focus scorer -> ~24"
+    verdict: "+2.0"
+    proposal: true
+    note: "Usage/creation rise off a maxed-minutes base; named beneficiary of LaMelo's vacated load. Supersedes 07-12 none."
+  - player: Brandon Miller
+    model_mpg: 31.9
+    bbm_mpg: "~31"
+    model_usg: 27.2
+    bbm_usg: "focus scorer, but creation load is SHARED (Knueppel takes the secondary role, not Miller)"
+    verdict: "hold +2.0"
+    proposal: false
+    note: "Existing 07-12 +2.0 stands. Preview confirms the leap but redistributes creation toward Knueppel -> no further bump (the usage-hierarchy cross-check that keeps me from double-pricing the LaMelo vacancy)."
+  - player: Naz Reid           # "Nas Reed / Nazar Reed" (transcription)
+    model_mpg: 29.5
+    bbm_mpg: "~33 (starting 4 + some backup-5 in Naz/Musa lineups)"
+    model_usg: 21.2
+    bbm_usg: "high usage w/ no LaMelo/Bridges; 'fringe all-star in an increased role'; good passer for the 4"
+    verdict: "hold +3.0"
+    proposal: false
+    note: "Existing 07-13 +3.0 stands. Preview reinforces the 33-min starter thesis + adds some center minutes (rebounds) — modest, already inside the +3.0."
+  - player: Moussa Diabate     # "Musa Debbate / Diamate / Diabate" (transcription)
+    model_mpg: 21.7
+    bbm_mpg: "~28 ('play your 28')"
+    model_usg: 11.2
+    bbm_usg: "low usage, but Hustle POY value = OReb + steals + blocks (all high-multiplier); short-roll passing improving"
+    verdict: "+4.0"
+    proposal: true
+    note: "Projected STARTING C the model rates as a backup (21.7 mpg). +6 mpg into a stl/blk/OReb profile; tempered for the crowded/experimental center rotation. Larger delta — concrete starter mechanism stated."
+  # ---- bench / rotation ----
+  - player: Grayson Allen
+    model_mpg: 25.9
+    bbm_mpg: "~22 (bench; shot VOLUME comes down, efficiency up)"
+    model_usg: 23.1
+    bbm_usg: "secondary creator off the bench, but the outlier-volume shooting normalizes"
+    verdict: "hold none"
+    proposal: false
+    note: "Existing 07-13 none stands. Bench role confirmed; the secondary-creator nod is offset by lower shot volume -> net per-game wash."
+  - player: Royce O'Neale
+    model_mpg: 20.8
+    bbm_mpg: "~18 (bench 3&D, corner threes)"
+    model_usg: 13.9
+    bbm_usg: "low-usage spot-up specialist"
+    verdict: "note-only"
+    proposal: false
+    note: "Model minutes already match a bench 3&D role; no mechanism to move him."
+  - player: Ryan Kalkbrenner   # "Cogbren / Kog Brener / Cochrrener / Kaulk Runner" (transcription)
+    model_mpg: 22.5
+    bbm_mpg: "~13 ('at the very end of the center rotation')"
+    model_usg: 11.3
+    bbm_usg: "best rim protector of the bigs but buried behind Diabate, Naz-at-5, and the rookie Steinbach"
+    verdict: "-3.5"
+    proposal: true
+    note: "4th big. Model's 22.5 mpg reflects last year's pre-Diabate starts; the preview explicitly buries him. Cushioned by rim-protection floor + big-injury contingency."
+  - player: Dorian Finney-Smith  # "Darian Finey Smith" (transcription)
+    model_mpg: 17.5
+    bbm_mpg: "~12 (deep 3&D wing)"
+    model_usg: 10.4
+    bbm_usg: "acquired shooter, deep in a crowded wing group"
+    verdict: "note-only"
+    proposal: false
+    note: "Model already low (rank 479); no mechanism to move him."
+  - player: Sion James
+    model_mpg: 28.0
+    bbm_mpg: "~20 (deep wing; on-ball reps a stated concern)"
+    model_usg: 10.9
+    bbm_usg: "'Sion James on-ball minutes have not gone well... a real concern, especially in the non-Coby minutes'"
+    verdict: "-2.0"
+    proposal: true
+    note: "Model's 28.0 mpg is rich for a 7th-8th wing on a team with 'real dudes one through eight'. Mild negative surfaced by the budget cross-check; low-usage so the fpts swing is small."
+  # ---- rookies (defer; role context for the Oct sheet / market seed) ----
+  - player: Hansen Steinbach   # "Hanesstein / Steinbach / Steinback" — #14 overall, lottery C
+    model_mpg: null
+    bbm_mpg: "~15 (every-night backup C ahead of Kalkbrenner if the shot is real)"
+    model_usg: null
+    bbm_usg: "elite rebounder (best in college), OReb, 'can shoot it a little'; Musa/Steinbach 4-5 lineups"
+    verdict: "defer(rookie)"
+    proposal: false
+    note: "Not on the learned board. Strong role signal — pushes Kalkbrenner down. Carry to the October sheet."
+  - player: Christian Anderson  # #18 overall, PG
+    model_mpg: null
+    bbm_mpg: "~8 (the backup-PG hope; 'a fun archetype more than a functional one right now')"
+    model_usg: null
+    bbm_usg: "rookie lead-guard depth behind Coby; team openly lacks a trusted backup PG"
+    verdict: "defer(rookie)"
+    proposal: false
+    note: "Not on the board. Backup-PG vacancy is real but he's unproven — carry to October."
+sum_model_mpg: 261.4     # 10 non-rookie rotation players — model is blind to the depth chart
+sum_bbm_mpg: 244         # realistic 10-man rotation (DFS/Anderson = spot minutes). Within tolerance of 240.
+budget_note: >
+  Model oversubscribes by ~21 mpg across the top 10 (261 vs 240) — plus LaMelo (~31 usg) + Bridges +
+  Josh Green departed (~90 min). The vacated minutes/usage flow UP to the starters (Coby/Knueppel +,
+  Diabate +, Miller/Naz held), and the ~21 model overage is corrected by the two nameable losers:
+  Kalkbrenner (center logjam) and Sion James (wing logjam). Budget balances cleanly.

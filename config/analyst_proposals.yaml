@@ -1295,7 +1295,7 @@
   rationale: "Roster fact (Steven 2026-07-20): traded to MIAMI — the 07-13 'stays Milwaukee' entry is now
     factually wrong on destination. He joins Bam Adebayo but is unambiguously the alpha (34.6% usage healthy,
     31.5 mpg base already at BBM's '32 at least')."
-  status: proposed
+  status: approved
   triangulation: "Model base: 49.75 fpts / 31.5 mpg / ~35% usage — a top-5 per-game engine. A Miami move does
     not change a usage-alpha's per-game value (he was the hub next to Lopez/Lillard; he's the hub next to
     Bam — Bam cedes to him, not the reverse). Minutes already priced. Target ~= base -> none. This entry
@@ -1310,7 +1310,7 @@
   rationale: "Roster fact (Steven 2026-07-20) + BBM 06-29/07-13 context: Herro was moved to Milwaukee in
     June; with Giannis's ~35% usage now permanently gone from MIL, the 07-13 'jammed room / won't be PG /
     bad team' none is stale — he becomes the clear #1 scoring option on a Giannis-less Bucks."
-  status: proposed
+  status: approved
   triangulation: "Re-triangulation from the current base (38.65, built on his Miami role — the board sees
     neither the MIL move NOR Giannis's exit). Model USG 24.8%. Mechanism: a 24-27% usage bucket-getter
     inheriting the primary-scorer role on a barren offense -> usage toward ~27-28 (~+1.5-2 fpts). Capped
@@ -1326,7 +1326,7 @@
   rationale: "Roster fact (Steven 2026-07-20): Giannis permanently gone from Milwaukee. Rollins's 2025-26
     breakout (74 gp, 23.6% usage, 5.4 ast) came LARGELY in Giannis's absence (Giannis played only 36 gp), so
     the board's base already reflects a mostly-Giannis-less Rollins."
-  status: proposed
+  status: approved
   triangulation: "Model base: 32.98 / 23.6% usage — already a Giannis-absent-heavy blend. The only unpriced
     sliver is the ~36 overlap games where Giannis suppressed his usage; removing Giannis permanently lifts
     those -> a MILD +. But Herro's arrival + KPJ crowd the same vacancy (the Batch-1 'crowded creation room'
@@ -1339,7 +1339,7 @@
   preview: "rank 108 · 25.7 mpg · 29.96 fpts/g -> 30.96"
   rationale: "Roster fact (Steven 2026-07-20): third guard on a Giannis-less Milwaukee; a share of the
     vacated ~35% usage reaches him, behind Herro and Rollins."
-  status: proposed
+  status: approved
   triangulation: "Model base: 29.96 / 23.6% usage / 25.7 mpg. Mechanism: a mild vacated-usage lift, but he's
     third in the pecking order (Herro/Rollins ahead) on a bad team and a role/trade-uncertain piece -> mild
     +1.0."
@@ -1352,9 +1352,207 @@
   rationale: "Roster fact (Steven 2026-07-20): Giannis joins Miami as the clear offensive alpha. Bam was the
     Heat's primary option (24.8% usage, 4.15 ast as a hub big); Giannis's arrival compresses his usage and —
     critically — his playmaking."
-  status: proposed
+  status: approved
   triangulation: "Model base: 40.65 / 24.8% usage / 4.15 ast. Mechanism: Giannis (34%+ usage, ball-dominant)
     takes the hub role -> Bam's usage ~25 -> ~21-22 (~-2 to -2.5 fpts) AND his 4.15 ast (2x, a big slice of
     his fantasy value) compresses toward ~3 as Giannis runs the offense (~-2 fpts). His minutes (33),
     rebounds (10) and defense (stl/blk) are sticky, and Giannis's gravity yields easier looks — cushioning
     it -> -3.0. Sized moderate: a real usage+assist compression, floored by his elite non-scoring base."
+
+# ============ Batch 7 — TEAM PREVIEWS: Hornets (2026-07-22) + Wizards (2026-07-23) ============
+# ============                    (proposed 2026-07-24 — inaugural team-preview mode) ============
+# Sources: data/manual/bbm_transcripts/2026-07-2{2-hornets,3-wizards}-season-preview.md; evidence in
+# bbm_notes.csv; the closed-minutes ledgers in data/manual/bbm_team_previews/2026-07-2{2-hornets,3-wizards}.yaml.
+#
+# First batch from the new WHOLE-ROSTER preview format (Locked On team-by-team previews). The lever these
+# add over topic episodes: a team is a closed ~240-min system, so every +minutes bump is checked against a
+# NAMEABLE loser (the budget cross-check), and the depth-chart redistribution the box-score model can't do
+# (EXP-030 / role-change lever) is handed over by the beat analyst. Coverage = the FULL projected rotation;
+# output here = movers only. Full per-player minutes/usage detail (incl. holds/none/defer) is in the ledgers.
+#
+# BUDGET CROSS-CHECK (the headline): the model hands WAS's 12 holdovers ~313 mpg and CHA's top 10 ~261 mpg,
+# because it prices each on their own prior-season (often TANK-team) minutes, blind to the new arrivals. A
+# competitive rotation fits ~240. The correction lands on the nameable losers below.
+#
+# COVERAGE TABLE  (verdict per rotation player; only 'proposal' rows appear as entries):
+#   CHA:  Coby White +2.5* | Kon Knueppel +2.0* | Brandon Miller hold +2.0 | Naz Reid hold +3.0 |
+#         Moussa Diabate +4.0 | Grayson Allen hold none | Royce O'Neale note | Ryan Kalkbrenner -3.5 |
+#         Dorian Finney-Smith note | Sion James -2.0 | Steinbach defer(R) | C. Anderson defer(R)
+#   WAS:  Trae Young hold +4.5 | Kyshawn George +3.5 | AJ Dybantsa defer(R) | Anthony Davis none |
+#         Alex Sarr +2.5* | Deandre Ayton hold -1.5 | Bilal Coulibaly -4.0 | Tre Johnson -2.0 |
+#         Bub Carrington -4.5 | Will Riley -2.0 | Khris Middleton none | Cam Whitmore note |
+#         Justin Champagnie note | Felix Okpara defer(R)
+#   (* = supersedes an existing entry, re-triangulated whole from the model base. 'hold' = existing entry
+#    stands, preview CONFIRMED it — omitted here so its delta isn't erased by a latest-dated none.)
+#
+# WING SQUEEZE CONCENTRATED (user 2026-07-24): the WAS young-wing cut is NOT even — Bub Carrington -4.5
+# (cleanest role-displacement: Trae takes his de-facto-PG job) and Bilal Coulibaly -4.0 (highest model mpg,
+# lost the start) take the brunt; Tre Johnson / Will Riley lightened to -2.0 each (shooting niche / dev
+# runway). Aggregate ~-12.5 (was -13.0 even), redistributed.
+#
+# ROUTED TO STEVEN (config/overrides.yaml, NOT the analyst layer): (1) WAS team-wide availability uplift —
+# the tanking/fake-injury/load-management era is over ('not going to sit out 75% of games in March');
+# (2) Anthony Davis GP risk (failed to play 5 straight in Dallas); (3) Alex Sarr fractured foot to start.
+# ROOKIES deferred (no learned base): AJ Dybantsa (#1), Felix Okpara, Hansen Steinbach (#14, real backup-C
+# role signal), Christian Anderson (#18). Their role context is in the ledgers for the October sheet.
+
+# ---- Charlotte Hornets (BBM 2026-07-22) ----
+
+- name: Coby White
+  date: 2026-07-24
+  category: role
+  action: {fpts_delta: 2.5}
+  preview: "rank 82 · 30.8 mpg · 32.2 fpts/g -> 34.7  (supersedes the 2026-07-20 +2.0)"
+  rationale: "BBM 2026-07-22 (Hornets preview): 'Kobe is the guy since he's going to be handling the rock so much'
+    — with no trusted backup PG, 'do you feel comfortable sitting Kobe? I certainly don't', so the minutes floor
+    is very secure; he absorbs LaMelo's on-ball CREATION ('assist usage percentage has gone up to about average')
+    and 'double his minutes... to like 30'."
+  status: approved
+  triangulation: "Re-triangulation of the whole player (supersedes 07-20 +2.0). Model base: 32.2 fpts at 30.8 mpg
+    — minutes are already priced (BBM ~32 vs model 30.8, ~1.2-mpg gap, under the ~2 threshold). What's NEW vs
+    07-20 is the explicit primary-creator/assist absorption of LaMelo's vacated playmaking (2x on assists) plus the
+    no-backup minutes-floor security. Capped because Walker says playmaking comes 'in the aggregate' (Knueppel/
+    Miller/Allen share it). Net a modest raise over the bounce-back +2.0 -> +2.5."
+
+- name: Kon Knueppel
+  date: 2026-07-24
+  category: role
+  action: {fpts_delta: 2.0}
+  preview: "rank 15 · 32.8 mpg · 36.2 fpts/g -> 38.2  (supersedes the 2026-07-12 none)"
+  rationale: "BBM 2026-07-22: asked who takes on more of LaMelo's vacated creation load between Miller and
+    Knueppel — 'I think it's Khan Caniple more so'; a 'focus scoring' option and 'a good passer'. The 06-29 read
+    ('probably more for Knueppel to do', no specific mechanism -> none) is now a NAMED usage/creation elevation."
+  status: approved
+  triangulation: "Supersedes the 07-12 none. Minutes maxed (model 32.8 mpg, BBM ~32) -> the lever is USAGE, off a
+    computed 21.6 last-season USG%. As the identified #1 beneficiary of LaMelo's 30+ vacated usage he rises toward
+    ~24 (+2-3 usage pts) plus creation/assists (2x). Sized at the top of the usage-only anchor (+2.0) because the
+    base is already elite (rank 15) and the load is shared. NOT double-counting Miller — the hierarchy explicitly
+    puts Knueppel's creation ABOVE Miller's, which is why Miller is held, not bumped."
+
+- name: Moussa Diabaté
+  date: 2026-07-24
+  category: role
+  action: {fpts_delta: 4.0}
+  preview: "rank 224 · 21.7 mpg · 21.8 fpts/g -> 25.8"
+  rationale: "BBM 2026-07-22: the projected STARTING center ('I do think they will go with Diabate in that starting
+    spot'), 'play your 28' minutes; Hustle Player of the Year whose value is steals + offensive rebounds + switchable
+    defense ('he affects winning'), with short-roll passing improving. Short, non-shooter, so usage stays low."
+  status: approved
+  triangulation: "Model prices him as a 21.7-mpg backup; BBM installs him as the ~28-mpg starter = +6.3 mpg. Δfpts ≈
+    6.3 × (21.8/21.7) × 0.85 ≈ +5.4 raw, into a stl/blk/OReb profile (steals & blocks 4x). Tempered to +4.0 for the
+    crowded, experimental center rotation (Naz plays some 5; rookie Steinbach and Kalkbrenner spell). Larger delta,
+    but the starter mechanism is concrete and explicitly stated — flagged per the no-cap rubric. His nameable
+    minutes source: the departed Bridges/Green + Kalkbrenner's demotion (below)."
+
+- name: Ryan Kalkbrenner
+  date: 2026-07-24
+  category: role
+  action: {fpts_delta: -3.5}
+  preview: "rank 153 · 22.5 mpg · 24.4 fpts/g -> 20.9"
+  rationale: "BBM 2026-07-22: 'I do think he's at the very end of the center rotation' — the best rim protector of
+    the bigs but buried behind Diabate (starter), Naz Reid at the 5, and the rookie Steinbach; 'he'll get some time'
+    but they 'decided to play Musa a lot more'."
+  status: approved
+  triangulation: "Model's 22.5 mpg reflects last year's pre-Diabate starts; BBM buries him 4th among the bigs, ~13
+    mpg. −9.5 mpg × (24.4/22.5) × 0.85 ≈ −8.7 raw, cushioned hard to −3.5 for his rim-protection floor + big-injury
+    contingency (three-plus bigs ahead but Charlotte's front line churns). The nameable payer for Diabate's +6 and
+    Steinbach's rookie minutes."
+
+- name: Sion James
+  date: 2026-07-24
+  category: role
+  action: {fpts_delta: -2.0}
+  preview: "rank 145 · 28.0 mpg · 20.1 fpts/g -> 18.1"
+  rationale: "BBM 2026-07-22: 'Sion James on-ball minutes, they've not gone well at all... a real concern, especially
+    in the non-Kobe minutes' — a deep wing on a team Walker calls 'real dudes one through eight', so the touches and
+    minutes are squeezed."
+  status: approved
+  triangulation: "Surfaced by the budget cross-check: model gives a low-usage (10.9 USG%) sophomore 28.0 mpg, rich for
+    a 7th-8th man behind Miller/Knueppel/Allen/O'Neale/DFS. BBM's on-ball concern caps his role at ~20 mpg. Mild
+    negative (−2.0) — the fpts swing is small because his usage is so low (mostly a 3&D/defense line), and durability
+    (82 gp) keeps a real floor."
+
+# ---- Washington Wizards (BBM 2026-07-23) ----
+
+- name: Kyshawn George
+  date: 2026-07-24
+  category: role
+  action: {fpts_delta: 3.5}
+  preview: "rank 198 · 25.1 mpg · 24.9 fpts/g -> 28.4"
+  rationale: "BBM 2026-07-23 (Wizards preview): the organization's favorite young player — 'the best overall
+    basketball player in this group... right up there with Alex Sarr' — who won the starting two-guard job over
+    Coulibaly; two-way versatility, shoots well off the catch, now plays off-ball next to Trae Young."
+  status: approved
+  triangulation: "Model: 25.1 mpg (rank 198) — priced as a fringe starter off his 48-gp, arm-injury-shortened season
+    (he played 29.0 mpg WHEN active, USG% up 15.6->22.2). BBM installs him as the entrenched org-favorite starter at
+    ~30 mpg = +5 mpg. Δ ≈ 5 × (24.9/25.1) × 0.85 ≈ +4.2, trimmed to +3.5: the wing logjam caps his ceiling and the
+    off-ball role next to Trae keeps usage flat (~22, no usage bump to add). He is the WINNER of the WAS minutes
+    squeeze — his gains are paid for by the four losers below."
+
+- name: Alex Sarr
+  date: 2026-07-24
+  category: role
+  action: {fpts_delta: 2.5}
+  preview: "rank 122 · 26.5 mpg · 33.9 fpts/g -> 36.4  (supersedes the 2026-07-17 +1.5)"
+  rationale: "BBM 2026-07-23: 'very bullish that this dude is going to benefit greatly from playing in an offensive
+    system with an actual playmaker like Trae Young... he could be an all-star level player'; the rim-focused shot
+    diet (FG 39->48) continues, and pairing with Anthony Davis takes the defensive pressure off Sarr's rim."
+  status: approved
+  triangulation: "Supersedes 07-17 +1.5 (efficiency-only). Re-triangulated whole from the model base (33.9 at 26.5
+    mpg). The +1.5 priced only the shot-diet FG rise; the preview adds two unpriced legs — Trae-gravity efficiency
+    ('all-star level' conviction) and role security as the entrenched starting C (~30 mpg vs model 26.5, ~+3.5 mpg)
+    now that Davis anchors alongside him. Tempered because Davis shares interior touches. Net +2.5. The fractured
+    foot to start the season is AVAILABILITY -> overrides.yaml, kept OUT of this per-game delta."
+
+- name: Bilal Coulibaly
+  date: 2026-07-24
+  category: role
+  action: {fpts_delta: -4.0}
+  preview: "rank 127 · 31.1 mpg · 29.0 fpts/g -> 25.0  (concentrated per user 2026-07-24)"
+  rationale: "BBM 2026-07-23: George won the starting two-guard job over him — 'I personally think Keshan's a better
+    player'; Coulibaly has 'stagnated' (3PT 34->29), and while he'll get open looks with Trae, the shooting is the
+    swing skill. Now a bench wing in a crowded room."
+  status: approved
+  triangulation: "Model's 31.1 mpg is last year's TANK-team starter role; the preview demotes him to a bench wing
+    behind George + Dybantsa, ~22 mpg (−9 mpg). Raw ≈ −9 × 0.93 × 0.85 ≈ −7, cushioned to −4.0: his defense keeps
+    him on the floor and the 'Bilal above everyone' history means a George/Dybantsa stumble could hand the minutes
+    back (real upside variance). One of the four nameable payers for George's start + the veteran arrivals."
+
+- name: Bub Carrington
+  date: 2026-07-24
+  category: role
+  action: {fpts_delta: -4.5}
+  preview: "rank 131 · 27.9 mpg · 23.9 fpts/g -> 19.4  (concentrated per user 2026-07-24)"
+  rationale: "BBM 2026-07-23: last season's 'de facto point guard situation — Bub Carrington getting some of the run,
+    didn't work out too great'; that on-ball role is now Trae Young's. Backup guard on a suddenly-crowded roster."
+  status: approved
+  triangulation: "The cleanest displacement in the batch: model gives him 27.9 mpg off an 82-gp / 27.7-mpg tank-team
+    starter role, and Trae Young directly takes the ball-handling that role was built on -> ~14 mpg. Raw ≈ −11 ×
+    0.86 × 0.85 ≈ −8, cushioned to −4.5 only because WAS lacks any other backup PG, giving him a defined (if small)
+    role. Usage also falls (17.4 -> lower) as Trae runs the offense."
+
+- name: Tre Johnson
+  date: 2026-07-24
+  category: role
+  action: {fpts_delta: -2.0}
+  preview: "rank 143 · 26.2 mpg · 24.0 fpts/g -> 22.0  (lightened per user 2026-07-24)"
+  rationale: "BBM 2026-07-23: 'the best shooter on the team', but a candidate for the starting two who lost it to
+    George; last year they let him play 'sink or swim' with the ball early — those on-ball reps now go to Trae."
+  status: approved
+  triangulation: "Sophomore squeezed by the George start + Dybantsa + Middleton. Model 26.2 mpg -> ~16 as a bench
+    shooter (−10 mpg). Raw ≈ −10 × 0.92 × 0.85 ≈ −7.8, trimmed to −2.0: his shooting is a specific skill the roster
+    needs (keeps a niche) and the org develops its young guys, so the point estimate carries real upside. A nameable
+    payer in the wing logjam."
+
+- name: Will Riley
+  date: 2026-07-24
+  category: role
+  action: {fpts_delta: -2.0}
+  preview: "rank 128 · 27.2 mpg · 23.8 fpts/g -> 21.8  (lightened per user 2026-07-24)"
+  rationale: "BBM 2026-07-23: 'at the end of last season Will Riley was playing a million minutes' — but that was the
+    tank team; he's now one of the squeezed young wings ('they've got all these other guys they can throw in there')."
+  status: approved
+  triangulation: "Model's 27.2 mpg EXPECTS growth; the preview says the opposite — the arrival of Trae/Davis/Dybantsa/
+    Middleton buries him in the wing logjam, ~15 mpg (−12 mpg). Raw ≈ −12 × 0.87 × 0.85 ≈ −8.9, trimmed hard to −2.0
+    for genuine development upside (the org gives its youngsters runway) and lineup volatility. Fourth of the four
+    WAS wing/guard losers whose minutes fund George's start."
