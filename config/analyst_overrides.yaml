@@ -844,3 +844,14 @@
   rationale: 'Roster fact (Steven 2026-07-20): Giannis joins Miami as the clear offensive
     alpha. Bam was the Heat''s primary option (24.8% usage, 4.15 ast as a hub big);
     Giannis''s arrival compresses his usage and — critically — his playmaking.'
+- name: Domantas Sabonis
+  date: 2026-07-25
+  category: role
+  action:
+    fpts_delta: 1.0
+  rationale: 'BBM 2026-07-20 (unchanged evidence): last season was ~19 games (injured,
+    re-injured) at 23 usage / 29.7 mpg with everything depressed — FG 59->54, 3PT
+    38-42->19 (a fluke-low), FT and blocks off; ''I''d find it very difficult to believe
+    Sabonis stays this bad,'' with DeRozan no longer siphoning touches. Critically
+    BBM also says the MINUTES do not move (~30). Re-sized 2026-07-25, not re-reported:
+    the mechanism is the same, the arithmetic was wrong.'
