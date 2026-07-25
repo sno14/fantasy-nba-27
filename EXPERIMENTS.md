@@ -1236,6 +1236,129 @@ tell surfaced on the live board is the **model-vs-ADP gap** (Haliburton model ra
 the market prices the injury/availability risk the clean per-game model doesn't — read it as a
 "size your `games_cap` here" flag, not a model error.
 
+### EXP-033 — partial-season re-anchoring: is the fade over-applied after a small sample?  ·  Status: **rejected as a sizing rule · adopted as a diagnostic screen** (and it *corrects* a standing analyst-contract instruction)
+
+**Why:** the analyst contract has told every BBM pass since 2026-07-17 to "**re-anchor on the last
+healthy season's level**" whenever a base season is under ~25 games (transcripts README; `/bbm`
+skill). That instruction was **never tested** — it was written from two individual cases (Kessler
+5 gp → +7.5, Trae 15 gp → +4.5). Steven pushed on the Trae magnitude 2026-07-25 ("he's been 43-45
+easily; where did the 4.5 come from"), which surfaced the gap. EXP-032 settled the *missed-FULL-
+season* cohort (no S-1 row): naive carry-forward runs hot (+3.42) and the model's fade wins. This
+tests the untested neighbour: players who **did** play S-1, but only 5-35 games.
+
+**Setup (`scripts/eval_partial_season.py`, seeds {0,1,2}, seed-averaged):** cohort = S-1 played at
+5-35 gp · a prior season at ≥ 40 gp to anchor on · S a real season (≥ 200 min). **351 cases, 315
+scored, 14 folds, 2012-13…2025-26.** Four estimators on per-game fpts: `model` (the board's own
+projection) · `naive_healthy` (last healthy fpts/g carried forward) · `rate_anchor`
+(healthy fpts/min × **model's** mpg — removes the *rate* fade only) · `minutes_anchor` (model's
+fpts/min × **healthy** mpg — removes the *minutes* fade only). Split on
+`rate_held` = (S-1 fpts/min) / (healthy fpts/min).
+
+| all cases (n=315) | MAE | bias | ρ |   | rate HELD ≥1.0 (n=133) | MAE | bias | ρ |
+|---|---|---|---|---|---|---|---|---|
+| **model** | **4.79** | −0.41 | 0.720 |   | **model** | **4.98** | −1.14 | 0.729 |
+| naive_healthy | 6.30 | **+3.34** | 0.683 |   | naive_healthy | 5.21 | +0.30 | **0.750** |
+| rate_anchor | 4.97 | +0.11 | 0.706 |   | rate_anchor | 5.05 | −1.99 | 0.735 |
+| minutes_anchor | 5.71 | +2.60 | 0.709 |   | minutes_anchor | 5.23 | +1.14 | 0.754 |
+
+Rate FELL (n=182): model 4.66 / +0.12 · naive_healthy 7.10 / **+5.56** · minutes_anchor 6.07 / +3.67.
+MAE improvement over model, all cases: naive **−1.50** [95% CI −2.08, −0.92] · minutes_anchor −0.92
+[−1.35, −0.51] · rate_anchor −0.18 [−0.40, +0.05]. In the rate-held block every CI straddles 0.
+
+**The two findings that matter:**
+1. **Naive healthy-anchoring is inflation, and the ledger now says so twice on independent cohorts**
+   (+3.34 here, +3.42 in EXP-032). Worst where the contract is most likely to fire blind: when the
+   per-minute rate genuinely *collapsed*, anchoring adds **+5.56 fpts/g** of pure optimism. The
+   standing instruction has no rate check — on the live board it would mark up Embiid (rate_held
+   0.87) and Morant (0.89).
+2. **The fade is in MINUTES, not rate.** For rate-held cases the model already prices per-minute
+   value *above* the healthy norm (median 1.05×) while fading minutes by 2.47 mpg. So "the model
+   faded his rate off a tiny sample" — the sentence the Trae entry was sized on — is **false for
+   the typical case**. Trae's own ratio (1.192/1.282 = 0.93) sits at the **5th percentile**: he is
+   a genuine outlier, which is why the individual case felt wrong while the general rule fails.
+   The rate-held pessimism is real but small (bias −1.14) and correcting it **does not shrink MAE**
+   — the *third* instance of this project's standing lesson, after EXP-030 and EXP-031.
+
+**Skeptic pass:**
+- *Leakage:* each fold trains + predicts on seasons strictly < S; cohort features come from ≤ S-1.
+- *Selection:* requiring S ≥ 200 min keeps only players who came back healthy — a filter that
+  **favours the anchors** (they assume health). The anchors lose anyway, so the verdict is
+  conservative in the direction that matters.
+- *`rate_held` is a noisy instrument:* measured on 5-35 games, and upward-biased by the players who
+  only suited up when feeling good. Part of any "held" signal is that survivorship, not true level.
+- *The tempting sub-cohort is not real yet:* cases with Trae's exact shape (rate held **and** the
+  model fading rate, < 0.95) put the model at its worst (MAE 6.33, bias −2.65) with every anchor
+  ahead — but **n=13**, every CI straddles 0 (minutes_anchor +1.65 [−0.50, +3.82]), and the
+  cohort's *membership* is seed-sensitive (n=17 at seed 0 → 13 seed-averaged). Directionally
+  consistent, statistically nothing. **Do not build a formula on it.**
+
+**Verdict — rejected as a sizing rule; adopted as a diagnostic screen.** The model's fade is right
+on average and the "re-anchor on the last healthy season" instruction is **withdrawn from the
+contract** (transcripts README + `/bbm` skill amended 2026-07-25): a small-sample base is now a
+**flag to check the rate before judging**, never a licence to adopt the healthy number. Concretely
+the triangulation must state `rate_held` and, when the model fades rate on a rate-held player, may
+treat the healthy level as the *top* of a defensible range — with a named minutes mechanism, since
+minutes is where the fade actually lives. Trae's standing **+4.5 is left untouched**: it is
+defensible under this result (a blanket anchor would have said +7.4, which the cohort says runs hot).
+
+**Ledger note:** don't re-run naive healthy carry-forward as an estimator — two cohorts, one
+verdict, it inflates. Don't chase the n=13 sub-cohort with a rule until it has ~40+ cases
+(~3-4/yr accrue); re-run `eval_partial_season.py` after April 2027. And the general lesson has now
+repeated three times: **information that corrects a bias centers errors without shrinking them** —
+judge any future re-anchoring proposal on MAE, not on the bias column.
+
+### EXP-034 — the per-36 "fade" coefficient: measuring the 0.85 the sizing rubric prescribes  ·  Status: **rejected (the haircut is directionally wrong) · replaced by ×1.0**
+
+**Why:** the transcripts README sized every minutes-driven delta as
+`Δfpts ≈ Δmpg × (fpts_pg/mpg) × ~0.85`, the 0.85 justified in-line as "the per-36 fade — bench
+rates dip at starter minutes." It was never measured. It is also one of the three compounding
+haircuts that pushed Trae Young's 2026-07-17 delta *below* his own worst healthy season, so it
+was worth checking in the same pass that killed the re-anchor rule (EXP-033).
+
+**Setup:** all consecutive-season pairs where a player logged ≥ 40 gp in both and minutes moved
+≥ 2 mpg (**n = 2428**, 2010-11…2025-26, cache-only, no model). If per-minute value were simply
+carried forward, realised fpts/g would equal `prev fpts/min × new mpg`. The **realised ÷ naive**
+ratio *is* the fade coefficient; 0.85 predicts ~0.85.
+
+| Δ minutes | n | realised / naive |   | age (increases only) | n | ratio |
+|---|---|---|---|---|---|---|
+| +2 to +4 | 463 | **1.052** |   | 19-23 | 319 | 1.111 |
+| +4 to +8 | 453 | **1.053** |   | 24-26 | 388 | 1.064 |
+| +8 or more | 251 | **1.105** |   | 27-29 | 278 | 1.037 |
+| −4 to −8 | 482 | 0.985 |   | 30+ | 182 | **1.022** |
+
+All increases (n=1167): **1.064**. All decreases (n=1261): 0.992.
+
+**Result: there is no fade.** Per-minute value *rises* slightly when minutes rise, and the rise
+is monotone in the size of the minutes jump — the opposite of the prescribed direction. The 0.85
+sits **18% below** what veterans actually realise.
+
+**Skeptic pass:**
+- *The obvious confound is selection/improvement* — players handed minutes are disproportionately
+  improving. The age split is the de-confounder and it behaves exactly as that story predicts
+  (1.111 at 19-23 → 1.022 at 30+). But **no bucket fades**: veterans 27+ sit at 1.031, vs 1.0
+  p < 0.001, bootstrap 95% CI **[1.018, 1.043]**. Improvement explains the *magnitude* of the
+  excess, not its sign.
+- *Survivorship:* ≥ 40 gp in both seasons keeps players who stayed healthy across a minutes rise.
+  That is the population an analyst delta is about (we size per-game value; availability is the
+  model's own axis), so the bias is aligned with the use case.
+- *Not causal:* this measures what actually lands, not a mechanism. Do **not** read 1.05 as "add
+  5% for free" — the excess is mostly the selection the analyst has no way to identify ex ante.
+
+**Verdict — rejected; replaced by ×1.0 (no fade).** The honest, unbiased default for a
+minutes-driven delta is `Δfpts ≈ Δmpg × (healthy or current fpts/min)`, with **no** blanket
+multiplier in either direction. Adopting the measured ~1.05 would import the selection effect;
+keeping 0.85 imports a fabricated 15% haircut. 1.0 is the only defensible choice, and it removes
+a systematic *deflation* from every minutes-driven entry written since 2026-07-13 — the mirror
+of the *inflation* EXP-033 removed. Contract + `/bbm` skill amended 2026-07-25.
+
+**Ledger note:** don't re-derive a fade multiplier from this panel — the selection confound is
+not separable with season aggregates. If it is ever worth revisiting, it needs the reason minutes
+changed (injury / trade / coach), which is exactly the role information EXP-009/016b showed we
+cannot recover from box scores. And the general rule: **a coefficient nobody has measured is a
+guess wearing a decimal point** — the two haircuts that mis-sized Trae (this, and a rate ceiling
+set below every season he had played) were both unexamined.
+
 _Next experiments — numbering reserved by [`docs/implementation-plan.md`](docs/implementation-plan.md)
 (the execution spec; run in its Step order, as re-routed by the dated notes in its tracker — latest:
 the **2026-07-09 draft-focus re-route + gap-closer addendum**). Done: EXP-011…014 (Phase 0+1),
@@ -1270,7 +1393,14 @@ injury feed, the home-grown online skill layer (model-foundation §3C). **Phase 
 OUT-redistribution adopted-tentative (nightly layer live in `update_daily.py`; naive gate
 re-ran, stays parked; re-affirm at short horizons April 2027) · **EXP-031** rejected (both
 wirings) with the **17.1 budget diagnostic adopted** (`eval_budget.py` — overshoot +0.18 of
-supply, error-corr +0.38; re-run at every adopted-model change). **Step 19** (the live draft
+supply, error-corr +0.38; re-run at every adopted-model change). **The analyst sizing contract
+was corrected 2026-07-25** — **EXP-033** withdrew "re-anchor a sub-25-game base on the last
+healthy season" (it inflates; the model's fade wins, and it lives in *minutes*) and **EXP-034**
+withdrew the ×0.85 per-36 fade (measured 1.05-1.10 — directionally wrong); magnitude is now
+**decomposition** (name → price → subtract what the model already prices) behind a
+machine-checked `sizing:` block in `apply_proposals.py`, retro-filled onto 58 standing entries.
+Both are methodology corrections to the EXP-029 layer, not model changes: **every projection is
+byte-identical** (max |Δfpts_pg| = 0.0). **Step 19** (the live draft
 room, implementation-plan **Phase 7**) **SHIPPED 2026-07-16** — product step, no EXP number:
 ESPN feed + ID join + dynamic replacement + the `/room` UI, verified against the real league
 and driven in a browser. Its H2H-simulator half (19.4–19.6) was **descoped by the user** the
