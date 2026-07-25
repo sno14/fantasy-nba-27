@@ -51,9 +51,15 @@ def _positions() -> dict[int, str]:
 
 
 def _parse_delta(action) -> float | None:
+    """The fpts_delta in an ``analyst_action`` string, or None when there is no rate leg.
+
+    Must handle the composite form ``target_mpg:31|fpts_delta:-4.3`` — an anchored match on
+    ``fpts_delta:`` alone silently returns None there, reporting an adjusted player as
+    reviewed-with-no-delta.
+    """
     if not isinstance(action, str):
         return None
-    m = re.match(r"fpts_delta:([+-]?\d+(?:\.\d+)?)", action.strip())
+    m = re.search(r"fpts_delta:([+-]?\d+(?:\.\d+)?)", action.strip())
     return float(m.group(1)) if m else None
 
 

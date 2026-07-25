@@ -34,7 +34,11 @@ league). Read in this order before changing anything:
   **decomposition, not adjustment**: name each component, price it (minutes ×1.0 — the old
   ×0.85 "per-36 fade" is directionally wrong, EXP-034), **subtract what the model already
   prices**, and let the delta fall out of a `sizing:` block that must reconcile
-  (`apply_proposals.py` rejects batches that don't) — full rules in the transcripts README.
+  (`apply_proposals.py` rejects batches that don't). **The layer has TWO verbs, one per
+  factor of the model's own minutes × rate structure (2026-07-25):** `target_mpg` (absolute
+  — rescales the stat line at held rates and re-derives fpts; self-limiting, so no decay)
+  and `fpts_delta` (the rate residual applied after it). A minutes belief must use
+  `target_mpg`, never a bare `fpts_delta` — full rules in the transcripts README.
   The user reviews; `apply_proposals.py --promote` moves approved
   entries. **Never write into `config/analyst_overrides.yaml` directly** — every entry
   traces to an approved proposal or the mid-Oct calendar pass.

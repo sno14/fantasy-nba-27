@@ -41,7 +41,7 @@ import numpy as np
 import pandas as pd
 
 from ..scoring import ScoringConfig, score_frame
-from ._core import COUNTING
+from ._core import COUNTING, MPG_CAP, rescale_to_minutes
 from .asof import _with_dates
 from .injuries import SEVERE_RE
 
@@ -51,7 +51,8 @@ RECENT_DAYS = 14          # "on the roster tonight" = appeared for the team this
 BASELINE_GAMES = 10       # trailing window for pre-game baselines / absent-player form
 MIN_BASELINE_GAMES = 3    # teammate rows need an established baseline
 BLOWOUT_MARGIN = 25.0     # |final margin| >= this -> garbage time corrupts absorption
-MPG_CAP = 42.0            # post-redistribution cap (mirrors the learned model's clip)
+# MPG_CAP (42.0) is re-exported from _core — the single ceiling for any minutes edit,
+# shared with the analyst layer's target_mpg. Referenced here as ``ab.MPG_CAP``.
 MIN_REMAINING_DAYS = 7    # an open spell is never projected to end tomorrow
 
 # Teammate tiers by pre-game baseline MPG: fringe < 15 <= rotation < 25 <= starter.
@@ -331,15 +332,10 @@ def redistribute_board(
     out["redist_mpg"] = out["PLAYER_ID"].map(add).fillna(0.0).round(2)
     touched = out["redist_mpg"] > 0
     if touched.any():
-        old_mpg = out.loc[touched, "mpg"].astype(float)
-        new_mpg = np.clip(old_mpg + out.loc[touched, "redist_mpg"], 0.0, MPG_CAP)
-        ratio = (new_mpg / old_mpg.replace(0.0, np.nan)).fillna(1.0)
-        for canon in COUNTING:
-            out.loc[touched, canon] = (out.loc[touched, canon].astype(float) * ratio).round(2)
-        out.loc[touched, "mpg"] = new_mpg.round(1)
-        out.loc[touched, "fpts_pg"] = score_frame(out.loc[touched], cfg).round(2)
-        out.loc[touched, "fpts_total"] = (
-            out.loc[touched, "fpts_pg"] * out.loc[touched, "gp"]).round(1)
+        # Shared with the analyst layer's target_mpg — see _core.rescale_to_minutes for the
+        # rates-held / re-score-don't-scale invariants.
+        rescale_to_minutes(
+            out, touched, out.loc[touched, "mpg"].astype(float) + out.loc[touched, "redist_mpg"], cfg)
     out = out.sort_values("fpts_total", ascending=False).reset_index(drop=True)
     out["rank"] = range(1, len(out) + 1)
     return out

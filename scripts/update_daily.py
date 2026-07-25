@@ -177,7 +177,7 @@ def _base_then(entries: list[dict], t0_path: Path | None) -> dict[str, float]:
     than the archive. An entry checkable by neither (e.g. dated today, first night) is
     skipped — it becomes checkable tomorrow."""
     from fantasy_nba.models.analyst import (BRIDGE_CATEGORIES, effective_overrides,
-                                            name_key, parse_fpts_delta)
+                                            name_key, parse_fpts_delta, parse_target_mpg)
 
     dates = sorted(p.stem for p in ROS_BOARD_DIR.glob("*.parquet")) \
         if ROS_BOARD_DIR.exists() else []
@@ -185,7 +185,7 @@ def _base_then(entries: list[dict], t0_path: Path | None) -> dict[str, float]:
     snaps: dict[str, pd.DataFrame] = {}
     out: dict[str, float] = {}
     for e in effective_overrides(entries):
-        if e["kind"] != "fpts_delta" or e["category"] not in BRIDGE_CATEGORIES:
+        if e.get("fpts_delta") is None or e["category"] not in BRIDGE_CATEGORIES:
             continue
         snap_date = next((d for d in dates if d >= e["date"].date().isoformat()), None)
         if snap_date is not None:
@@ -194,8 +194,17 @@ def _base_then(entries: list[dict], t0_path: Path | None) -> dict[str, float]:
             hit = snap[snap["PLAYER_NAME"].map(name_key) == e["name_key"]]
             if not hit.empty:
                 r = hit.iloc[0]
-                out[e["name_key"]] = float(r["fpts_pg"]) - parse_fpts_delta(
-                    str(r.get("analyst_action", "")))
+                # Prefer the recorded pre-analyst base. Subtracting the rate leg only
+                # recovers it when no target_mpg rescale was applied (a rescale multiplies),
+                # so that path is the fallback for snapshots archived before the column.
+                base = r.get("analyst_base_fpts")
+                if base is not None and pd.notna(base):
+                    out[e["name_key"]] = float(base)
+                else:
+                    action = str(r.get("analyst_action", ""))
+                    if parse_target_mpg(action) is not None:
+                        continue  # unrecoverable from this snapshot — skip, never guess
+                    out[e["name_key"]] = float(r["fpts_pg"]) - parse_fpts_delta(action)
                 continue
         if t0 is not None:  # pure-model board A — no delta to strip
             hit = t0[t0["PLAYER_NAME"].map(name_key) == e["name_key"]]

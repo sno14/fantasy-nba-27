@@ -286,11 +286,19 @@ def _player_provenance(player_name: str) -> dict:
         mine = [e for e in load_overrides(opath) if e["name_key"] == key]
         mine.sort(key=lambda e: (e["date"], e["_pos"]), reverse=True)  # newest first
         for i, e in enumerate(mine):
-            unit = {"fpts_delta": "fpts/g", "rank_delta": "rank"}.get(e["kind"], "")
+            # One human-readable string per leg, in application order. target_mpg is
+            # ABSOLUTE ("31.0 mpg"), not a delta, so it is rendered without a sign.
+            legs = []
+            if e.get("target_mpg") is not None:
+                legs.append(f"{e['target_mpg']:g} mpg")
+            if e.get("fpts_delta") is not None:
+                legs.append(f"{e['fpts_delta']:+g} fpts/g")
+            if e.get("rank_delta") is not None:
+                legs.append(f"{e['rank_delta']:+g} rank")
             overrides.append({
                 "date": e["date"].date().isoformat(),
                 "category": e["category"],
-                "action": "none" if e["kind"] == "none" else f"{e['value']:+g} {unit}".strip(),
+                "action": " · ".join(legs) if legs else "none",
                 "rationale": e["rationale"],
                 "effective": i == 0,   # newest-dated (tie broken by file pos) is what applies
             })

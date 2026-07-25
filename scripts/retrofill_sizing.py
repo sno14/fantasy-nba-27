@@ -65,7 +65,7 @@ def season_rates() -> pd.DataFrame:
 
 def build_blocks(proposals: list[dict], board: pd.DataFrame, rates: pd.DataFrame) -> dict:
     """(name_key, date) -> sizing dict, for the entries the board actually applies."""
-    eff = board[board["analyst_action"].fillna("").str.startswith("fpts_delta")]
+    eff = board[board["analyst_action"].fillna("").str.contains("fpts_delta")]
     by_key = {(name_key(r.PLAYER_NAME), str(r.analyst_date)): r for r in eff.itertuples()}
     out = {}
     for p in proposals:

@@ -5,7 +5,10 @@
 # prediction is capped at the games physically remaining after the return date
 # (schedule-aware when the season's schedule pull exists, calendar-fraction fallback
 # otherwise). Rates and minutes are NEVER touched — if the news is about role, that is
-# the analyst layer (config/analyst_overrides.yaml), not this file.
+# the analyst layer (config/analyst_overrides.yaml), not this file. That layer carries one
+# verb per factor of the model's minutes x rate structure: `target_mpg` (absolute minutes)
+# and `fpts_delta` (the rate residual). The split is availability HERE / per-game value
+# THERE — never both in one place.
 #
 # Names are matched via the shared normalizer + alias map; an unmatched name fails loudly.
 # Entries are edited freely (this is live operational state, not an audited experiment

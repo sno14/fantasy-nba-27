@@ -849,10 +849,21 @@ def _analyst_board(n=6):
     })
 
 
-def _ov(name, kind="none", value=0.0, date="2026-10-05", category="role", pos=0):
-    return {"name": name, "name_key": analyst.name_key(name), "date": pd.Timestamp(date),
-            "category": category, "kind": kind, "value": float(value),
-            "rationale": "test", "_pos": pos}
+def _ov(name, kind="none", value=0.0, date="2026-10-05", category="role", pos=0, **legs):
+    """A parsed override entry, mirroring what ``analyst.parse_overrides`` emits.
+
+    Entries carry one explicit field per leg (``target_mpg`` / ``fpts_delta`` /
+    ``rank_delta``) alongside the legacy ``kind``/``value``; pass extra legs as kwargs to
+    build a composite, e.g. ``_ov("X", "fpts_delta", -4.3, target_mpg=31.0)``.
+    """
+    out = {"name": name, "name_key": analyst.name_key(name), "date": pd.Timestamp(date),
+           "category": category, "kind": kind, "value": float(value),
+           "target_mpg": None, "fpts_delta": None, "rank_delta": None,
+           "rationale": "test", "_pos": pos}
+    if kind != "none":
+        out[kind] = float(value)
+    out.update({k: float(v) for k, v in legs.items()})
+    return out
 
 
 def test_load_overrides_parses_and_validates(tmp_path):
@@ -1204,6 +1215,191 @@ def test_parse_fpts_delta_recovers_snapshot_base():
     assert analyst.parse_fpts_delta("none") == 0.0
     assert analyst.parse_fpts_delta("rank_delta:-8") == 0.0
     assert analyst.parse_fpts_delta("") == 0.0
+
+
+# ---------------------------------------------------------------- target_mpg (the minutes leg)
+
+def _analyst_board_mpg(n=6):
+    """Board with the minutes + counting columns the target_mpg leg rescales.
+
+    ``fpts_pg`` is SCORED from the stat line rather than set independently — a real board
+    always satisfies that invariant, and the minutes leg re-scores from the line, so a
+    fixture that violated it would fail for the wrong reason.
+    """
+    base = {"pts": 15.0, "reb": 6.0, "ast": 4.0, "fgm": 6.0, "fga": 12.0, "fg3m": 1.0,
+            "ftm": 3.0, "fta": 4.0, "oreb": 2.0, "dreb": 4.0, "stl": 1.0, "blk": 0.5,
+            "tov": 2.0}                                   # scores to 31.0 fpts/g
+    scale = [(40.0 - 4 * i) / 31.0 for i in range(n)]      # descending, distinct rows
+    df = pd.DataFrame({
+        "PLAYER_ID": range(1, n + 1),
+        "PLAYER_NAME": [f"Player {i}" for i in range(1, n + 1)],
+        "rank": range(1, n + 1),
+        "mpg": [30.0] * n,
+        "gp": [70.0] * n,
+        **{k: [round(v * s, 2) for s in scale] for k, v in base.items()},
+    })
+    from fantasy_nba.scoring import load_scoring, score_frame
+    df["fpts_pg"] = score_frame(df, load_scoring(None)).round(2)
+    df["fpts_total"] = (df["fpts_pg"] * df["gp"]).round(1)
+    return df
+
+
+def test_target_mpg_scales_the_line_and_derives_fpts():
+    """The whole point: minutes move, the stat line follows at HELD per-minute rates, and
+    fpts is re-derived rather than asserted (EXP-034 — no per-36 fade in either direction)."""
+    board = _analyst_board_mpg()
+    before = board[board["PLAYER_ID"] == 2].iloc[0]
+    out = analyst.apply_overrides(board, [_ov("Player 2", "target_mpg", 36.0)])
+    row = out[out["PLAYER_ID"] == 2].iloc[0]
+    assert row["mpg"] == pytest.approx(36.0)
+    ratio = 36.0 / 30.0
+    assert row["pts"] == pytest.approx(before["pts"] * ratio, abs=0.01)
+    assert row["reb"] == pytest.approx(before["reb"] * ratio, abs=0.01)
+    # fpts is DERIVED from the scaled line, not asserted — it rose with the minutes
+    assert row["fpts_pg"] > before["fpts_pg"]
+    assert row["analyst_action"] == "target_mpg:36"
+    assert row["analyst_base_fpts"] == pytest.approx(before["fpts_pg"])
+
+
+def test_target_mpg_holds_per_minute_rate_exactly():
+    board = _analyst_board_mpg()
+    before = board[board["PLAYER_ID"] == 3].iloc[0]
+    rate_before = before["fpts_pg"] / before["mpg"]
+    out = analyst.apply_overrides(board, [_ov("Player 3", "target_mpg", 21.0)])
+    row = out[out["PLAYER_ID"] == 3].iloc[0]
+    assert row["fpts_pg"] / row["mpg"] == pytest.approx(rate_before, rel=1e-3)
+
+
+def test_target_mpg_composite_applies_minutes_then_rate_residual():
+    """Kessler's shape: a minutes belief plus a named efficiency discount on top."""
+    board = _analyst_board_mpg()
+    out = analyst.apply_overrides(
+        board, [_ov("Player 4", "fpts_delta", -2.0, target_mpg=36.0)])
+    row = out[out["PLAYER_ID"] == 4].iloc[0]
+    minutes_only = analyst.apply_overrides(board, [_ov("Player 4", "target_mpg", 36.0)])
+    expect = minutes_only[minutes_only["PLAYER_ID"] == 4].iloc[0]["fpts_pg"] - 2.0
+    assert row["fpts_pg"] == pytest.approx(expect, abs=0.01)
+    assert row["mpg"] == pytest.approx(36.0)
+    assert row["analyst_action"] == "target_mpg:36|fpts_delta:-2"
+
+
+def test_target_mpg_equal_to_base_is_a_noop():
+    """Absolute targets are self-limiting — once the model agrees, the entry does nothing."""
+    board = _analyst_board_mpg()
+    before = board[board["PLAYER_ID"] == 2].iloc[0]
+    out = analyst.apply_overrides(board, [_ov("Player 2", "target_mpg", 30.0)])
+    row = out[out["PLAYER_ID"] == 2].iloc[0]
+    assert row["mpg"] == pytest.approx(30.0)
+    assert row["fpts_pg"] == pytest.approx(before["fpts_pg"])
+    assert row["pts"] == pytest.approx(before["pts"])
+
+
+def test_target_mpg_clamped_to_cap_and_validated():
+    from fantasy_nba.models._core import MPG_CAP
+    board = _analyst_board_mpg()
+    out = analyst.apply_overrides(board, [_ov("Player 1", "target_mpg", MPG_CAP + 10)])
+    assert out[out["PLAYER_ID"] == 1].iloc[0]["mpg"] <= MPG_CAP
+    # ...and the parser refuses an out-of-range or non-positive target outright
+    for bad in (0.0, -5.0, MPG_CAP + 0.1):
+        with pytest.raises(ValueError, match="target_mpg"):
+            analyst.parse_overrides([{"name": "X", "date": "2026-10-05", "category": "role",
+                                      "action": {"target_mpg": bad}, "rationale": "r"}])
+
+
+def test_target_mpg_composes_additively_with_redistribution():
+    """A role belief and a teammate's absence are separate causes — EXP-030's redist_mpg
+    stacks on top of the analyst's season-level minutes target."""
+    board = _analyst_board_mpg()
+    board["redist_mpg"] = [0.0, 3.0, 0.0, 0.0, 0.0, 0.0]
+    out = analyst.apply_overrides(board, [_ov("Player 2", "target_mpg", 33.0)])
+    assert out[out["PLAYER_ID"] == 2].iloc[0]["mpg"] == pytest.approx(36.0)
+
+
+def test_fpts_delta_only_entries_are_unchanged_by_the_minutes_leg():
+    """Regression: adding target_mpg must not perturb the existing rate-only path."""
+    board = _analyst_board_mpg()
+    before = board[board["PLAYER_ID"] == 4].iloc[0]
+    out = analyst.apply_overrides(board, [_ov("Player 4", "fpts_delta", 6.0)])
+    row = out[out["PLAYER_ID"] == 4].iloc[0]
+    assert row["fpts_pg"] == pytest.approx(before["fpts_pg"] + 6.0)
+    assert row["mpg"] == pytest.approx(before["mpg"])   # minutes untouched
+    assert row["pts"] == pytest.approx(before["pts"])   # stat line untouched
+    assert row["analyst_action"] == "fpts_delta:+6"
+
+
+def test_parsers_handle_the_composite_audit_string():
+    """These two failed SILENTLY on composites — returning a benign default, not raising."""
+    s = "target_mpg:31|fpts_delta:-4.3"
+    assert analyst.parse_fpts_delta(s) == pytest.approx(-4.3)
+    assert analyst.parse_target_mpg(s) == pytest.approx(31.0)
+    assert analyst.parse_target_mpg("fpts_delta:+2") is None
+    assert analyst.parse_target_mpg("none") is None
+
+    import importlib.util
+    import pathlib
+    spec = importlib.util.spec_from_file_location(
+        "_exp", pathlib.Path(__file__).resolve().parents[1] / "scripts" / "export_rankings_html.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert mod._parse_delta(s) == pytest.approx(-4.3)
+    assert mod._parse_delta("fpts_delta:+3.5") == pytest.approx(3.5)
+    assert mod._parse_delta("target_mpg:31") is None   # no rate leg
+
+
+def test_parse_overrides_rejects_rank_delta_combined_with_legs():
+    with pytest.raises(ValueError, match="rank_delta cannot combine"):
+        analyst.parse_overrides([{"name": "X", "date": "2026-10-05", "category": "role",
+                                  "action": {"rank_delta": -3, "target_mpg": 30.0},
+                                  "rationale": "r"}])
+
+
+def _check_sizing():
+    import importlib.util
+    import pathlib
+    spec = importlib.util.spec_from_file_location(
+        "_ap", pathlib.Path(__file__).resolve().parents[1] / "scripts" / "apply_proposals.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.check_sizing
+
+
+def test_sizing_validator_requires_the_minutes_leg_to_be_expressed():
+    """The check that would have caught Kessler: a sizing block whose minutes move while
+    the action only carries fpts_delta, so the board silently absorbs it as efficiency."""
+    check = _check_sizing()
+    sizing = {"base_fpts": 25.90, "base_mpg": 21.3, "target_mpg": 31.0,
+              "target_fpm": 1.077, "target_fpts": 33.40, "healthy_fpm": 1.227}
+
+    smuggled = check([{"name": "K", "date": "2026-07-25",
+                       "action": {"fpts_delta": 7.5}, "sizing": sizing}])
+    assert any("no `target_mpg` leg" in p for p in smuggled)
+
+    expressed = check([{"name": "K", "date": "2026-07-25",
+                        "action": {"target_mpg": 31.0, "fpts_delta": -4.3},
+                        "sizing": sizing}])
+    assert expressed == []
+
+    # the action and the sizing block must agree on the minutes number
+    mismatch = check([{"name": "K", "date": "2026-07-25",
+                       "action": {"target_mpg": 28.0, "fpts_delta": -4.3},
+                       "sizing": sizing}])
+    assert any("action target_mpg" in p for p in mismatch)
+
+
+def test_sizing_validator_reconciles_the_rate_leg_against_the_RESCALED_base():
+    """With a minutes leg the residual is measured from the rescaled base, not the raw one —
+    otherwise the minutes effect gets counted twice."""
+    check = _check_sizing()
+    # 20 mpg -> 30 mpg on a 1.0 fpts/min player: rescaled base 30.0, so a target of 33.0
+    # is a +3.0 rate residual (NOT +13.0 off the raw base).
+    sizing = {"base_fpts": 20.0, "base_mpg": 20.0, "target_mpg": 30.0,
+              "target_fpm": 1.1, "target_fpts": 33.0}
+    assert check([{"name": "P", "date": "2026-07-25",
+                   "action": {"target_mpg": 30.0, "fpts_delta": 3.0},
+                   "sizing": sizing}]) == []
+    assert any("rescaled base" in p for p in check(
+        [{"name": "P", "date": "2026-07-25",
+          "action": {"target_mpg": 30.0, "fpts_delta": 13.0}, "sizing": sizing}]))
 
 
 def test_stale_entries_flags_caught_up_bridges_only():

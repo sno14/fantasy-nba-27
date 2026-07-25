@@ -63,6 +63,44 @@ The repeatable per-transcript pass (steps 1–3 are Claude, 4 is Steven, 5–7 a
    league settings, not ours — misleading for a points league. Extract only the basketball
    *mechanism*; Claude sizes the fpts_delta from that mechanism.
 
+## What this layer owns, and the two verbs it owns it with
+
+**Added 2026-07-25.** The model builds every projection as **minutes × rate**
+(`learned.py`: `out[canon] = rate * pred_mpg`, with a separate `y_mpg` model and separate
+rate targets). Each layer of the rating owns a different piece:
+
+| Layer | Owns | Never touches |
+|---|---|---|
+| **Model** (`learned.py`) | `mpg`, `gp`, per-minute rates — everything derivable from box scores + aging + depth | Forward-looking editorial facts |
+| **`config/overrides.yaml`** | **Availability only** (`out_until` / `out_for_season` / `games_cap`) | Rates and minutes |
+| **This layer** (`analyst_overrides.yaml`) | **Per-game value — BOTH factors, minutes and rate** | `gp` (availability is not ours) |
+| **EXP-030 redistribution** (nightly) | Short-horizon minutes from *confirmed* OUT events | Season-level role beliefs |
+
+So a proposal has **one verb per factor**, and an action may carry either or both:
+
+    action: {target_mpg: 31.0}                      # minutes only
+    action: {fpts_delta: -2.0}                      # rate only
+    action: {target_mpg: 31.0, fpts_delta: -4.3}    # both — minutes first, then the residual
+
+- **`target_mpg` is ABSOLUTE** ("he plays 31"), not a delta. It is therefore
+  **self-limiting**: once the model projects 31 on its own the entry becomes a no-op, so it
+  cannot double-count and needs no staleness decay. Write the number BBM states.
+- Applying it **rescales the whole stat line at held per-minute rates** and **re-derives**
+  `fpts_pg` — no ×0.85 fade, per EXP-034. The board's pts/reb/ast move with the minutes,
+  which is the point.
+- **`fpts_delta` is the RATE residual, applied *after* the rescale.** With a minutes leg
+  present it is measured from the *rescaled* base, not the raw one — otherwise the minutes
+  effect is counted twice.
+- **A minutes belief must use `target_mpg`.** Expressed as `fpts_delta` alone it leaves
+  `mpg` and the stat line stale and silently becomes a per-minute-efficiency claim — Walker
+  Kessler read `21.3 mpg · 7.5p/7.9r/1.7blk · 33.4 fpts` = 1.568 fpts/min, 28% above his
+  career best, for a belief that was actually conservative. `apply_proposals.py` now
+  **rejects** a batch whose `sizing:` moves minutes without a `target_mpg` leg.
+
+**Team previews:** because a team is a closed ~240-minute system, `target_mpg` is what makes
+the budget real — set it for every rotation player BBM gives a number for, not just the
+movers, and the sum is then checkable against 240.
+
 ## Triangulation rubric (sizing the fpts_delta from the mechanism)
 
 **The sizing frame (amended 2026-07-13, user decision — magnitude matters): size the
@@ -185,8 +223,13 @@ contains whatever part of the story the model has priced:
         target_fpts: 44.2       # MUST equal target_mpg x target_fpm
         rate_held: 1.05         # required when the base season is under ~25 gp
 
-  `fpts_delta = target_fpts − base_fpts`, and `apply_proposals.py` recomputes both products
-  and rejects the batch if they disagree. If you cannot fill `target_mpg` and `target_fpm`
+  **When `target_mpg` differs from `base_mpg`, the action MUST carry a `target_mpg` leg**
+  matching it (see the two-verbs section above) — `apply_proposals.py` rejects the batch
+  otherwise, because the board would keep the old minutes and absorb the belief as
+  efficiency. The rate leg is then the residual over the *rescaled* base:
+  `fpts_delta = target_fpts − (base_fpts × target_mpg / base_mpg)`; with no minutes move it
+  is simply `target_fpts − base_fpts`. `apply_proposals.py` recomputes both and rejects the
+  batch if they disagree. If you cannot fill `target_mpg` and `target_fpm`
   from named evidence, you do not have a sized belief yet — write `none` or ask. Retro-filled
   blocks on pre-2026-07-25 entries are marked `retrofilled:` and record only what the standing
   delta *implies*; they are audit artifacts, not authored judgment, and any new pass on that

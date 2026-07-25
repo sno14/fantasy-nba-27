@@ -89,19 +89,46 @@ def check_sizing(proposals: list[dict], universe: list[dict] | None = None,
         if abs(prod - float(s["target_fpts"])) > SIZING_TOL:
             problems.append(f"{who}: target_mpg x target_fpm = {prod:.2f} != "
                             f"target_fpts {float(s['target_fpts']):.2f}")
-        delta = float(next(iter(act.values())))
-        remainder = float(s["target_fpts"]) - float(s["base_fpts"])
+
+        # The minutes leg must be EXPRESSED, not just believed. Before target_mpg existed,
+        # a minutes thesis could only be smuggled in as an fpts_delta at unchanged mpg —
+        # which is what left Walker Kessler asserting 1.568 fpts/min on the board.
+        moves_minutes = abs(float(s["target_mpg"]) - float(s["base_mpg"])) > 0.05
+        if "target_mpg" in act:
+            if abs(float(act["target_mpg"]) - float(s["target_mpg"])) > 0.05:
+                problems.append(f"{who}: action target_mpg {float(act['target_mpg']):g} != "
+                                f"sizing target_mpg {float(s['target_mpg']):g}")
+        elif moves_minutes:
+            problems.append(
+                f"{who}: sizing moves minutes {float(s['base_mpg']):g} -> "
+                f"{float(s['target_mpg']):g} but the action has no `target_mpg` leg — the "
+                f"board would keep the old mpg and stat line and absorb it as efficiency")
+
+        # The rate leg is the residual AFTER the minutes rescale, so what it must reconcile
+        # against depends on whether minutes moved.
+        delta = float(act.get("fpts_delta", 0.0))
+        if "target_mpg" in act:
+            rescaled = float(s["base_fpts"]) * float(act["target_mpg"]) / float(s["base_mpg"])
+            remainder = float(s["target_fpts"]) - rescaled
+            label = f"target_fpts - rescaled base ({rescaled:.2f})"
+        else:
+            remainder = float(s["target_fpts"]) - float(s["base_fpts"])
+            label = "target_fpts - base_fpts"
         if abs(remainder - delta) > SIZING_TOL:
-            problems.append(f"{who}: target_fpts - base_fpts = {remainder:+.2f} != "
+            problems.append(f"{who}: {label} = {remainder:+.2f} != "
                             f"fpts_delta {delta:+.2f}")
         # advisory: a delta that lifts implied per-minute value above the healthy norm is a
         # minutes thesis wearing an efficiency costume (EXP-033: the fade lives in minutes).
+        # Advisory: is this asserting more per-minute value than the player has shown? The
+        # denominator is the mpg the board will actually LAND on — target_mpg when the
+        # minutes leg is expressed, otherwise the untouched base.
         hf = s.get("healthy_fpm")
-        if hf and float(s["base_mpg"]):
-            implied = float(s["target_fpts"]) / float(s["base_mpg"])
+        lands_at = float(act["target_mpg"]) if "target_mpg" in act else float(s["base_mpg"])
+        if hf and lands_at:
+            implied = float(s["target_fpts"]) / lands_at
             if implied > float(hf) + 0.02:
-                problems.append(f"{who}: ADVISORY implied {implied:.3f} fpts/min at the board's "
-                                f"{float(s['base_mpg'])} mpg exceeds healthy {float(hf):.3f} — "
+                problems.append(f"{who}: ADVISORY implied {implied:.3f} fpts/min at "
+                                f"{lands_at:g} mpg exceeds healthy {float(hf):.3f} — "
                                 f"state the minutes mechanism or re-size")
     return problems
 
@@ -182,10 +209,16 @@ def preview(proposals: list[dict], status: str | None, board_path: Path) -> None
 
 
 def _action_str(action) -> str:
-    if action == "none":
+    """Preview rendering of an action — handles composite legs (``target_mpg`` is absolute,
+    so it prints unsigned; the deltas keep their sign)."""
+    if action == "none" or not isinstance(action, dict):
         return "none"
-    (k, v), = action.items()
-    return f"{k}:{float(v):+g}"
+    parts = []
+    for k in ("target_mpg", "fpts_delta", "rank_delta"):
+        if k in action:
+            v = float(action[k])
+            parts.append(f"{k}:{v:g}" if k == "target_mpg" else f"{k}:{v:+g}")
+    return "|".join(parts) if parts else "none"
 
 
 def promote(proposals: list[dict], overrides_path: Path) -> None:

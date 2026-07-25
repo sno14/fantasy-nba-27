@@ -102,6 +102,18 @@ Mechanics the rubric requires (full text in the contract README):
      +2.23 already in the base → the truth was +0.9, not the +4.0 that was written.)
   4. **No second trim** for conviction/hedging on top of the components — that stacking is what
      buried Trae. Hedge *inside* one component, once, and name it.
+- **TWO VERBS, one per factor (2026-07-25).** The model builds value as minutes × rate, and
+  this layer owns both. `action` may carry either or both legs:
+  `{target_mpg: 31.0}` · `{fpts_delta: -2.0}` · `{target_mpg: 31.0, fpts_delta: -4.3}`.
+  - `target_mpg` is **absolute** (write the number BBM states), self-limiting, and rescales
+    the whole stat line at held per-minute rates with fpts **re-derived** — no ×0.85 fade.
+  - `fpts_delta` is the **rate residual applied after** that rescale (so with a minutes leg
+    it is measured off the *rescaled* base, never the raw one).
+  - **A minutes belief MUST use `target_mpg`** — as an `fpts_delta` it leaves mpg and the
+    stat line stale and becomes a silent efficiency claim. `apply_proposals.py` rejects a
+    batch whose `sizing:` moves minutes without the leg.
+  - **Team previews:** set `target_mpg` for every rotation player BBM numbers, not just the
+    movers — that is what makes the ~240 budget checkable.
 - **`sizing:` block is mandatory on every non-`none` entry** — `base_fpts / base_mpg /
   target_mpg / target_fpm / target_fpts` (+ `rate_held` when the base is under ~25 gp), where
   `target_fpts` must equal `target_mpg × target_fpm` and the delta is the remainder.

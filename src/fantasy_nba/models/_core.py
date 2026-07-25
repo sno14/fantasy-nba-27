@@ -7,7 +7,10 @@ here. Models differ only in how they apply *aging* and project *games played*.
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
+
+MPG_CAP = 42.0  # mirrors the learned model's own clip; the ceiling for any minutes edit
 
 # Canonical (lowercase, matches scoring keys) -> source column in player_season_stats.
 COUNTING = {
@@ -28,6 +31,49 @@ COUNTING = {
 
 DEFAULT_WEIGHTS = (5.0, 4.0, 3.0)  # most-recent season first
 DEFAULT_REG_MINUTES = 750.0  # regression strength, in minutes of league-average play
+
+
+def rescale_to_minutes(board, mask, new_mpg, cfg):
+    """Move masked rows to ``new_mpg`` **holding per-minute rates**, in place.
+
+    The one place minutes are edited on a projected board, shared by EXP-030's
+    OUT-redistribution (``absorption.redistribute_board``) and the analyst layer's
+    ``target_mpg`` (``analyst.apply_overrides``). Per-game counting stats scale by the
+    minutes ratio and ``fpts_pg`` / ``fpts_total`` are recomputed from the scaled line.
+
+    Two invariants worth stating, because both have been got wrong before:
+
+    * **Rates are held flat — no per-36 "fade" in either direction.** EXP-034 measured that
+      coefficient across 2428 consecutive-season pairs with a >= 2 mpg move: realised/naive
+      is 1.05-1.10 on increases (even age-30+ veterans sit at 1.022), so the ~0.85 haircut
+      the sizing rubric used to prescribe was directionally wrong. 1.0 is the honest default
+      — the measured excess is mostly selection we cannot identify ex ante.
+    * **fpts is RE-SCORED, never scaled.** It is exactly linear in the counting stats under
+      today's empty ``bonuses``, so scaling would agree to the cent — but a future
+      double-double bonus would make that silently wrong.
+
+    ``new_mpg`` is clipped to ``[0, MPG_CAP]``. Rows where the old mpg is 0 (nothing to hold
+    a rate constant against) are left untouched. Does NOT re-sort or renumber ``rank`` — the
+    caller owns ordering, since it may apply several edits before re-ranking.
+    """
+    from ..scoring import score_frame  # local: keeps module import order simple
+
+    if not mask.any():
+        return board
+    old = board.loc[mask, "mpg"].astype(float)
+    new = np.clip(new_mpg, 0.0, MPG_CAP)
+    if not isinstance(new, pd.Series):  # a scalar target applies to every masked row
+        new = pd.Series(float(new), index=old.index)
+    ratio = (new / old.replace(0.0, np.nan)).fillna(1.0)
+    for canon in COUNTING:
+        if canon in board.columns:
+            board.loc[mask, canon] = (board.loc[mask, canon].astype(float) * ratio).round(2)
+    board.loc[mask, "mpg"] = new.round(1)
+    board.loc[mask, "fpts_pg"] = score_frame(board.loc[mask], cfg).round(2)
+    if "fpts_total" in board.columns and "gp" in board.columns:
+        board.loc[mask, "fpts_total"] = (
+            board.loc[mask, "fpts_pg"] * board.loc[mask, "gp"]).round(1)
+    return board
 
 
 def _season_start(season: str) -> int:
