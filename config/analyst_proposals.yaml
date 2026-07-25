@@ -2174,3 +2174,353 @@
     pay for a minutes gap both the model and BBM agree stays shut. Target 38.47 keeps implied 1.282 fpts/min below
     his healthy 1.318, as it should be for an age-30 season off a re-injury. Availability stays the model's axis
     (gp/chronic flag untouched); re-triangulate if he is dealt."
+
+# ============ Batch 8 — CHA + WAS re-expressed with the `target_mpg` verb (proposed 2026-07-25) ============
+# NOT a new-transcript batch. The analyst layer gained a second verb today: the model builds value as
+# minutes x rate, and until now this layer could only edit the PRODUCT (`fpts_delta`), so every minutes
+# belief was laundered into a per-minute-efficiency claim and the board's mpg + stat line stayed stale.
+# The two teams with persisted preview ledgers are converted first because those ledgers already record
+# BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure.
+#
+# WHY THE MAGNITUDES MOVE A LOT: nearly every Batch-7 entry computed the honest minutes number and then
+# cushioned it 60-78% (Will Riley raw -8.9 -> -2.0; Tre Johnson -7.8 -> -2.0; Kalkbrenner -8.7 -> -3.5).
+# That cushion was rational under the old verb — cutting fpts hard while the board still showed 27 mpg
+# would have been incoherent — but it was compensating for the EXPRESSION, not expressing a belief. With
+# minutes stated directly the cushion is removed and the derived fpts falls where BBM's minutes put it.
+# Steven should push back per-player where he thinks BBM's minutes call is itself wrong; that is now a
+# clean argument about ONE number instead of a fudge buried in a delta.
+#
+# Coverage = full rotation, not just the movers, because a team is a closed ~240-minute system and the
+# budget only balances if every seat is set. Board-player sums land CHA 241 / WAS 244 vs the 240 budget.
+# Rookies (Dybantsa ~28, Steinbach ~15, Anderson ~8) are NOT on the learned board and so cannot carry a
+# target_mpg yet — when they join at the October pass their minutes must come OUT of these totals.
+
+- name: Coby White
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 32, fpts_delta: +1}
+  preview: "CHA · 30.8 -> 32 mpg · 32.25 -> 34.51 fpts/g (minutes now expressed)"
+  rationale: "BBM 2026-07-22 (Hornets preview): BBM ~32 ('can't be sat — no backup PG'). Rate leg keeps the LaMelo assist-absorption claim (assists 2x) from the 07-24 +2.5, minus the ~1.2 mpg that entry had folded in."
+  sizing:
+    base_fpts: 32.25
+    base_mpg: 30.8
+    target_mpg: 32
+    target_fpm: 1.078
+    target_fpts: 34.51
+  status: proposed
+  triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 30.8 -> 32 mpg gives 33.51. Rate residual +1. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
+
+- name: Kon Knueppel
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 32, fpts_delta: +2}
+  preview: "CHA · 32.8 -> 32 mpg · 36.24 -> 37.36 fpts/g (minutes now expressed)"
+  rationale: "BBM 2026-07-22 (Hornets preview): BBM ~32 (minutes already maxed; the board's 32.8 comes DOWN slightly). The whole 07-24 +2.0 was a usage claim (21.6 -> ~24 as LaMelo's #1 beneficiary), so it survives intact as the rate leg."
+  sizing:
+    base_fpts: 36.24
+    base_mpg: 32.8
+    target_mpg: 32
+    target_fpm: 1.167
+    target_fpts: 37.36
+  status: proposed
+  triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 32.8 -> 32 mpg gives 35.36. Rate residual +2. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
+
+- name: Brandon Miller
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 31, fpts_delta: +2}
+  preview: "CHA · 31.9 -> 31 mpg · 33.76 -> 34.81 fpts/g (minutes now expressed)"
+  rationale: "BBM 2026-07-22 (Hornets preview): BBM ~31. The standing +2.0 is a pure usage/rate claim (vacated LaMelo usage, rising FT+assist rates) — unchanged; minutes now expressed separately."
+  sizing:
+    base_fpts: 33.76
+    base_mpg: 31.9
+    target_mpg: 31
+    target_fpm: 1.123
+    target_fpts: 34.81
+  status: proposed
+  triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 31.9 -> 31 mpg gives 32.81. Rate residual +2. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
+
+- name: Naz Reid
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 33}
+  preview: "CHA · 29.5 -> 33 mpg · 34.27 -> 38.34 fpts/g (minutes now expressed)"
+  rationale: "BBM 2026-07-22 (Hornets preview): BBM 'probably play 33 minutes' as the starting 4. The standing +3.0 WAS that minutes claim priced as fpts — now expressed as minutes, so the rate leg is 0 (the usage colour is not separately sized)."
+  sizing:
+    base_fpts: 34.27
+    base_mpg: 29.5
+    target_mpg: 33
+    target_fpm: 1.162
+    target_fpts: 38.34
+  status: proposed
+  triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 29.5 -> 33 mpg gives 38.34. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
+
+- name: Moussa Diabaté
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 28}
+  preview: "CHA · 21.7 -> 28 mpg · 21.81 -> 28.14 fpts/g (minutes now expressed)"
+  rationale: "BBM 2026-07-22 (Hornets preview): BBM installs him as the ~28-mpg starter ('play your 28'). The 07-24 +4.0 was purely that minutes story — it becomes the minutes leg, no rate residual."
+  sizing:
+    base_fpts: 21.81
+    base_mpg: 21.7
+    target_mpg: 28
+    target_fpm: 1.005
+    target_fpts: 28.14
+  status: proposed
+  triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 21.7 -> 28 mpg gives 28.14. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
+
+- name: Grayson Allen
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 22}
+  preview: "CHA · 25.9 -> 22 mpg · 22.00 -> 18.69 fpts/g (minutes now expressed)"
+  rationale: "BBM 2026-07-22 (Hornets preview): BBM ~22 off the bench vs the board's 25.9. Previously `none` because the fpts effect looked small; as minutes it is a real -3.9 mpg the board should carry."
+  sizing:
+    base_fpts: 22.00
+    base_mpg: 25.9
+    target_mpg: 22
+    target_fpm: 0.850
+    target_fpts: 18.69
+  status: proposed
+  triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 25.9 -> 22 mpg gives 18.69. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
+
+- name: Royce O'Neale
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 18}
+  preview: "CHA · 20.8 -> 18 mpg · 18.46 -> 15.98 fpts/g (minutes now expressed)"
+  rationale: "BBM 2026-07-22 (Hornets preview): BBM ~18 (bench 3&D). Previously note-only — the board's 20.8 was never corrected."
+  sizing:
+    base_fpts: 18.46
+    base_mpg: 20.8
+    target_mpg: 18
+    target_fpm: 0.888
+    target_fpts: 15.98
+  status: proposed
+  triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 20.8 -> 18 mpg gives 15.98. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
+
+- name: Ryan Kalkbrenner
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 13}
+  preview: "CHA · 22.5 -> 13 mpg · 24.42 -> 14.11 fpts/g (minutes now expressed)"
+  rationale: "BBM 2026-07-22 (Hornets preview): BBM buries him 4th among the bigs at ~13. The 07-24 -3.5 was a hard-cushioned version of a -9.5 mpg demotion; the cushion existed because an fpts cut at unchanged minutes is incoherent."
+  sizing:
+    base_fpts: 24.42
+    base_mpg: 22.5
+    target_mpg: 13
+    target_fpm: 1.085
+    target_fpts: 14.11
+  status: proposed
+  triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 22.5 -> 13 mpg gives 14.11. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
+
+- name: Dorian Finney-Smith
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 12}
+  preview: "CHA · 17.5 -> 12 mpg · 10.72 -> 7.35 fpts/g (minutes now expressed)"
+  rationale: "BBM 2026-07-22 (Hornets preview): BBM ~12 (deep 3&D wing) vs the board's 17.5. Previously note-only."
+  sizing:
+    base_fpts: 10.72
+    base_mpg: 17.5
+    target_mpg: 12
+    target_fpm: 0.612
+    target_fpts: 7.35
+  status: proposed
+  triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 17.5 -> 12 mpg gives 7.35. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
+
+- name: Sion James
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 20}
+  preview: "CHA · 28 -> 20 mpg · 20.09 -> 14.35 fpts/g (minutes now expressed)"
+  rationale: "BBM 2026-07-22 (Hornets preview): BBM ~20; the board's 28.0 for a 10.9-USG sophomore was the budget cross-check's clearest flag."
+  sizing:
+    base_fpts: 20.09
+    base_mpg: 28
+    target_mpg: 20
+    target_fpm: 0.718
+    target_fpts: 14.35
+  status: proposed
+  triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 28 -> 20 mpg gives 14.35. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
+
+- name: Trae Young
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 33, fpts_delta: +2.9}
+  preview: "WAS · 31.8 -> 33 mpg · 37.92 -> 42.25 fpts/g (minutes now expressed)"
+  rationale: "BBM 2026-07-23 (Wizards preview): BBM '33 to 35' across four episodes — priced at the low end. The rate leg restores his per-minute value toward his healthy norm (~1.28 fpts/min vs the model's faded 1.19 off a 15-game base), which is what the standing +4.5 was half doing implicitly. Lands ~42.3, essentially the current 42.42 but now decomposed."
+  sizing:
+    base_fpts: 37.92
+    base_mpg: 31.8
+    target_mpg: 33
+    target_fpm: 1.280
+    target_fpts: 42.25
+  status: proposed
+  triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 31.8 -> 33 mpg gives 39.35. Rate residual +2.9. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
+
+- name: Kyshawn George
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 30}
+  preview: "WAS · 25.1 -> 30 mpg · 24.89 -> 29.75 fpts/g (minutes now expressed)"
+  rationale: "BBM 2026-07-23 (Wizards preview): BBM ~30 as the entrenched org-favourite starter. The 07-24 +3.5 was that minutes claim; usage is explicitly FLAT off-ball next to Trae, so there is no rate leg to add."
+  sizing:
+    base_fpts: 24.89
+    base_mpg: 25.1
+    target_mpg: 30
+    target_fpm: 0.992
+    target_fpts: 29.75
+  status: proposed
+  triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 25.1 -> 30 mpg gives 29.75. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
+
+- name: Anthony Davis
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 30}
+  preview: "WAS · 32.6 -> 30 mpg · 49.10 -> 45.18 fpts/g (minutes now expressed)"
+  rationale: "BBM 2026-07-23 (Wizards preview): BBM ~30 ('if he's on the floor') vs the board's 32.6. Previously `none` — a 2.6-mpg gap the board never took. Health/GP stays on the availability axis (overrides.yaml), untouched here."
+  sizing:
+    base_fpts: 49.10
+    base_mpg: 32.6
+    target_mpg: 30
+    target_fpm: 1.506
+    target_fpts: 45.18
+  status: proposed
+  triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 32.6 -> 30 mpg gives 45.18. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
+
+- name: Alex Sarr
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 30, fpts_delta: +1.5}
+  preview: "WAS · 26.5 -> 30 mpg · 33.88 -> 39.85 fpts/g (minutes now expressed)"
+  rationale: "BBM 2026-07-23 (Wizards preview): BBM ~30 as the entrenched starting C. The rate leg is the efficiency half of the 07-24 +2.5 — the shot-diet FG rise plus Trae-gravity — carried at the 07-17 +1.5 size; the minutes half is now the minutes leg."
+  sizing:
+    base_fpts: 33.88
+    base_mpg: 26.5
+    target_mpg: 30
+    target_fpm: 1.328
+    target_fpts: 39.85
+  status: proposed
+  triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 26.5 -> 30 mpg gives 38.35. Rate residual +1.5. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
+
+- name: Deandre Ayton
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 20}
+  preview: "WAS · 26.6 -> 20 mpg · 28.10 -> 21.13 fpts/g (minutes now expressed)"
+  rationale: "BBM 2026-07-23 (Wizards preview): BBM ~20 behind Davis and Sarr. The standing -1.5 was a cushioned version of a -6.6 mpg demotion; his FG support is already in the base rate, so no rate leg."
+  sizing:
+    base_fpts: 28.10
+    base_mpg: 26.6
+    target_mpg: 20
+    target_fpm: 1.056
+    target_fpts: 21.13
+  status: proposed
+  triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 26.6 -> 20 mpg gives 21.13. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
+
+- name: Bilal Coulibaly
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 22}
+  preview: "WAS · 31.1 -> 22 mpg · 28.99 -> 20.51 fpts/g (minutes now expressed)"
+  rationale: "BBM 2026-07-23 (Wizards preview): BBM ~22 as a bench wing behind George + Dybantsa. The 07-24 -4.0 cushioned a -9 mpg demotion."
+  sizing:
+    base_fpts: 28.99
+    base_mpg: 31.1
+    target_mpg: 22
+    target_fpm: 0.932
+    target_fpts: 20.51
+  status: proposed
+  triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 31.1 -> 22 mpg gives 20.51. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
+
+- name: Tre Johnson
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 16}
+  preview: "WAS · 26.2 -> 16 mpg · 23.97 -> 14.64 fpts/g (minutes now expressed)"
+  rationale: "BBM 2026-07-23 (Wizards preview): BBM ~16 as a bench shooter. The 07-24 -2.0 cushioned a -10 mpg squeeze by ~74%."
+  sizing:
+    base_fpts: 23.97
+    base_mpg: 26.2
+    target_mpg: 16
+    target_fpm: 0.915
+    target_fpts: 14.64
+  status: proposed
+  triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 26.2 -> 16 mpg gives 14.64. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
+
+- name: Bub Carrington
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 14}
+  preview: "WAS · 27.9 -> 14 mpg · 23.93 -> 12.01 fpts/g (minutes now expressed)"
+  rationale: "BBM 2026-07-23 (Wizards preview): BBM ~14 — Trae directly takes the on-ball role his 27.9 mpg was built on. The 07-24 -4.5 cushioned a -13.9 mpg displacement."
+  sizing:
+    base_fpts: 23.93
+    base_mpg: 27.9
+    target_mpg: 14
+    target_fpm: 0.858
+    target_fpts: 12.01
+  status: proposed
+  triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 27.9 -> 14 mpg gives 12.01. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
+
+- name: Will Riley
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 15}
+  preview: "WAS · 27.2 -> 15 mpg · 23.78 -> 13.11 fpts/g (minutes now expressed)"
+  rationale: "BBM 2026-07-23 (Wizards preview): BBM ~15, buried in the wing logjam. The 07-24 -2.0 cushioned a -12.2 mpg squeeze by ~78%."
+  sizing:
+    base_fpts: 23.78
+    base_mpg: 27.2
+    target_mpg: 15
+    target_fpm: 0.874
+    target_fpts: 13.11
+  status: proposed
+  triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 27.2 -> 15 mpg gives 13.11. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
+
+- name: Khris Middleton
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 16}
+  preview: "WAS · 19.3 -> 16 mpg · 17.22 -> 14.28 fpts/g (minutes now expressed)"
+  rationale: "BBM 2026-07-23 (Wizards preview): BBM '16-18' — priced at the low end per the hedge rule. Previously `none` against a board 19.3."
+  sizing:
+    base_fpts: 17.22
+    base_mpg: 19.3
+    target_mpg: 16
+    target_fpm: 0.892
+    target_fpts: 14.28
+  status: proposed
+  triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 19.3 -> 16 mpg gives 14.28. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
+
+- name: Cam Whitmore
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 8}
+  preview: "WAS · 18.4 -> 8 mpg · 16.58 -> 7.21 fpts/g (minutes now expressed)"
+  rationale: "BBM 2026-07-23 (Wizards preview): BBM ~8 ('end-of-show rotation-cameo') vs the board's 18.4 — the largest unpriced gap on the roster. Previously note-only."
+  sizing:
+    base_fpts: 16.58
+    base_mpg: 18.4
+    target_mpg: 8
+    target_fpm: 0.901
+    target_fpts: 7.21
+  status: proposed
+  triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 18.4 -> 8 mpg gives 7.21. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
+
+- name: Justin Champagnie
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 10}
+  preview: "WAS · 20.2 -> 10 mpg · 20.20 -> 10.00 fpts/g (minutes now expressed)"
+  rationale: "BBM 2026-07-23 (Wizards preview): BBM ~10 (deep; OReb/defence niche) vs the board's 20.2. Previously note-only."
+  sizing:
+    base_fpts: 20.20
+    base_mpg: 20.2
+    target_mpg: 10
+    target_fpm: 1.000
+    target_fpts: 10.00
+  status: proposed
+  triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 20.2 -> 10 mpg gives 10.00. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
