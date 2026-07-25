@@ -2704,3 +2704,138 @@
     target_fpts: 21.89
   status: approved
   triangulation: "Re-expression, not a re-sizing: the minutes number was already stated in the superseded entry and is simply moved into the `target_mpg` leg. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED — 28.3 -> 24 mpg gives 21.89 — then the rate leg (+0) carries only the separately NAMED per-minute mechanism. Where the old delta was cushioned short of the stated minutes, the cushion was a minutes doubt wearing a rate costume; per the contract it is now priced once, inside the minutes number. No team-minutes ledger exists for this roster yet, so the freed/absorbed minutes have no nameable counterparty — a preview for this team should revisit it."
+
+# ============ Batch 10 — the 8 stated-minutes entries Batch 9's keyword sweep MISSED (proposed 2026-07-25) ============
+# Batch 9 used a regex to find entries stating a BBM minutes figure; it required specific phrasings and
+# under-caught. Re-reading all 32 remaining triangulations by hand found 8 more that state one outright:
+# Aldama ("~16 mpg reserve"), Nurkić ("20.2 -> ~26"), Garland ("at 32 mpg"), Zubac ("31-32"), Collins
+# ("30-31 minutes that Toby did"), Turner ("those 27 minutes should push to 29"), LaRavia ("20-24"), NAW
+# ("+5-6 mpg"). Same treatment as Batch 9 — re-expression, no new judgment.
+#
+# THE OTHER 24 ARE STAYING AS `fpts_delta`, AND THAT IS THE CORRECT VERB FOR THEM. They are usage or
+# efficiency claims at STABLE minutes, and several say so outright: Podziemski "no minutes leap", Edwards
+# and Maxey and Jaylen Brown "usage-only", Bam "his minutes hold", Pritchard "the start-vs-bench question
+# doesn't much matter (similar minutes either way)", Tatum a post-Achilles efficiency rebound, Sabonis the
+# shooting normalisation established this morning. Assigning them a target_mpg would assert a minutes
+# change nobody claimed — and would be actively wrong (Tatum's implied 36.4 mpg coming off an Achilles).
+# `fpts_delta` at unchanged minutes is exactly what a usage claim IS; the verb is not a fallback here.
+
+- name: Santi Aldama
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 18}
+  preview: "28.1 -> 18 mpg · 29.28 -> 18.76 fpts/g (minutes now expressed)"
+  rationale: "BBM (see the superseded entry for the source episode): BBM is firm that 'the 28-min role he needs is gone (~16 mpg reserve)' in Dallas. The 07-13 -5.0 priced ~28 -> ~16 as a full ~-8 then tempered for rotation uncertainty (injuries open minutes) — a MINUTES doubt, so it is priced at 18, just above his stated floor."
+  sizing:
+    base_fpts: 29.28
+    base_mpg: 28.1
+    target_mpg: 18
+    target_fpm: 1.042
+    target_fpts: 18.76
+  status: approved
+  triangulation: "Re-expression, not a re-sizing — the minutes figure was already stated in the superseded entry; a keyword sweep in Batch 9 simply missed it. Rescale holds per-minute rates (EXP-034) so the stat line moves with the minutes and fpts is DERIVED: 28.1 -> 18 mpg gives 18.76; the rate leg (+0) carries only a separately NAMED per-minute mechanism. Where the old delta was cushioned short of the stated minutes, that cushion was a doubt about the MINUTES — per the contract it is priced once, inside the minutes number. No team-minutes ledger exists for this roster, so the freed/absorbed minutes have no nameable counterparty; a preview should revisit."
+
+- name: Jusuf Nurkić
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 23}
+  preview: "20.2 -> 23 mpg · 22.38 -> 25.48 fpts/g (minutes now expressed)"
+  rationale: "BBM (see the superseded entry for the source episode): BBM: the Utah starter path is 'probable but explicitly hedged' on a rebuild that may prefer developing young bigs. The entry priced 20.2 -> ~26 if he starts, then halved for the hedge; the hedge is about MINUTES, so it lands at 23."
+  sizing:
+    base_fpts: 22.38
+    base_mpg: 20.2
+    target_mpg: 23
+    target_fpm: 1.108
+    target_fpts: 25.48
+  status: approved
+  triangulation: "Re-expression, not a re-sizing — the minutes figure was already stated in the superseded entry; a keyword sweep in Batch 9 simply missed it. Rescale holds per-minute rates (EXP-034) so the stat line moves with the minutes and fpts is DERIVED: 20.2 -> 23 mpg gives 25.48; the rate leg (+0) carries only a separately NAMED per-minute mechanism. Where the old delta was cushioned short of the stated minutes, that cushion was a doubt about the MINUTES — per the contract it is priced once, inside the minutes number. No team-minutes ledger exists for this roster, so the freed/absorbed minutes have no nameable counterparty; a preview should revisit."
+
+- name: Darius Garland
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 32, fpts_delta: -0.9}
+  preview: "27.9 -> 32 mpg · 30.13 -> 33.66 fpts/g (minutes now expressed)"
+  rationale: "BBM (see the superseded entry for the source episode): BBM: 'he already produced 34 fpts/g in 29 mpg on this exact roster post-deadline; at 32 mpg that scales to ~35-36 before trimming the 44% 3PT.' Both legs were stated — 32 mpg is the minutes leg, the unsustainable 3PT rate is the rate leg."
+  sizing:
+    base_fpts: 30.13
+    base_mpg: 27.9
+    target_mpg: 32
+    target_fpm: 1.052
+    target_fpts: 33.66
+  status: approved
+  triangulation: "Re-expression, not a re-sizing — the minutes figure was already stated in the superseded entry; a keyword sweep in Batch 9 simply missed it. Rescale holds per-minute rates (EXP-034) so the stat line moves with the minutes and fpts is DERIVED: 27.9 -> 32 mpg gives 34.56; the rate leg (-0.9) carries only a separately NAMED per-minute mechanism. Where the old delta was cushioned short of the stated minutes, that cushion was a doubt about the MINUTES — per the contract it is priced once, inside the minutes number. No team-minutes ledger exists for this roster, so the freed/absorbed minutes have no nameable counterparty; a preview should revisit."
+
+- name: Nickeil Alexander-Walker
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 33, fpts_delta: -1.7}
+  preview: "27.8 -> 33 mpg · 27.94 -> 31.47 fpts/g (minutes now expressed)"
+  rationale: "BBM (see the superseded entry for the source episode): BBM: 'the minutes/usage/touches are structural and persist; the shooting is the only fake part' — +5-6 mpg of ROS role off a 27.8 base. Minutes and the named shooting regression are now separate legs instead of netted."
+  sizing:
+    base_fpts: 27.94
+    base_mpg: 27.8
+    target_mpg: 33
+    target_fpm: 0.954
+    target_fpts: 31.47
+  status: approved
+  triangulation: "Re-expression, not a re-sizing — the minutes figure was already stated in the superseded entry; a keyword sweep in Batch 9 simply missed it. Rescale holds per-minute rates (EXP-034) so the stat line moves with the minutes and fpts is DERIVED: 27.8 -> 33 mpg gives 33.17; the rate leg (-1.7) carries only a separately NAMED per-minute mechanism. Where the old delta was cushioned short of the stated minutes, that cushion was a doubt about the MINUTES — per the contract it is priced once, inside the minutes number. No team-minutes ledger exists for this roster, so the freed/absorbed minutes have no nameable counterparty; a preview should revisit."
+
+- name: Ivica Zubac
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 31}
+  preview: "27.4 -> 31 mpg · 29.45 -> 33.32 fpts/g (minutes now expressed)"
+  rationale: "BBM (see the superseded entry for the source episode): BBM has him at 31-32 as Indiana's clear, unbacked-up starter; the board's 27.4 sits BELOW even last season's actual 30.1 (it faded on 6 cameo games). Priced at the low end of his range."
+  sizing:
+    base_fpts: 29.45
+    base_mpg: 27.4
+    target_mpg: 31
+    target_fpm: 1.075
+    target_fpts: 33.32
+  status: approved
+  triangulation: "Re-expression, not a re-sizing — the minutes figure was already stated in the superseded entry; a keyword sweep in Batch 9 simply missed it. Rescale holds per-minute rates (EXP-034) so the stat line moves with the minutes and fpts is DERIVED: 27.4 -> 31 mpg gives 33.32; the rate leg (+0) carries only a separately NAMED per-minute mechanism. Where the old delta was cushioned short of the stated minutes, that cushion was a doubt about the MINUTES — per the contract it is priced once, inside the minutes number. No team-minutes ledger exists for this roster, so the freed/absorbed minutes have no nameable counterparty; a preview should revisit."
+
+- name: John Collins
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 30}
+  preview: "26.6 -> 30 mpg · 28.37 -> 32.00 fpts/g (minutes now expressed)"
+  rationale: "BBM (see the superseded entry for the source episode): BBM: Detroit's PF depth behind him is 'putrid', so 'he's going to play the 30-31 minutes that Toby did versus the 27 he played last season'. Priced at 30; the 07-20 entry's own arithmetic was '+4 mpg from minutes alone'."
+  sizing:
+    base_fpts: 28.37
+    base_mpg: 26.6
+    target_mpg: 30
+    target_fpm: 1.067
+    target_fpts: 32.00
+  status: approved
+  triangulation: "Re-expression, not a re-sizing — the minutes figure was already stated in the superseded entry; a keyword sweep in Batch 9 simply missed it. Rescale holds per-minute rates (EXP-034) so the stat line moves with the minutes and fpts is DERIVED: 26.6 -> 30 mpg gives 32.00; the rate leg (+0) carries only a separately NAMED per-minute mechanism. Where the old delta was cushioned short of the stated minutes, that cushion was a doubt about the MINUTES — per the contract it is priced once, inside the minutes number. No team-minutes ledger exists for this roster, so the freed/absorbed minutes have no nameable counterparty; a preview should revisit."
+
+- name: Myles Turner
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 29}
+  preview: "26.8 -> 29 mpg · 29.23 -> 31.63 fpts/g (minutes now expressed)"
+  rationale: "BBM (see the superseded entry for the source episode): BBM: 'those 27 minutes should push to 29' under Taylor Jenkins after the dysfunctional Doc Rivers year. A ~2.2-mpg gap the 07-20 entry flagged as actionable but could only express as fpts."
+  sizing:
+    base_fpts: 29.23
+    base_mpg: 26.8
+    target_mpg: 29
+    target_fpm: 1.091
+    target_fpts: 31.63
+  status: approved
+  triangulation: "Re-expression, not a re-sizing — the minutes figure was already stated in the superseded entry; a keyword sweep in Batch 9 simply missed it. Rescale holds per-minute rates (EXP-034) so the stat line moves with the minutes and fpts is DERIVED: 26.8 -> 29 mpg gives 31.63; the rate leg (+0) carries only a separately NAMED per-minute mechanism. Where the old delta was cushioned short of the stated minutes, that cushion was a doubt about the MINUTES — per the contract it is priced once, inside the minutes number. No team-minutes ledger exists for this roster, so the freed/absorbed minutes have no nameable counterparty; a preview should revisit."
+
+- name: Jake LaRavia
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 22}
+  preview: "28.6 -> 22 mpg · 24.94 -> 19.18 fpts/g (minutes now expressed)"
+  rationale: "BBM (see the superseded entry for the source episode): The rare case where OUR model is the optimist: the board gives him 28.6 mpg against BBM's read of 20-24. The 07-17 -2.0 heavily discounted a ~-4 raw for BBM's vagueness — a minutes-confidence hedge, so it is priced mid-range at 22."
+  sizing:
+    base_fpts: 24.94
+    base_mpg: 28.6
+    target_mpg: 22
+    target_fpm: 0.872
+    target_fpts: 19.18
+  status: approved
+  triangulation: "Re-expression, not a re-sizing — the minutes figure was already stated in the superseded entry; a keyword sweep in Batch 9 simply missed it. Rescale holds per-minute rates (EXP-034) so the stat line moves with the minutes and fpts is DERIVED: 28.6 -> 22 mpg gives 19.18; the rate leg (+0) carries only a separately NAMED per-minute mechanism. Where the old delta was cushioned short of the stated minutes, that cushion was a doubt about the MINUTES — per the contract it is priced once, inside the minutes number. No team-minutes ledger exists for this roster, so the freed/absorbed minutes have no nameable counterparty; a preview should revisit."
