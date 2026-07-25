@@ -27,8 +27,15 @@ league). Read in this order before changing anything:
   one joint superseding entry per player (never sum deltas); no numeric caps — judgment
   dictates magnitude. **BBM's stated minutes and usage numbers carry priority weight**
   (user decision 2026-07-17): a ~2+ mpg gap vs the model's mpg, or a ~2+ usage-point gap
-  vs cache-computed last-season USG%, is presumptively actionable; a sub-~25-game base
-  season is a small-sample artifact to re-anchor — full rule in the transcripts README. The user reviews; `apply_proposals.py --promote` moves approved
+  vs cache-computed last-season USG%, is presumptively actionable. A sub-~25-game base is a
+  flag to CHECK, **never to re-anchor on the last healthy season** — that rule was withdrawn
+  2026-07-25 (EXP-033: anchoring inflates +3.34 fpts/g, +5.56 when the per-minute rate fell;
+  compute `rate_held` instead, and note the fade lives in minutes, not rate). Magnitude is
+  **decomposition, not adjustment**: name each component, price it (minutes ×1.0 — the old
+  ×0.85 "per-36 fade" is directionally wrong, EXP-034), **subtract what the model already
+  prices**, and let the delta fall out of a `sizing:` block that must reconcile
+  (`apply_proposals.py` rejects batches that don't) — full rules in the transcripts README.
+  The user reviews; `apply_proposals.py --promote` moves approved
   entries. **Never write into `config/analyst_overrides.yaml` directly** — every entry
   traces to an approved proposal or the mid-Oct calendar pass.
 - **In-season nightly:** `scripts/update_daily.py` (cron from opening night); concrete

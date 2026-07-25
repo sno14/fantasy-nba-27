@@ -38,9 +38,72 @@ import yaml
 from fantasy_nba.config import CONFIG_DIR, PROCESSED_DIR
 from fantasy_nba.models.analyst import apply_overrides, name_key, parse_overrides
 
-PROPOSAL_ONLY_FIELDS = ("status", "triangulation", "preview")
+PROPOSAL_ONLY_FIELDS = ("status", "triangulation", "preview", "sizing")
 ENTRY_FIELDS = ("name", "date", "category", "action", "rationale")
 _DATA_LINE = re.compile(r"^\s*(\[\]|-\s)")
+
+SIZING_FIELDS = ("base_fpts", "base_mpg", "target_mpg", "target_fpm", "target_fpts")
+SIZING_TOL = 0.06   # rounding slack on a 2-dp yaml block
+
+
+def check_sizing(proposals: list[dict], universe: list[dict] | None = None,
+                 require: bool = True) -> list[str]:
+    """Verify each non-``none`` proposal's ``sizing:`` block reconciles (EXP-033 / 2026-07-25).
+
+    Two identities must hold, and they are what makes a delta's *decomposition* checkable
+    rather than merely asserted in prose:
+
+        target_fpts == target_mpg x target_fpm      (the belief is a real stat line)
+        fpts_delta  == target_fpts - base_fpts      (the delta is only the remainder)
+
+    The Trae Young 2026-07-17 entry — sized in prose as "minutes leg +2.7, rate leg +2.0" —
+    fails the first identity: it implies 1.334 fpts/min at an unchanged 31.8 mpg, above every
+    healthy season he has played. Returns the list of problems; empty means clean.
+    """
+    # Superseded entries are history — only the latest-dated entry per player is applied to the
+    # board, so only that one must carry a sized belief.
+    latest: dict[str, str] = {}
+    for p in (universe if universe is not None else proposals):
+        k = name_key(str(p.get("name", "")))
+        d = str(p.get("date", ""))
+        if d > latest.get(k, ""):
+            latest[k] = d
+
+    problems: list[str] = []
+    for p in proposals:
+        act = p.get("action")
+        if act == "none" or not isinstance(act, dict):
+            continue
+        who = f"{p.get('name', '?')} ({p.get('date', '?')})"
+        superseded = str(p.get("date", "")) < latest.get(name_key(str(p.get("name", ""))), "")
+        s = p.get("sizing")
+        if not s:
+            if require and not superseded:
+                problems.append(f"{who}: non-none action with no `sizing:` block")
+            continue
+        missing = [f for f in SIZING_FIELDS if f not in s]
+        if missing:
+            problems.append(f"{who}: sizing missing {missing}")
+            continue
+        prod = float(s["target_mpg"]) * float(s["target_fpm"])
+        if abs(prod - float(s["target_fpts"])) > SIZING_TOL:
+            problems.append(f"{who}: target_mpg x target_fpm = {prod:.2f} != "
+                            f"target_fpts {float(s['target_fpts']):.2f}")
+        delta = float(next(iter(act.values())))
+        remainder = float(s["target_fpts"]) - float(s["base_fpts"])
+        if abs(remainder - delta) > SIZING_TOL:
+            problems.append(f"{who}: target_fpts - base_fpts = {remainder:+.2f} != "
+                            f"fpts_delta {delta:+.2f}")
+        # advisory: a delta that lifts implied per-minute value above the healthy norm is a
+        # minutes thesis wearing an efficiency costume (EXP-033: the fade lives in minutes).
+        hf = s.get("healthy_fpm")
+        if hf and float(s["base_mpg"]):
+            implied = float(s["target_fpts"]) / float(s["base_mpg"])
+            if implied > float(hf) + 0.02:
+                problems.append(f"{who}: ADVISORY implied {implied:.3f} fpts/min at the board's "
+                                f"{float(s['base_mpg'])} mpg exceeds healthy {float(hf):.3f} — "
+                                f"state the minutes mechanism or re-size")
+    return problems
 
 
 def load_proposals(path: Path) -> list[dict]:
@@ -107,6 +170,16 @@ def preview(proposals: list[dict], status: str | None, board_path: Path) -> None
         print(pd.DataFrame(rows).to_string(index=False))
     print("\n(rank_new is the byproduct of re-sorting on fpts — never set directly.)")
 
+    problems = check_sizing(sel, universe=proposals)
+    if problems:
+        errs = [p for p in problems if "ADVISORY" not in p]
+        advs = [p for p in problems if "ADVISORY" in p]
+        print(f"\nsizing check: {len(errs)} error(s), {len(advs)} advisory")
+        for p in errs + advs:
+            print(f"  ! {p}")
+    else:
+        print("\nsizing check: all entries reconcile.")
+
 
 def _action_str(action) -> str:
     if action == "none":
@@ -120,6 +193,11 @@ def promote(proposals: list[dict], overrides_path: Path) -> None:
     if not approved:
         print("no proposals with status=approved — nothing to promote.")
         return
+
+    errs = [p for p in check_sizing(approved, universe=proposals) if "ADVISORY" not in p]
+    if errs:
+        raise SystemExit("sizing does not reconcile — fix before promoting:\n"
+                         + "\n".join(f"  ! {e}" for e in errs))
 
     entries = [strip_to_entry(p) for p in approved]
     parse_overrides(entries, source="approved proposals")  # validate before touching the file

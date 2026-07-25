@@ -82,9 +82,32 @@ Mechanics the rubric requires (full text in the contract README):
   usage vs last-season USG% (formula in the README; computable from
   `player_season_stats` + `team_game_logs`) into every triangulation. ~2+ mpg or ~2+
   usage-point gaps are presumptively actionable — overriding takes a NAMED mechanism.
-- **Audit the base:** a base season under ~25 gp is a small-sample artifact (Kessler 5g,
-  Trae 15g) — re-anchor on the last healthy season, and check the season-stats history,
-  not just the projection row.
+- **Audit the base — do NOT re-anchor on it (EXP-033, 2026-07-25).** A base season under
+  ~25 gp is a flag to check, never a licence to adopt the last healthy season's number:
+  that was backtested and **inflates +3.34 fpts/g** (+5.56 when the per-minute rate really
+  fell). Compute **`rate_held` = small-sample fpts/min ÷ healthy fpts/min** and write it in.
+  Below ~1.0 → the fade is correct, no upward delta. At/above ~1.0 → healthy level is the
+  *ceiling* of a range, and the delta needs a **named minutes mechanism**, because the fade
+  lives in minutes (the model already prices rate ~1.05× healthy for these players).
+- **Size by DECOMPOSITION, not adjustment** (rewritten 2026-07-25 — "reflect the truth, not
+  aggressive or conservative"). Four steps, symmetric in both directions:
+  1. **Name** each component precisely enough to be mechanically reversible ("3PT .185 → .396
+     on 1.42 attempts", "+4 mpg starting"). Vague = conviction = no number.
+  2. **Price** each in fpts/g at the model's own minutes (made 3 = +6, made 2 = +4, ast = 2,
+     stl/blk = 4). Minutes: `Δmpg × fpts-per-min`, **×1.0 — no fade**. The old ×0.85 was
+     measured in EXP-034 and is directionally wrong (realised/naive 1.05-1.10 on increases).
+  3. **Subtract what the model already prices** — the step that is usually skipped and where
+     the biggest errors live: `already = (model fpts/min − last-actual fpts/min) × model mpg`.
+     The delta is the **unpriced remainder**. (Sabonis: +3.15 of real shooting recovery, but
+     +2.23 already in the base → the truth was +0.9, not the +4.0 that was written.)
+  4. **No second trim** for conviction/hedging on top of the components — that stacking is what
+     buried Trae. Hedge *inside* one component, once, and name it.
+- **`sizing:` block is mandatory on every non-`none` entry** — `base_fpts / base_mpg /
+  target_mpg / target_fpm / target_fpts` (+ `rate_held` when the base is under ~25 gp), where
+  `target_fpts` must equal `target_mpg × target_fpm` and the delta is the remainder.
+  `apply_proposals.py` rejects a batch whose arithmetic doesn't reconcile. Remember
+  `fpts_delta` moves **only** `fpts_pg` — never `mpg`, never the stat line — so an unstated
+  minutes thesis silently becomes an efficiency claim. Full rationale: the contract README.
 - Scoring context for sizing: ESPN points — stl/blk 4x, ast/fgm 2x, pts/reb/3pm/ftm 1x,
   fga/fta −1, tov −2. Assists and defensive stats move fpts twice as hard as they look.
 - Rookies not on the learned board: defer with a note (unmatched names fail loudly);

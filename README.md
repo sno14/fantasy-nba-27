@@ -30,8 +30,12 @@ See [ROADMAP.md](ROADMAP.md) for the build plan, current progress, and modeling 
    re-triangulation for multi-mechanism players; uncapped, judgment-sized), the two hard
    rules (fpts_delta/none only; ignore BBM's rank claims), the **minutes & usage priority
    rule** (2026-07-17: BBM's stated minutes/usage numbers vs our base written explicitly;
-   ~2+ mpg or ~2+ usage-point gaps presumptively actionable; sub-~25-game base seasons
-   re-anchored), and the proposals → approval → overrides lifecycle.
+   ~2+ mpg or ~2+ usage-point gaps presumptively actionable; a sub-~25-game base is a flag to
+   compute `rate_held` against — **never re-anchored on the last healthy season**, withdrawn
+   2026-07-25 per EXP-033), the **decomposition sizing method** (name → price → subtract what
+   the model already prices → a `sizing:` block that must reconcile, enforced by
+   `apply_proposals.py`; minutes ×1.0, the ×0.85 fade withdrawn per EXP-034), and the
+   proposals → approval → overrides lifecycle.
 
 ## Setup
 

@@ -545,8 +545,16 @@ eval-only (opt-in `--recency`); the shipped board uses the plain `learned` found
       board B. Sizing rubric gained the **minutes & usage priority rule** (user decision
       2026-07-17, canonical in the transcripts README): BBM's stated minutes/usage vs our
       base written explicitly per entry; ~2+ mpg or ~2+ usage-point gaps presumptively
-      actionable; sub-~25-game base seasons re-anchored on the last healthy season (the
-      Trae miss / Kessler pattern).
+      actionable. **Amended 2026-07-25 (EXP-033 / EXP-034):** the "re-anchor a sub-~25-game
+      base on the last healthy season" clause is **withdrawn** — backtested on 315
+      partial-season cases it inflates +3.34 fpts/g (+5.56 when the per-minute rate genuinely
+      fell), and the model's fade wins on MAE; a small base is now a flag to compute
+      `rate_held` against, and the fade lives in **minutes, not rate**. The ×0.85 "per-36
+      fade" is also withdrawn (EXP-034: measured 1.05-1.10 on minutes increases across 2428
+      season pairs — directionally wrong; use ×1.0). Magnitude is now **decomposition**:
+      name → price → **subtract what the model already prices** → a `sizing:` block that
+      reconciles (enforced by `apply_proposals.py`). Sabonis's +4.0 re-sized to +1.0 as the
+      first application.
 
 #### 7.F — Usage-coupled rate/efficiency  ← parked (revisit only via 7.A)
 - [ ] Per-minute rates are already well-predicted (EXP-001); direct rate/efficiency modelling was
