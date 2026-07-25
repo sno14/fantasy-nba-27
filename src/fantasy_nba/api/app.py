@@ -412,7 +412,7 @@ def proposals() -> dict:
     raw = _load_proposals_raw()
     out = [{k: p.get(k) for k in
             ("name", "date", "category", "action", "rationale", "status", "preview",
-             "triangulation")} for p in raw]
+             "triangulation", "sizing")} for p in raw]
     for p, src in zip(out, raw):
         p["date"] = str(src.get("date", ""))
         act = src.get("action")

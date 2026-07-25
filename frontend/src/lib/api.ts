@@ -169,6 +169,25 @@ export interface Proposal {
   status: "proposed" | "approved" | "rejected";
   preview?: string;
   triangulation?: string;
+  sizing?: Sizing;
+}
+
+/** The checkable arithmetic behind a delta (EXP-033 / 2026-07-25): the belief is a stat
+ *  line — `target_mpg × target_fpm = target_fpts` — and the delta is only the remainder
+ *  over `base_fpts`. `retrofilled` marks a block derived from a standing delta rather than
+ *  authored, which records what the delta *implies* at unchanged minutes. */
+export interface Sizing {
+  base_fpts: number;
+  base_mpg: number;
+  target_mpg: number;
+  target_fpm: number;
+  target_fpts: number;
+  healthy_fpm?: number;
+  healthy_mpg?: number;
+  healthy_season?: string;
+  rate_held?: number;
+  base_gp?: number;
+  retrofilled?: string;
 }
 
 export interface ProposalImpact {

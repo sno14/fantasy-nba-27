@@ -129,6 +129,46 @@ export default function Analyst() {
                 )}
               </div>
               <p className="mt-2 text-[13px] leading-relaxed text-ink-2">{p.rationale}</p>
+              {p.sizing && (() => {
+                const s = p.sizing!;
+                // A delta lifting implied per-minute value above the last healthy season is a
+                // minutes thesis wearing an efficiency costume — EXP-033: the fade is in minutes.
+                const hot = s.healthy_fpm != null && s.target_fpm > s.healthy_fpm + 0.02;
+                return (
+                  <div className="mt-2 rounded-lg border border-grid bg-surface-2 px-3 py-2 text-[12px] text-ink-2">
+                    <div className="font-mono">
+                      {s.target_mpg} mpg × {s.target_fpm} FP/min ={" "}
+                      <b className="text-ink">{s.target_fpts}</b>
+                      <span className="mx-1.5 text-ink-3">·</span>
+                      base {s.base_fpts} → <b className="text-ink">{(s.target_fpts - s.base_fpts >= 0 ? "+" : "") + (s.target_fpts - s.base_fpts).toFixed(2)}</b>
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      {s.healthy_fpm != null && (
+                        <span className={hot ? "text-warn" : "text-ink-3"}>
+                          healthy {s.healthy_fpm} FP/min
+                          {s.healthy_season ? ` (${s.healthy_season})` : ""}
+                        </span>
+                      )}
+                      {s.rate_held != null && (
+                        <Chip tone={s.rate_held >= 1 ? "up" : "warn"}
+                              title="small-sample fpts/min ÷ last healthy fpts/min — below ~1.0 the rate really fell, so the model's fade is right (EXP-033)">
+                          rate_held {s.rate_held}{s.base_gp ? ` · ${s.base_gp}gp base` : ""}
+                        </Chip>
+                      )}
+                      {hot && (
+                        <Chip tone="warn" title="Implied per-minute value exceeds the last healthy season at the board's unchanged mpg — needs a named minutes mechanism">
+                          above healthy rate
+                        </Chip>
+                      )}
+                      {s.retrofilled && (
+                        <span className="text-ink-3" title="Derived from the standing delta, not authored — records what it implies at unchanged minutes; a new pass replaces it">
+                          retrofilled {s.retrofilled}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
               {p.triangulation && (
                 <details className="mt-1.5">
                   <summary className="cursor-pointer select-none text-xs font-medium text-accent">
