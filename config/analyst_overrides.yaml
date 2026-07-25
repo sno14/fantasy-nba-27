@@ -855,3 +855,289 @@
     Sabonis stays this bad,'' with DeRozan no longer siphoning touches. Critically
     BBM also says the MINUTES do not move (~30). Re-sized 2026-07-25, not re-reported:
     the mechanism is the same, the arithmetic was wrong.'
+- name: Coby White
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 32
+    fpts_delta: 1
+  rationale: 'BBM 2026-07-22 (Hornets preview): BBM ~32 (''can''t be sat — no backup
+    PG''). Rate leg keeps the LaMelo assist-absorption claim (assists 2x) from the
+    07-24 +2.5, minus the ~1.2 mpg that entry had folded in.'
+- name: Kon Knueppel
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 32
+    fpts_delta: 2
+  rationale: 'BBM 2026-07-22 (Hornets preview): BBM ~32 (minutes already maxed; the
+    board''s 32.8 comes DOWN slightly). The whole 07-24 +2.0 was a usage claim (21.6
+    -> ~24 as LaMelo''s #1 beneficiary), so it survives intact as the rate leg.'
+- name: Brandon Miller
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 31
+    fpts_delta: 2
+  rationale: 'BBM 2026-07-22 (Hornets preview): BBM ~31. The standing +2.0 is a pure
+    usage/rate claim (vacated LaMelo usage, rising FT+assist rates) — unchanged; minutes
+    now expressed separately.'
+- name: Naz Reid
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 33
+  rationale: 'BBM 2026-07-22 (Hornets preview): BBM ''probably play 33 minutes'' as
+    the starting 4. The standing +3.0 WAS that minutes claim priced as fpts — now
+    expressed as minutes, so the rate leg is 0 (the usage colour is not separately
+    sized).'
+- name: Moussa Diabaté
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 28
+  rationale: 'BBM 2026-07-22 (Hornets preview): BBM installs him as the ~28-mpg starter
+    (''play your 28''). The 07-24 +4.0 was purely that minutes story — it becomes
+    the minutes leg, no rate residual.'
+- name: Grayson Allen
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 22
+  rationale: 'BBM 2026-07-22 (Hornets preview): BBM ~22 off the bench vs the board''s
+    25.9. Previously `none` because the fpts effect looked small; as minutes it is
+    a real -3.9 mpg the board should carry.'
+- name: Royce O'Neale
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 18
+  rationale: 'BBM 2026-07-22 (Hornets preview): BBM ~18 (bench 3&D). Previously note-only
+    — the board''s 20.8 was never corrected.'
+- name: Ryan Kalkbrenner
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 13
+  rationale: 'BBM 2026-07-22 (Hornets preview): BBM buries him 4th among the bigs
+    at ~13. The 07-24 -3.5 was a hard-cushioned version of a -9.5 mpg demotion; the
+    cushion existed because an fpts cut at unchanged minutes is incoherent.'
+- name: Dorian Finney-Smith
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 12
+  rationale: 'BBM 2026-07-22 (Hornets preview): BBM ~12 (deep 3&D wing) vs the board''s
+    17.5. Previously note-only.'
+- name: Sion James
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 20
+  rationale: 'BBM 2026-07-22 (Hornets preview): BBM ~20; the board''s 28.0 for a 10.9-USG
+    sophomore was the budget cross-check''s clearest flag.'
+- name: Trae Young
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 33
+    fpts_delta: 2.9
+  rationale: 'BBM 2026-07-23 (Wizards preview): BBM ''33 to 35'' across four episodes
+    — priced at the low end. The rate leg restores his per-minute value toward his
+    healthy norm (~1.28 fpts/min vs the model''s faded 1.19 off a 15-game base), which
+    is what the standing +4.5 was half doing implicitly. Lands ~42.3, essentially
+    the current 42.42 but now decomposed.'
+- name: Kyshawn George
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 30
+  rationale: 'BBM 2026-07-23 (Wizards preview): BBM ~30 as the entrenched org-favourite
+    starter. The 07-24 +3.5 was that minutes claim; usage is explicitly FLAT off-ball
+    next to Trae, so there is no rate leg to add.'
+- name: Anthony Davis
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 30
+  rationale: 'BBM 2026-07-23 (Wizards preview): BBM ~30 (''if he''s on the floor'')
+    vs the board''s 32.6. Previously `none` — a 2.6-mpg gap the board never took.
+    Health/GP stays on the availability axis (overrides.yaml), untouched here.'
+- name: Alex Sarr
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 30
+    fpts_delta: 1.5
+  rationale: 'BBM 2026-07-23 (Wizards preview): BBM ~30 as the entrenched starting
+    C. The rate leg is the efficiency half of the 07-24 +2.5 — the shot-diet FG rise
+    plus Trae-gravity — carried at the 07-17 +1.5 size; the minutes half is now the
+    minutes leg.'
+- name: Deandre Ayton
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 20
+  rationale: 'BBM 2026-07-23 (Wizards preview): BBM ~20 behind Davis and Sarr. The
+    standing -1.5 was a cushioned version of a -6.6 mpg demotion; his FG support is
+    already in the base rate, so no rate leg.'
+- name: Bilal Coulibaly
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 22
+  rationale: 'BBM 2026-07-23 (Wizards preview): BBM ~22 as a bench wing behind George
+    + Dybantsa. The 07-24 -4.0 cushioned a -9 mpg demotion.'
+- name: Tre Johnson
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 16
+  rationale: 'BBM 2026-07-23 (Wizards preview): BBM ~16 as a bench shooter. The 07-24
+    -2.0 cushioned a -10 mpg squeeze by ~74%.'
+- name: Bub Carrington
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 14
+  rationale: 'BBM 2026-07-23 (Wizards preview): BBM ~14 — Trae directly takes the
+    on-ball role his 27.9 mpg was built on. The 07-24 -4.5 cushioned a -13.9 mpg displacement.'
+- name: Will Riley
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 15
+  rationale: 'BBM 2026-07-23 (Wizards preview): BBM ~15, buried in the wing logjam.
+    The 07-24 -2.0 cushioned a -12.2 mpg squeeze by ~78%.'
+- name: Khris Middleton
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 16
+  rationale: 'BBM 2026-07-23 (Wizards preview): BBM ''16-18'' — priced at the low
+    end per the hedge rule. Previously `none` against a board 19.3.'
+- name: Cam Whitmore
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 8
+  rationale: 'BBM 2026-07-23 (Wizards preview): BBM ~8 (''end-of-show rotation-cameo'')
+    vs the board''s 18.4 — the largest unpriced gap on the roster. Previously note-only.'
+- name: Justin Champagnie
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 10
+  rationale: 'BBM 2026-07-23 (Wizards preview): BBM ~10 (deep; OReb/defence niche)
+    vs the board''s 20.2. Previously note-only.'
+- name: Nikola Vučević
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 18
+  rationale: 'BBM (see the superseded entry for the source episode): ''confident he
+    is the backup'' behind Wendell Carter Jr. The 07-13 entry priced a true backup
+    at ~16-18 mpg / ~20-22 fpts (a full ~-10) but stopped at -6.0 on the ''why acquire
+    a 34-yo starter to bench him'' doubt — that doubt is about MINUTES, so it is priced
+    at the TOP of his stated range (18) rather than as a rate fudge.'
+- name: Walker Kessler
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 31
+    fpts_delta: -4.3
+  rationale: 'BBM (see the superseded entry for the source episode): ''31 minutes
+    a night, you''d assume he plays similar if not more''; ''his backups are terrible.''
+    The 07-13 +7.5 already targeted ~33-34 — that target is unchanged, but it is now
+    reached as 31 mpg plus the named 3PT/FG% regression BBM flags (attempt rate 7%
+    -> 20% won''t hold) instead of as a single delta that left the board asserting
+    1.568 fpts/min at 21.3 mpg.'
+- name: Kyle Filipowski
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 19
+  rationale: 'BBM (see the superseded entry for the source episode): firm demotion
+    to backup C. The 07-17 entry priced ~18-19 mpg (~23-24 fpts, a full ~-9) and stopped
+    at -6.5 because Nurkić''s health ''guarantees spot-start windows'' — again a minutes
+    hedge, priced at the top of the stated range (19).'
+- name: Isaiah Collier
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 23
+  rationale: 'BBM (see the superseded entry for the source episode): ''a firm ~20-mpg
+    ceiling on a team trying to win.'' The 07-17 entry explicitly blended to ''~23
+    mpg'' for Utah''s guard-injury history and trade churn — that blend IS the minutes
+    belief, so it is stated directly.'
+- name: Maxime Raynaud
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 22
+  rationale: 'BBM (see the superseded entry for the source episode): backup pricing
+    with a live escape hatch. The 07-17 entry priced a true backup at ~19 mpg (~20
+    fpts, a full ~-7) then blended for the Sabonis-to-Detroit rumour; the blend is
+    a MINUTES hedge, so it is priced as ~22. Re-triangulate immediately if Sabonis
+    moves.'
+- name: Ty Jerome
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 29
+    fpts_delta: -6.2
+  rationale: 'BBM (see the superseded entry for the source episode): role UP, per-minute
+    rate DOWN — the 07-17 entry named both legs and could only net them into one +2.0:
+    ''~29 mpg at a deflated ~1.05-1.10 fpts/min lands ~30.5-31.'' Both are now stated
+    separately, which is exactly what the old verb could not do: the minutes rise
+    AND the usage/assist-conversion luck unwinds.'
+- name: Day'Ron Sharpe
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 25
+  rationale: 'BBM (see the superseded entry for the source episode): ''a per-minute
+    monster... if we just give him 26 a night'' as the presumptive starter after Claxton''s
+    exit, hedged on ''I would doubt the Nets go into the year only having Sharpe and
+    Wolf.'' Priced at 25 — the hedge lives in the minutes number. NB the 07-12 sizing
+    applied the ×0.85 per-36 fade that EXP-034 has since withdrawn.'
+- name: Ace Bailey
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 25
+  rationale: 'BBM (see the superseded entry for the source episode): bench role on
+    a team trying to be good. The 07-17 entry priced ~24-25 mpg (~24-25 fpts) and
+    trimmed for a year-2 lottery talent forcing his way back up by spring — a minutes
+    hedge, priced at 25.'
+- name: Matas Buzelis
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 33
+    fpts_delta: -3
+  rationale: 'BBM (see the superseded entry for the source episode): a real breakout
+    with ~+5 mpg of role (~33), ''tempered on usage and blocks.'' The named rate drag
+    (usage dip on the Powell arrival + block-conversion regression) is carried as
+    the rate leg at the ''halved'' size the 07-17 entry described, rather than being
+    netted invisibly into +2.0.'
+- name: Reed Sheppard
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 22
+  rationale: 'BBM (see the superseded entry for the source episode): ''the skill is
+    real, the OPPORTUNITY is what''s fake'' — a named, refilled 10-man rotation. The
+    07-17 entry priced ''~22-23 mpg at his 1.19 fpts/min is ~26-27 with the shooting
+    trimmed'' — the rescale to 22 mpg lands inside that range on its own, so no separate
+    rate leg is asserted.'
+- name: Anfernee Simons
+  date: 2026-07-25
+  category: role
+  action:
+    target_mpg: 24
+  rationale: 'BBM (see the superseded entry for the source episode): Philly bench
+    spot behind Maxey with Brown absorbing the wing usage — ''role down AND efficiency
+    luck unwinding, compounding legs.'' The 07-17 entry priced ''~24 mpg with the
+    rim rate regressed is ~22-23''; the two legs are now separate, which is what ''compounding''
+    actually means.'

@@ -34,8 +34,10 @@ See [ROADMAP.md](ROADMAP.md) for the build plan, current progress, and modeling 
    compute `rate_held` against — **never re-anchored on the last healthy season**, withdrawn
    2026-07-25 per EXP-033), the **decomposition sizing method** (name → price → subtract what
    the model already prices → a `sizing:` block that must reconcile, enforced by
-   `apply_proposals.py`; minutes ×1.0, the ×0.85 fade withdrawn per EXP-034), and the
-   proposals → approval → overrides lifecycle.
+   `apply_proposals.py`; minutes ×1.0, the ×0.85 fade withdrawn per EXP-034), the **two
+   verbs** — `target_mpg` (absolute minutes; rescales the stat line at held rates and
+   re-derives fpts) and `fpts_delta` (the rate residual after it), one per factor of the
+   model's own minutes × rate structure — and the proposals → approval → overrides lifecycle.
 
 ## Setup
 

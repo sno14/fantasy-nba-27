@@ -1400,7 +1400,15 @@ withdrew the ×0.85 per-36 fade (measured 1.05-1.10 — directionally wrong); ma
 **decomposition** (name → price → subtract what the model already prices) behind a
 machine-checked `sizing:` block in `apply_proposals.py`, retro-filled onto 58 standing entries.
 Both are methodology corrections to the EXP-029 layer, not model changes: **every projection is
-byte-identical** (max |Δfpts_pg| = 0.0). **Step 19** (the live draft
+byte-identical** (max |Δfpts_pg| = 0.0). The same day the layer gained a **second verb** —
+product step, no EXP number: the model builds value as **minutes × rate**, and the layer owns
+that value but could only edit the PRODUCT, so every minutes belief became a silent per-minute
+claim (Kessler: 21.3 mpg carrying 33.4 fpts = 1.568 fpts/min, 28% above his career best).
+`target_mpg` is **absolute** — it rescales the stat line at held rates (EXP-034) and *derives*
+fpts, and is self-limiting, so it needs no Step-18 decay; `fpts_delta` remains the rate residual
+applied after it. The rescale reuses `absorption.redistribute_board`'s mechanic, extracted to
+`_core.rescale_to_minutes` (fpts is re-scored, never scaled — bonuses are non-linear). 33 entries
+re-expressed; WAS team minutes 312.9 → 244 against the 240 budget. **Step 19** (the live draft
 room, implementation-plan **Phase 7**) **SHIPPED 2026-07-16** — product step, no EXP number:
 ESPN feed + ID join + dynamic replacement + the `/room` UI, verified against the real league
 and driven in a browser. Its H2H-simulator half (19.4–19.6) was **descoped by the user** the

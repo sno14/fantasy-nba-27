@@ -554,7 +554,15 @@ eval-only (opt-in `--recency`); the shipped board uses the plain `learned` found
       season pairs — directionally wrong; use ×1.0). Magnitude is now **decomposition**:
       name → price → **subtract what the model already prices** → a `sizing:` block that
       reconciles (enforced by `apply_proposals.py`). Sabonis's +4.0 re-sized to +1.0 as the
-      first application.
+      first application. **The layer also gained a second VERB the same day:** the model
+      builds value as minutes × rate, so it now carries `target_mpg` (absolute — rescales
+      the stat line at held rates and re-derives fpts; self-limiting, so no decay) alongside
+      `fpts_delta` (the rate residual applied after it). Before this, every minutes belief
+      was laundered into a per-minute-efficiency claim — Walker Kessler read 21.3 mpg with
+      33.4 fpts = 1.568 fpts/min, 28% above his career best. 33 entries re-expressed
+      (Batches 8-9: the CHA/WAS preview rosters in full, plus the 11 non-previewed entries
+      that already stated a minutes figure); team minutes fell from 312.9 → 244 (WAS) and
+      261.4 → 241 (CHA) against the 240 budget.
 
 #### 7.F — Usage-coupled rate/efficiency  ← parked (revisit only via 7.A)
 - [ ] Per-minute rates are already well-predicted (EXP-001); direct rate/efficiency modelling was

@@ -2207,7 +2207,7 @@
     target_mpg: 32
     target_fpm: 1.078
     target_fpts: 34.51
-  status: proposed
+  status: approved
   triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 30.8 -> 32 mpg gives 33.51. Rate residual +1. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
 
 - name: Kon Knueppel
@@ -2222,7 +2222,7 @@
     target_mpg: 32
     target_fpm: 1.167
     target_fpts: 37.36
-  status: proposed
+  status: approved
   triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 32.8 -> 32 mpg gives 35.36. Rate residual +2. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
 
 - name: Brandon Miller
@@ -2237,7 +2237,7 @@
     target_mpg: 31
     target_fpm: 1.123
     target_fpts: 34.81
-  status: proposed
+  status: approved
   triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 31.9 -> 31 mpg gives 32.81. Rate residual +2. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
 
 - name: Naz Reid
@@ -2252,7 +2252,7 @@
     target_mpg: 33
     target_fpm: 1.162
     target_fpts: 38.34
-  status: proposed
+  status: approved
   triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 29.5 -> 33 mpg gives 38.34. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
 
 - name: Moussa Diabaté
@@ -2267,7 +2267,7 @@
     target_mpg: 28
     target_fpm: 1.005
     target_fpts: 28.14
-  status: proposed
+  status: approved
   triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 21.7 -> 28 mpg gives 28.14. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
 
 - name: Grayson Allen
@@ -2282,7 +2282,7 @@
     target_mpg: 22
     target_fpm: 0.850
     target_fpts: 18.69
-  status: proposed
+  status: approved
   triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 25.9 -> 22 mpg gives 18.69. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
 
 - name: Royce O'Neale
@@ -2297,7 +2297,7 @@
     target_mpg: 18
     target_fpm: 0.888
     target_fpts: 15.98
-  status: proposed
+  status: approved
   triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 20.8 -> 18 mpg gives 15.98. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
 
 - name: Ryan Kalkbrenner
@@ -2312,7 +2312,7 @@
     target_mpg: 13
     target_fpm: 1.085
     target_fpts: 14.11
-  status: proposed
+  status: approved
   triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 22.5 -> 13 mpg gives 14.11. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
 
 - name: Dorian Finney-Smith
@@ -2327,7 +2327,7 @@
     target_mpg: 12
     target_fpm: 0.612
     target_fpts: 7.35
-  status: proposed
+  status: approved
   triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 17.5 -> 12 mpg gives 7.35. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
 
 - name: Sion James
@@ -2342,7 +2342,7 @@
     target_mpg: 20
     target_fpm: 0.718
     target_fpts: 14.35
-  status: proposed
+  status: approved
   triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 28 -> 20 mpg gives 14.35. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
 
 - name: Trae Young
@@ -2357,7 +2357,7 @@
     target_mpg: 33
     target_fpm: 1.280
     target_fpts: 42.25
-  status: proposed
+  status: approved
   triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 31.8 -> 33 mpg gives 39.35. Rate residual +2.9. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
 
 - name: Kyshawn George
@@ -2372,7 +2372,7 @@
     target_mpg: 30
     target_fpm: 0.992
     target_fpts: 29.75
-  status: proposed
+  status: approved
   triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 25.1 -> 30 mpg gives 29.75. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
 
 - name: Anthony Davis
@@ -2387,7 +2387,7 @@
     target_mpg: 30
     target_fpm: 1.506
     target_fpts: 45.18
-  status: proposed
+  status: approved
   triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 32.6 -> 30 mpg gives 45.18. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
 
 - name: Alex Sarr
@@ -2402,7 +2402,7 @@
     target_mpg: 30
     target_fpm: 1.328
     target_fpts: 39.85
-  status: proposed
+  status: approved
   triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 26.5 -> 30 mpg gives 38.35. Rate residual +1.5. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
 
 - name: Deandre Ayton
@@ -2417,7 +2417,7 @@
     target_mpg: 20
     target_fpm: 1.056
     target_fpts: 21.13
-  status: proposed
+  status: approved
   triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 26.6 -> 20 mpg gives 21.13. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
 
 - name: Bilal Coulibaly
@@ -2432,7 +2432,7 @@
     target_mpg: 22
     target_fpm: 0.932
     target_fpts: 20.51
-  status: proposed
+  status: approved
   triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 31.1 -> 22 mpg gives 20.51. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
 
 - name: Tre Johnson
@@ -2447,7 +2447,7 @@
     target_mpg: 16
     target_fpm: 0.915
     target_fpts: 14.64
-  status: proposed
+  status: approved
   triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 26.2 -> 16 mpg gives 14.64. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
 
 - name: Bub Carrington
@@ -2462,7 +2462,7 @@
     target_mpg: 14
     target_fpm: 0.858
     target_fpts: 12.01
-  status: proposed
+  status: approved
   triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 27.9 -> 14 mpg gives 12.01. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
 
 - name: Will Riley
@@ -2477,7 +2477,7 @@
     target_mpg: 15
     target_fpm: 0.874
     target_fpts: 13.11
-  status: proposed
+  status: approved
   triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 27.2 -> 15 mpg gives 13.11. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
 
 - name: Khris Middleton
@@ -2492,7 +2492,7 @@
     target_mpg: 16
     target_fpm: 0.892
     target_fpts: 14.28
-  status: proposed
+  status: approved
   triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 19.3 -> 16 mpg gives 14.28. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
 
 - name: Cam Whitmore
@@ -2507,7 +2507,7 @@
     target_mpg: 8
     target_fpm: 0.901
     target_fpts: 7.21
-  status: proposed
+  status: approved
   triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 18.4 -> 8 mpg gives 7.21. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
 
 - name: Justin Champagnie
@@ -2522,5 +2522,185 @@
     target_mpg: 10
     target_fpm: 1.000
     target_fpts: 10.00
-  status: proposed
+  status: approved
   triangulation: "Minutes leg from the persisted preview ledger (data/manual/bbm_team_previews/), which already records BBM's stated mpg per rotation player — no new minutes judgment, only reading his figure. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED: 20.2 -> 10 mpg gives 10.00. Rate residual +0. Supersedes the earlier fpts-only entry, whose magnitude was cushioned because a delta at unchanged mpg is a per-minute claim — that cushion is an expression artifact, not a belief, and is removed here."
+
+# ============ Batch 9 — the remaining entries that already STATED a minutes number (proposed 2026-07-25) ============
+# Companion to Batch 8. These 11 are not on a previewed team, but their superseded triangulations each
+# already contain an explicit BBM minutes figure — so converting them is re-EXPRESSION, not re-sizing, and
+# needs no new judgment. The recurring pattern: the old entry computed the full minutes effect, then
+# cushioned it (Vučević full ~-10 -> -6.0; Filipowski ~-9 -> -6.5; Collier ~-9 -> -6.0) for a reason that
+# was itself about MINUTES ("Nurkić's health guarantees spot-start windows", "trade churn", "he'll force
+# his way back up"). Per the contract that hedge is priced ONCE, inside the minutes number — at the top of
+# the player's own stated range — instead of as a rate fudge.
+# Two entries named BOTH legs and could only net them before: Ty Jerome ("~29 mpg at a deflated ~1.05-1.10
+# fpts/min") and Buzelis ("+5 mpg tempered on usage and blocks"). They now carry a real composite.
+# The 26 remaining fpts_delta-only entries state NO minutes number; converting them would mean inventing
+# one, so they wait for a team preview or a fresh episode.
+# CAVEAT: no team-minutes ledger exists for these rosters, so the freed/absorbed minutes have no nameable
+# counterparty — the budget is not enforced here the way it is for CHA/WAS.
+
+- name: Nikola Vučević
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 18}
+  preview: "28.5 -> 18 mpg · 32.49 -> 20.52 fpts/g (minutes now expressed)"
+  rationale: "BBM (see the superseded entry for the source episode): 'confident he is the backup' behind Wendell Carter Jr. The 07-13 entry priced a true backup at ~16-18 mpg / ~20-22 fpts (a full ~-10) but stopped at -6.0 on the 'why acquire a 34-yo starter to bench him' doubt — that doubt is about MINUTES, so it is priced at the TOP of his stated range (18) rather than as a rate fudge."
+  sizing:
+    base_fpts: 32.49
+    base_mpg: 28.5
+    target_mpg: 18
+    target_fpm: 1.140
+    target_fpts: 20.52
+  status: approved
+  triangulation: "Re-expression, not a re-sizing: the minutes number was already stated in the superseded entry and is simply moved into the `target_mpg` leg. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED — 28.5 -> 18 mpg gives 20.52 — then the rate leg (+0) carries only the separately NAMED per-minute mechanism. Where the old delta was cushioned short of the stated minutes, the cushion was a minutes doubt wearing a rate costume; per the contract it is now priced once, inside the minutes number. No team-minutes ledger exists for this roster yet, so the freed/absorbed minutes have no nameable counterparty — a preview for this team should revisit it."
+
+- name: Walker Kessler
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 31, fpts_delta: -4.3}
+  preview: "21.3 -> 31 mpg · 25.90 -> 33.39 fpts/g (minutes now expressed)"
+  rationale: "BBM (see the superseded entry for the source episode): '31 minutes a night, you'd assume he plays similar if not more'; 'his backups are terrible.' The 07-13 +7.5 already targeted ~33-34 — that target is unchanged, but it is now reached as 31 mpg plus the named 3PT/FG% regression BBM flags (attempt rate 7% -> 20% won't hold) instead of as a single delta that left the board asserting 1.568 fpts/min at 21.3 mpg."
+  sizing:
+    base_fpts: 25.90
+    base_mpg: 21.3
+    target_mpg: 31
+    target_fpm: 1.077
+    target_fpts: 33.39
+  status: approved
+  triangulation: "Re-expression, not a re-sizing: the minutes number was already stated in the superseded entry and is simply moved into the `target_mpg` leg. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED — 21.3 -> 31 mpg gives 37.69 — then the rate leg (-4.3) carries only the separately NAMED per-minute mechanism. Where the old delta was cushioned short of the stated minutes, the cushion was a minutes doubt wearing a rate costume; per the contract it is now priced once, inside the minutes number. No team-minutes ledger exists for this roster yet, so the freed/absorbed minutes have no nameable counterparty — a preview for this team should revisit it."
+
+- name: Kyle Filipowski
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 19}
+  preview: "27.4 -> 19 mpg · 32.53 -> 22.56 fpts/g (minutes now expressed)"
+  rationale: "BBM (see the superseded entry for the source episode): firm demotion to backup C. The 07-17 entry priced ~18-19 mpg (~23-24 fpts, a full ~-9) and stopped at -6.5 because Nurkić's health 'guarantees spot-start windows' — again a minutes hedge, priced at the top of the stated range (19)."
+  sizing:
+    base_fpts: 32.53
+    base_mpg: 27.4
+    target_mpg: 19
+    target_fpm: 1.187
+    target_fpts: 22.56
+  status: approved
+  triangulation: "Re-expression, not a re-sizing: the minutes number was already stated in the superseded entry and is simply moved into the `target_mpg` leg. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED — 27.4 -> 19 mpg gives 22.56 — then the rate leg (+0) carries only the separately NAMED per-minute mechanism. Where the old delta was cushioned short of the stated minutes, the cushion was a minutes doubt wearing a rate costume; per the contract it is now priced once, inside the minutes number. No team-minutes ledger exists for this roster yet, so the freed/absorbed minutes have no nameable counterparty — a preview for this team should revisit it."
+
+- name: Isaiah Collier
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 23}
+  preview: "28.9 -> 23 mpg · 30.21 -> 24.04 fpts/g (minutes now expressed)"
+  rationale: "BBM (see the superseded entry for the source episode): 'a firm ~20-mpg ceiling on a team trying to win.' The 07-17 entry explicitly blended to '~23 mpg' for Utah's guard-injury history and trade churn — that blend IS the minutes belief, so it is stated directly."
+  sizing:
+    base_fpts: 30.21
+    base_mpg: 28.9
+    target_mpg: 23
+    target_fpm: 1.045
+    target_fpts: 24.04
+  status: approved
+  triangulation: "Re-expression, not a re-sizing: the minutes number was already stated in the superseded entry and is simply moved into the `target_mpg` leg. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED — 28.9 -> 23 mpg gives 24.04 — then the rate leg (+0) carries only the separately NAMED per-minute mechanism. Where the old delta was cushioned short of the stated minutes, the cushion was a minutes doubt wearing a rate costume; per the contract it is now priced once, inside the minutes number. No team-minutes ledger exists for this roster yet, so the freed/absorbed minutes have no nameable counterparty — a preview for this team should revisit it."
+
+- name: Maxime Raynaud
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 22}
+  preview: "25.9 -> 22 mpg · 27.02 -> 22.95 fpts/g (minutes now expressed)"
+  rationale: "BBM (see the superseded entry for the source episode): backup pricing with a live escape hatch. The 07-17 entry priced a true backup at ~19 mpg (~20 fpts, a full ~-7) then blended for the Sabonis-to-Detroit rumour; the blend is a MINUTES hedge, so it is priced as ~22. Re-triangulate immediately if Sabonis moves."
+  sizing:
+    base_fpts: 27.02
+    base_mpg: 25.9
+    target_mpg: 22
+    target_fpm: 1.043
+    target_fpts: 22.95
+  status: approved
+  triangulation: "Re-expression, not a re-sizing: the minutes number was already stated in the superseded entry and is simply moved into the `target_mpg` leg. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED — 25.9 -> 22 mpg gives 22.95 — then the rate leg (+0) carries only the separately NAMED per-minute mechanism. Where the old delta was cushioned short of the stated minutes, the cushion was a minutes doubt wearing a rate costume; per the contract it is now priced once, inside the minutes number. No team-minutes ledger exists for this roster yet, so the freed/absorbed minutes have no nameable counterparty — a preview for this team should revisit it."
+
+- name: Ty Jerome
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 29, fpts_delta: -6.2}
+  preview: "22.2 -> 29 mpg · 28.66 -> 31.24 fpts/g (minutes now expressed)"
+  rationale: "BBM (see the superseded entry for the source episode): role UP, per-minute rate DOWN — the 07-17 entry named both legs and could only net them into one +2.0: '~29 mpg at a deflated ~1.05-1.10 fpts/min lands ~30.5-31.' Both are now stated separately, which is exactly what the old verb could not do: the minutes rise AND the usage/assist-conversion luck unwinds."
+  sizing:
+    base_fpts: 28.66
+    base_mpg: 22.2
+    target_mpg: 29
+    target_fpm: 1.077
+    target_fpts: 31.24
+  status: approved
+  triangulation: "Re-expression, not a re-sizing: the minutes number was already stated in the superseded entry and is simply moved into the `target_mpg` leg. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED — 22.2 -> 29 mpg gives 37.44 — then the rate leg (-6.2) carries only the separately NAMED per-minute mechanism. Where the old delta was cushioned short of the stated minutes, the cushion was a minutes doubt wearing a rate costume; per the contract it is now priced once, inside the minutes number. No team-minutes ledger exists for this roster yet, so the freed/absorbed minutes have no nameable counterparty — a preview for this team should revisit it."
+
+- name: Day'Ron Sharpe
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 25}
+  preview: "20.3 -> 25 mpg · 23.30 -> 28.69 fpts/g (minutes now expressed)"
+  rationale: "BBM (see the superseded entry for the source episode): 'a per-minute monster... if we just give him 26 a night' as the presumptive starter after Claxton's exit, hedged on 'I would doubt the Nets go into the year only having Sharpe and Wolf.' Priced at 25 — the hedge lives in the minutes number. NB the 07-12 sizing applied the ×0.85 per-36 fade that EXP-034 has since withdrawn."
+  sizing:
+    base_fpts: 23.30
+    base_mpg: 20.3
+    target_mpg: 25
+    target_fpm: 1.148
+    target_fpts: 28.69
+  status: approved
+  triangulation: "Re-expression, not a re-sizing: the minutes number was already stated in the superseded entry and is simply moved into the `target_mpg` leg. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED — 20.3 -> 25 mpg gives 28.69 — then the rate leg (+0) carries only the separately NAMED per-minute mechanism. Where the old delta was cushioned short of the stated minutes, the cushion was a minutes doubt wearing a rate costume; per the contract it is now priced once, inside the minutes number. No team-minutes ledger exists for this roster yet, so the freed/absorbed minutes have no nameable counterparty — a preview for this team should revisit it."
+
+- name: Ace Bailey
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 25}
+  preview: "29.7 -> 25 mpg · 29.09 -> 24.49 fpts/g (minutes now expressed)"
+  rationale: "BBM (see the superseded entry for the source episode): bench role on a team trying to be good. The 07-17 entry priced ~24-25 mpg (~24-25 fpts) and trimmed for a year-2 lottery talent forcing his way back up by spring — a minutes hedge, priced at 25."
+  sizing:
+    base_fpts: 29.09
+    base_mpg: 29.7
+    target_mpg: 25
+    target_fpm: 0.980
+    target_fpts: 24.49
+  status: approved
+  triangulation: "Re-expression, not a re-sizing: the minutes number was already stated in the superseded entry and is simply moved into the `target_mpg` leg. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED — 29.7 -> 25 mpg gives 24.49 — then the rate leg (+0) carries only the separately NAMED per-minute mechanism. Where the old delta was cushioned short of the stated minutes, the cushion was a minutes doubt wearing a rate costume; per the contract it is now priced once, inside the minutes number. No team-minutes ledger exists for this roster yet, so the freed/absorbed minutes have no nameable counterparty — a preview for this team should revisit it."
+
+- name: Matas Buzelis
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 33, fpts_delta: -3}
+  preview: "27.8 -> 33 mpg · 31.91 -> 34.88 fpts/g (minutes now expressed)"
+  rationale: "BBM (see the superseded entry for the source episode): a real breakout with ~+5 mpg of role (~33), 'tempered on usage and blocks.' The named rate drag (usage dip on the Powell arrival + block-conversion regression) is carried as the rate leg at the 'halved' size the 07-17 entry described, rather than being netted invisibly into +2.0."
+  sizing:
+    base_fpts: 31.91
+    base_mpg: 27.8
+    target_mpg: 33
+    target_fpm: 1.057
+    target_fpts: 34.88
+  status: approved
+  triangulation: "Re-expression, not a re-sizing: the minutes number was already stated in the superseded entry and is simply moved into the `target_mpg` leg. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED — 27.8 -> 33 mpg gives 37.88 — then the rate leg (-3) carries only the separately NAMED per-minute mechanism. Where the old delta was cushioned short of the stated minutes, the cushion was a minutes doubt wearing a rate costume; per the contract it is now priced once, inside the minutes number. No team-minutes ledger exists for this roster yet, so the freed/absorbed minutes have no nameable counterparty — a preview for this team should revisit it."
+
+- name: Reed Sheppard
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 22}
+  preview: "27 -> 22 mpg · 32.01 -> 26.08 fpts/g (minutes now expressed)"
+  rationale: "BBM (see the superseded entry for the source episode): 'the skill is real, the OPPORTUNITY is what's fake' — a named, refilled 10-man rotation. The 07-17 entry priced '~22-23 mpg at his 1.19 fpts/min is ~26-27 with the shooting trimmed' — the rescale to 22 mpg lands inside that range on its own, so no separate rate leg is asserted."
+  sizing:
+    base_fpts: 32.01
+    base_mpg: 27
+    target_mpg: 22
+    target_fpm: 1.185
+    target_fpts: 26.08
+  status: approved
+  triangulation: "Re-expression, not a re-sizing: the minutes number was already stated in the superseded entry and is simply moved into the `target_mpg` leg. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED — 27 -> 22 mpg gives 26.08 — then the rate leg (+0) carries only the separately NAMED per-minute mechanism. Where the old delta was cushioned short of the stated minutes, the cushion was a minutes doubt wearing a rate costume; per the contract it is now priced once, inside the minutes number. No team-minutes ledger exists for this roster yet, so the freed/absorbed minutes have no nameable counterparty — a preview for this team should revisit it."
+
+- name: Anfernee Simons
+  date: 2026-07-25
+  category: role
+  action: {target_mpg: 24}
+  preview: "28.3 -> 24 mpg · 25.81 -> 21.89 fpts/g (minutes now expressed)"
+  rationale: "BBM (see the superseded entry for the source episode): Philly bench spot behind Maxey with Brown absorbing the wing usage — 'role down AND efficiency luck unwinding, compounding legs.' The 07-17 entry priced '~24 mpg with the rim rate regressed is ~22-23'; the two legs are now separate, which is what 'compounding' actually means."
+  sizing:
+    base_fpts: 25.81
+    base_mpg: 28.3
+    target_mpg: 24
+    target_fpm: 0.912
+    target_fpts: 21.89
+  status: approved
+  triangulation: "Re-expression, not a re-sizing: the minutes number was already stated in the superseded entry and is simply moved into the `target_mpg` leg. Rescale holds per-minute rates (EXP-034: no per-36 fade) so the stat line moves with the minutes and fpts is DERIVED — 28.3 -> 24 mpg gives 21.89 — then the rate leg (+0) carries only the separately NAMED per-minute mechanism. Where the old delta was cushioned short of the stated minutes, the cushion was a minutes doubt wearing a rate costume; per the contract it is now priced once, inside the minutes number. No team-minutes ledger exists for this roster yet, so the freed/absorbed minutes have no nameable counterparty — a preview for this team should revisit it."
