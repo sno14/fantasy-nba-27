@@ -23,7 +23,7 @@ from ..models.analyst import apply_overrides, load_overrides
 from ..models.backtest import _actual
 from ..models.baseline import project_baseline
 from ..models.durability import build_gp_age_curve
-from ..models.learned import project_learned
+from ..models.learned import load_returning_vet_ids, project_learned
 from ..models.minutes import build_minutes_age_curve
 from ..models.projection import project_v2
 from ..models.uncertainty import build_gp_pool, rank_board, simulate_ranges
@@ -105,7 +105,12 @@ def compute_board(target: str, model: str, apply_analyst: bool, ovr_mtime: float
     tr_bio = bio[bio["SEASON"].map(_season_start) < ty]
 
     if model == "learned":
-        proj = project_learned(tr_ss, tr_bio, target_season=target, cfg=cfg)
+        # EXP-032: project returning vets (prior history, no most-recent season) from their
+        # last healthy season so the live board matches the offline one, instead of them
+        # falling through to the ADP sheet-seed below.
+        rv_ids = load_returning_vet_ids(ss) if target == CURRENT_TARGET else set()
+        proj = project_learned(tr_ss, tr_bio, target_season=target, cfg=cfg,
+                               returning_vet_ids=rv_ids)
     elif model == "baseline":
         proj = project_baseline(tr_ss, tr_bio, target_season=target, cfg=cfg)
     else:
@@ -129,6 +134,10 @@ def compute_board(target: str, model: str, apply_analyst: bool, ovr_mtime: float
         flags = injury_features(spells, f"{ty}-10-01")[["PLAYER_ID", "inj_chronic_flag"]]
         proj = proj.merge(flags, on="PLAYER_ID", how="left")
         proj["inj_chronic_flag"] = proj["inj_chronic_flag"].fillna(0).astype(int)
+        if "returning_vet" in proj.columns:
+            # EXP-032: returning vets aren't in the injury spells but are high-variance by
+            # construction — bucket them into the fatter-tail pool so their ranges are wide.
+            proj.loc[proj["returning_vet"].fillna(False), "inj_chronic_flag"] = 1
     pool = build_gp_pool(tr_ss, tr_bio, max_start_year=ty, injury_profile=chronic)
     proj = simulate_ranges(proj, pool)
     recent = tr_ss.sort_values("SEASON").drop_duplicates("PLAYER_ID", keep="last")

@@ -116,7 +116,10 @@ export default function DraftBoard() {
           return (
             <Chip
               tone={a.value > 0 ? "up" : "down"}
-              title={`${r.analyst_category} · ${r.analyst_date} · model rank ${r.model_rank}`}
+              title={
+                (r.analyst_rationale ? `${r.analyst_rationale}\n\n` : "") +
+                `${r.analyst_category} · ${r.analyst_date} · model rank ${r.model_rank}`
+              }
             >
               {a.value > 0 ? "▲" : "▼"} {Math.abs(a.value).toFixed(1)}
             </Chip>

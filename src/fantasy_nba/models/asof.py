@@ -511,9 +511,13 @@ SEASON_LENGTH_DAYS = 174  # typical opening night -> regular-season finale span 
 
 
 def load_status_overrides(path: str | Path | None = None) -> list[dict]:
-    """Parse ``config/overrides.yaml`` -> ``[{name, out_until | out_for_season}]``.
+    """Parse ``config/overrides.yaml`` -> ``[{name, out_until | out_for_season | games_cap}]``.
     Missing file = no overrides (the common case). Malformed entries raise — a silently
-    dropped status override is a wrong board with no audit trail."""
+    dropped status override is a wrong board with no audit trail.
+
+    ``games_cap: N`` is a soft season-games ceiling (``gp = min(gp, N)``) for a player who WILL
+    play but on a reduced/managed schedule — e.g. a returning vet ramping back from a full
+    missed season (EXP-032). Availability only, like the other two: rates and minutes untouched."""
     path = Path(path) if path else CONFIG_DIR / "overrides.yaml"
     if not path.exists():
         return []
@@ -526,12 +530,14 @@ def load_status_overrides(path: str | Path | None = None) -> list[dict]:
             raise ValueError(f"{path} override {i + 1}: needs at least a 'name'.")
         has_until = e.get("out_until") is not None
         has_season = bool(e.get("out_for_season"))
-        if has_until == has_season:  # both or neither
+        has_cap = e.get("games_cap") is not None
+        if has_until + has_season + has_cap != 1:  # exactly one
             raise ValueError(f"{path} override {e['name']!r}: exactly one of out_until / "
-                             f"out_for_season is required.")
+                             f"out_for_season / games_cap is required.")
         out.append({"name": str(e["name"]),
                     "out_until": pd.Timestamp(e["out_until"]) if has_until else None,
-                    "out_for_season": has_season})
+                    "out_for_season": has_season,
+                    "games_cap": float(e["games_cap"]) if has_cap else None})
     return out
 
 
@@ -585,6 +591,8 @@ def apply_status_overrides(
         i = int(hits[0])
         if e["out_for_season"]:
             cap, note = 0.0, "out_for_season"
+        elif e.get("games_cap") is not None:
+            cap, note = float(e["games_cap"]), f"games_cap:{e['games_cap']:.0f}"
         else:
             gp_max = float(out.loc[i, "ros_gp_max"]) if "ros_gp_max" in out.columns else float(out.loc[i, "gp"])
             cap = _games_remaining_after(e["out_until"], T, season_end, gp_max, schedule)

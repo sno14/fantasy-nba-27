@@ -175,6 +175,7 @@ def apply_overrides(board: pd.DataFrame, entries: list[dict],
     out["analyst_action"] = ""
     out["analyst_category"] = ""
     out["analyst_date"] = ""
+    out["analyst_rationale"] = ""
     if decay_from is not None:
         out["analyst_decay_factor"] = np.nan
     keys = out["PLAYER_NAME"].map(name_key)
@@ -191,6 +192,7 @@ def apply_overrides(board: pd.DataFrame, entries: list[dict],
         out.loc[i, "analyst_action"] = _action_str(e)
         out.loc[i, "analyst_category"] = e["category"]
         out.loc[i, "analyst_date"] = e["date"].date().isoformat()
+        out.loc[i, "analyst_rationale"] = e["rationale"]
 
         if e["kind"] == "none":
             continue

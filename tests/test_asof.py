@@ -208,6 +208,27 @@ def test_load_status_overrides_parses_and_validates(tmp_path):
             asof.load_status_overrides(p)
 
 
+def test_status_override_games_cap_parses_and_caps_gp_only(tmp_path):
+    # EXP-032: games_cap is a third mutually-exclusive option — a soft season-games ceiling for
+    # a returning vet on a managed schedule. Availability only (rates/minutes untouched).
+    p = tmp_path / "overrides.yaml"
+    p.write_text("overrides:\n  - name: Jayson Tatum\n    games_cap: 55\n", encoding="utf-8")
+    ov = asof.load_status_overrides(p)
+    assert ov[0]["games_cap"] == 55.0 and ov[0]["out_until"] is None and not ov[0]["out_for_season"]
+
+    out = asof.apply_status_overrides(_status_board(), ov, T="2026-10-21", season_end="2027-04-12")
+    row = out[out["PLAYER_NAME"] == "Jayson Tatum"].iloc[0]
+    assert row["gp"] == 55.0                                  # capped
+    assert row["mpg"] == 35.0 and row["fpts_pg"] == 45.0      # per-game value untouched
+    assert row["fpts_total"] == round(45.0 * 55.0, 1)         # recomputed on the capped gp
+    assert row["status_override"].startswith("games_cap:55")
+    # a second option alongside games_cap is ambiguous -> raises.
+    p.write_text("overrides:\n  - name: X\n    games_cap: 50\n    out_for_season: true\n",
+                 encoding="utf-8")
+    with pytest.raises(ValueError):
+        asof.load_status_overrides(p)
+
+
 def test_status_override_out_for_season_zeroes_availability_only():
     out = asof.apply_status_overrides(
         _status_board(), [{"name": "Jayson Tatum", "out_until": None, "out_for_season": True}],

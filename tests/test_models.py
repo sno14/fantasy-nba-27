@@ -193,6 +193,31 @@ def _synthetic_league(seasons, n_players=40, seed=0):
     return pd.DataFrame(ss_rows), pd.DataFrame(bio_rows)
 
 
+def test_returning_vet_universe_and_zero_blast_radius():
+    # EXP-032: a player absent from the most-recent season is off the board by default, but
+    # projected when listed in returning_vet_ids — and adding him must NOT move any other player.
+    seasons = ["2019-20", "2020-21", "2021-22", "2022-23"]
+    ss, bio = _synthetic_league(seasons)
+    vet = 5
+    ss = ss[~((ss["PLAYER_ID"] == vet) & (ss["SEASON"] == "2022-23"))].copy()  # missed last season
+    fast = {**learned.DEFAULT_LGBM_PARAMS, "n_estimators": 25}
+
+    base = learned.project_learned(ss, bio, "2023-24", params=fast)
+    withvet = learned.project_learned(ss, bio, "2023-24", params=fast, returning_vet_ids={vet})
+
+    assert vet not in set(base["PLAYER_ID"])                 # dropped by default
+    assert vet in set(withvet["PLAYER_ID"])                  # included when listed
+    vrow = withvet.set_index("PLAYER_ID").loc[vet]
+    assert bool(vrow["returning_vet"]) is True
+    assert not withvet[withvet["PLAYER_ID"] != vet]["returning_vet"].any()
+    # aging uses the vet's OWN last-played season (2021-22, age 24) + 2 yrs to 2023-24 = 26,
+    # not the under-aged recent_age+gap fallback.
+    assert abs(float(vrow["target_age"]) - 26.0) < 1e-6
+    # zero blast radius: every other player's per-game projection is byte-identical.
+    m = base.merge(withvet, on="PLAYER_ID", suffixes=("_b", "_v"))
+    assert np.allclose(m["fpts_pg_b"].to_numpy(), m["fpts_pg_v"].to_numpy(), atol=0.0)
+
+
 def test_project_learned_schema_bounds_and_determinism():
     seasons = ["2019-20", "2020-21", "2021-22", "2022-23"]
     ss, bio = _synthetic_league(seasons)

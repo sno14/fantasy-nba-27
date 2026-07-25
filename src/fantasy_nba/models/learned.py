@@ -202,16 +202,20 @@ def _features_for(
     coach_feats: pd.DataFrame | None = None,
     preseason_feats: pd.DataFrame | None = None,
     depth_feats: pd.DataFrame | None = None,
+    include_ids: set | None = None,
 ) -> pd.DataFrame:
     """Marcel aggregates (+ trajectory / team-context / recency / injury features) for ``target_season``.
 
     ``prior`` is prior-only (drives the Marcel aggregates and trajectory). Team-context, recency
     and injury features are computed by the caller (they need, respectively, the target-season team
     map, the precomputed game-log table, and the spells table with an as-of date) and passed in as
-    ``[PLAYER_ID, *feats]`` frames to merge here.
+    ``[PLAYER_ID, *feats]`` frames to merge here. ``include_ids`` (predict-time only) adds returning
+    vets absent from the most recent season — the training panel never sets it, so the fit is
+    unchanged and existing players' projections stay identical.
     """
     feats = weighted_aggregates(
-        prior, prior_bio, target_season, n_seasons=n_seasons, weights=weights, reg_minutes=reg_minutes
+        prior, prior_bio, target_season, n_seasons=n_seasons, weights=weights,
+        reg_minutes=reg_minutes, include_ids=include_ids,
     )
     if use_trajectory:
         traj = trajectory_features(prior, target_season, n_seasons=n_seasons)
@@ -417,6 +421,41 @@ def _predict_target(
     return pred
 
 
+def load_returning_vet_ids(season_stats: pd.DataFrame, path=None) -> set:
+    """Resolve config/returning_vets.yaml names -> PLAYER_IDs (EXP-032 / the Haliburton gap).
+
+    Shared by the offline board (scripts/project.py) and the live server board
+    (api/boards.py) so both project the same returning vets. Empty set when the file is
+    absent (the common path). An unmatched name raises — a silently dropped vet is a board
+    that quietly reverts to the ADP seed with no audit trail.
+    """
+    from pathlib import Path
+
+    import yaml
+
+    from ..config import CONFIG_DIR
+
+    p = Path(path) if path else CONFIG_DIR / "returning_vets.yaml"
+    if not p.exists():
+        return set()
+    raw = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+    names = [n for n in (raw.get("returning_vets") or []) if n]
+    if not names:
+        return set()
+    latest = (season_stats.sort_values("SEASON").drop_duplicates("PLAYER_NAME", keep="last")
+              .set_index("PLAYER_NAME")["PLAYER_ID"])
+    ids, missing = set(), []
+    for n in names:
+        if n in latest.index:
+            ids.add(int(latest[n]))
+        else:
+            missing.append(n)
+    if missing:
+        raise ValueError(f"returning_vets.yaml: no player_season_stats match for {missing} "
+                         "(check the exact PLAYER_NAME spelling).")
+    return ids
+
+
 def project_learned(
     season_stats: pd.DataFrame,
     bio: pd.DataFrame,
@@ -451,6 +490,7 @@ def project_learned(
     n_seasons: int = 3,
     weights: tuple[float, ...] = DEFAULT_WEIGHTS,
     reg_minutes: float = DEFAULT_REG_MINUTES,
+    returning_vet_ids: set | None = None,
 ) -> pd.DataFrame:
     """Project ``target_season`` with the learned decompositional model.
 
@@ -608,7 +648,7 @@ def project_learned(
     agg = _features_for(
         season_stats, bio, target_season, use_trajectory, n_seasons, weights, reg_minutes,
         context_feats, recency_feats, injury_feats, vacated_feats, breakout_feats,
-        coach_feats, preseason_feats, depth_feats,
+        coach_feats, preseason_feats, depth_feats, include_ids=returning_vet_ids,
     )
     X = agg[feature_cols]
     X_gp = agg[feature_cols + GP_EXTRA_FEATURES] if use_injuries else X
@@ -650,6 +690,10 @@ def project_learned(
 
     out["fpts_pg"] = score_frame(out, cfg).round(2)
     out["fpts_total"] = (out["fpts_pg"] * out["gp"]).round(1)
+    # Provenance: rows projected from a last-healthy season (returning vets absent from the
+    # most recent season) — a clean per-game value; the missed-year availability discount is a
+    # separate config/overrides.yaml games_cap, and the caller widens their risk ranges.
+    out["returning_vet"] = out["PLAYER_ID"].isin(set(returning_vet_ids or []))
     out = out.sort_values("fpts_total", ascending=False).reset_index(drop=True)
     out.insert(0, "rank", range(1, len(out) + 1))
     return out

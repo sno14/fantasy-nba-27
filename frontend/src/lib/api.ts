@@ -38,6 +38,7 @@ export interface BoardRow {
   analyst_action?: string | null;
   analyst_category?: string | null;
   analyst_date?: string | null;
+  analyst_rationale?: string | null;
   model_rank?: number | null;
   vor?: number | null;
   vor_rank?: number | null;

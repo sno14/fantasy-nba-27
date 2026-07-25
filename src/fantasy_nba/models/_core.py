@@ -42,10 +42,14 @@ def weighted_aggregates(
     n_seasons: int = 3,
     weights: tuple[float, ...] = DEFAULT_WEIGHTS,
     reg_minutes: float = DEFAULT_REG_MINUTES,
+    include_ids: set | None = None,
 ) -> pd.DataFrame:
     """Per-player recency-weighted aggregates + regressed per-minute rates.
 
-    Returns one row per player active in the most recent season, with:
+    Returns one row per player active in the most recent season (plus any PLAYER_ID in
+    ``include_ids`` — returning vets with prior history but zero most-recent games, projected
+    from their last healthy season; ``target_age`` for those uses their own last-played
+    season so the aging is correct), with:
       * ``from_age``    minutes-weighted mean age across the seasons used (the age the rate
                         was effectively measured at — the 'from' point for aging)
       * ``recent_age``  age in the most recent season
@@ -86,9 +90,13 @@ def weighted_aggregates(
     total_min = agg["wMIN"].sum()
     league_rate = {c: agg[f"w_{src}"].sum() / total_min for c, src in COUNTING.items()}
 
-    # Keep only players active in the most recent season.
+    # Keep players active in the most recent season, plus any explicitly included returning
+    # vets (prior history, zero most-recent games — projected from their last healthy season).
     recent = season_stats[season_stats["SEASON"] == most_recent]
-    agg = agg[agg["PLAYER_ID"].isin(set(recent["PLAYER_ID"]))].reset_index(drop=True)
+    keep_ids = set(recent["PLAYER_ID"])
+    if include_ids:
+        keep_ids |= set(include_ids)
+    agg = agg[agg["PLAYER_ID"].isin(keep_ids)].reset_index(drop=True)
 
     recent_age = (
         bio.loc[bio["SEASON"] == most_recent, ["PLAYER_ID", "AGE"]]
@@ -104,6 +112,20 @@ def weighted_aggregates(
     agg["from_age"] = (agg["wMINAGE"] / agg["wMIN"]).fillna(agg["recent_age"])
     agg["from_age"] = agg["from_age"].fillna(agg["from_age"].median())
     agg["target_age"] = (agg["recent_age"] + gap).fillna((agg["from_age"] + gap))
+    if include_ids:
+        # Returning vets are absent from the most recent season, so recent_age+gap under-ages
+        # them. Use their OWN last-played season age + years-to-target (exact); leaves every
+        # active player untouched.
+        latest = bio.dropna(subset=["AGE"]).sort_values("SEASON").groupby("PLAYER_ID").tail(1)
+        own_target_age = dict(
+            zip(latest["PLAYER_ID"],
+                latest["AGE"] + (_season_start(target_season)
+                                 - latest["SEASON"].map(_season_start)))
+        )
+        mask = agg["PLAYER_ID"].isin(include_ids)
+        agg.loc[mask, "target_age"] = (
+            agg.loc[mask, "PLAYER_ID"].map(own_target_age).fillna(agg.loc[mask, "target_age"])
+        )
     agg["target_age"] = agg["target_age"].fillna(agg["target_age"].median())
     agg["proj_mpg"] = agg["wMIN"] / agg["wGP"]
     agg["weighted_gp"] = agg["wGP"] / agg["w"]

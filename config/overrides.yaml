@@ -11,11 +11,14 @@
 # Entries are edited freely (this is live operational state, not an audited experiment
 # artifact) — remove a player once he is back.
 #
-# Schema:
+# Schema (exactly one of out_until / out_for_season / games_cap per entry):
 # overrides:
 #   - name: "Jayson Tatum"
 #     out_until: 2027-01-15
 #   - name: "Some Player"
 #     out_for_season: true
+#   - name: "Tyrese Haliburton"      # returning vet (EXP-034) on a reduced/managed schedule:
+#     games_cap: 55                  # soft season-games ceiling, gp = min(gp, 55). Availability
+#                                    # only — the model's clean per-game value is untouched.
 
 overrides: []

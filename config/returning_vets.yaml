@@ -1,0 +1,19 @@
+# Returning vets — project them from their last healthy season (EXP-032 / the Haliburton gap).
+#
+# Players with prior NBA history but ZERO games in the most-recent season fall off the learned
+# board (it projects from last-season logs) but ARE projectable from their last healthy season,
+# aged forward. Listed here => project_learned includes them and the model produces a CLEAN
+# per-game fpts (rates/minutes from their last healthy season, aged to the target). The
+# missed-year reality (games missed / minutes ramp) is a SEPARATE availability discount in
+# config/overrides.yaml (`games_cap`) — the model = per-game value, overrides = availability.
+#
+# A vet NOT listed here degrades to the D1.5 ADP market-seed (today's behaviour) — safe, no crash.
+# Names are matched exactly against player_season_stats.PLAYER_NAME; an unmatched name fails loudly.
+# Reviewed at the standing-calendar passes (Sept market re-pull, mid-Oct preseason).
+
+returning_vets:
+  - Tyrese Haliburton   # IND — 2024-25: 73 gp / 33.6 mpg / 21.0 usg (missed 2025-26)
+  - Kyrie Irving        # 2024-25: 50 gp / 36.1 mpg / 26.4 usg
+  - Damian Lillard      # 2024-25: 58 gp / 36.1 mpg / 26.9 usg
+  - Malik Beasley       # 2024-25: 82 gp / 27.8 mpg / 21.5 usg
+  # - Fred VanVleet     # add once his 2026-27 role/ADP firms up (Sept market re-pull)

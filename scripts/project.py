@@ -16,7 +16,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 from fantasy_nba.data import storage
 from fantasy_nba.models.baseline import project_baseline
-from fantasy_nba.models.learned import project_learned
+from fantasy_nba.models.learned import load_returning_vet_ids, project_learned
 from fantasy_nba.models.projection import project_v2
 from fantasy_nba.scoring import load_scoring
 
@@ -77,6 +77,7 @@ def main() -> None:
     season_stats = storage.read("player_season_stats")
     bio = storage.read("player_bio")
     cfg = load_scoring(args.scoring)
+    returning_vet_ids = load_returning_vet_ids(season_stats)
 
     if args.asof:
         import pandas as pd
@@ -118,9 +119,11 @@ def main() -> None:
             )
         table = pre.preseason_feature_table(logs, season_stats)
         proj = project_learned(season_stats, bio, target_season=args.target, cfg=cfg,
-                               use_preseason=True, preseason_table=table)
+                               use_preseason=True, preseason_table=table,
+                               returning_vet_ids=returning_vet_ids)
     elif args.model == "learned":
-        proj = project_learned(season_stats, bio, target_season=args.target, cfg=cfg)
+        proj = project_learned(season_stats, bio, target_season=args.target, cfg=cfg,
+                               returning_vet_ids=returning_vet_ids)
     elif args.model == "v2m":
         proj = project_v2(season_stats, bio, target_season=args.target, cfg=cfg, age_minutes=True)
     elif args.model == "v2":
@@ -146,6 +149,11 @@ def main() -> None:
             flags = inj.injury_features(spells, f"{_season_start(args.target)}-10-01")
             proj = proj.merge(flags[["PLAYER_ID", "inj_chronic_flag"]], on="PLAYER_ID", how="left")
             proj["inj_chronic_flag"] = proj["inj_chronic_flag"].fillna(0).astype(int)
+            if "returning_vet" in proj.columns:
+                # Returning vets aren't in the injury spells (no recent games) but ARE
+                # high-variance by construction (a full missed season) — bucket them into the
+                # fatter-tail (chronic) GP pool so their risk ranges are honestly wide.
+                proj.loc[proj["returning_vet"].fillna(False), "inj_chronic_flag"] = 1
 
         pool = build_gp_pool(season_stats, bio, injury_profile=injury_profile)
         proj = simulate_ranges(proj, pool)

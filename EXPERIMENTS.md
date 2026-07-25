@@ -1183,6 +1183,59 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
   sensitive consumers (calibrated ranges, EXP-021's re-arm) that benefit from centered
   minutes even without MAE gains.
 
+### EXP-032 — returning-vet projection: project from the last healthy season  ·  Status: **adopted** (the Haliburton gap, from ADP-only to a model number)
+
+**Why:** the D1.5 seed only ADP-*prices* players with prior history but zero most-recent games
+(Haliburton / Kyrie / Lillard / Beasley) — they carried a market rank, no model fpts, so they never
+slotted into the value-ordered board. Unlike rookies (EXP-028: no history → market unbeaten), these
+vets have a real last-healthy season, so they're projectable; the board universe just dropped them —
+`weighted_aggregates` (`_core.py`) keeps only players active in the most recent season.
+
+**Setup:** a **predict-time-only** `include_ids` widens that universe to a listed set
+(`config/returning_vets.yaml` → `project_learned(returning_vet_ids=…)`). The training panel never
+sets it, so the fit is unchanged and **every existing player's projection is byte-identical**
+(verified: max |Δfpts_pg| = 0.000000 over 582; `league_rate` is computed pre-filter). `target_age`
+uses each vet's OWN last-played season + years-to-target (correct aging: Haliburton→27, Lillard→36).
+Rows are flagged `returning_vet`, forced into the chronic (fatter-tail) GP pool so the ranges are
+honestly wide, and the missed-year availability discount is a separate `overrides.yaml` `games_cap`
+(per-game value untouched — the model=per-game / overrides=availability split). The D1.5 seed then
+skips them (now on the board) and joins ADP alongside as the model-vs-market cross-check.
+
+**Backtest (`scripts/eval_returning_vets.py`, seeds {0,1,2}):** the missed-full-season → return
+cohort (played S-2 ≥ 200 min, NO S-1 row, returned in S ≥ 200 min) = **55 cases / n=50 scored**,
+2012-13…2025-26 (Rose post-ACL, Gallinari, Bynum, Exum…). Project S from data strictly < S with the
+vet included; per-game fpts vs actual:
+
+| | MAE | bias | Spearman |
+|---|---|---|---|
+| model (aged-forward) | **5.15** | **+1.28** | **0.748** |
+| naive last-healthy carry-forward | 5.99 | +3.42 | 0.742 |
+
+MAE improvement (naive − model) **+0.84 fpts/g [95% CI −0.11, +1.79]**. The *ordering* is trustworthy
+(ρ 0.75 — the board ranks these vets right), and the model roughly **halves the optimism bias** the
+naive carry-forward carries (+1.28 vs +3.42) — it correctly discounts a chunk of the return.
+
+**Skeptic pass:**
+- *Leakage:* each fold trains + predicts on seasons strictly < S; the vet's features come from
+  ≤ S-2. No return-season data reaches the projection.
+- *Selection:* the cohort is **survivors who returned** — it says nothing about players who never
+  came back. That matches the use case exactly: we only *list* vets we believe will play
+  (`returning_vets.yaml` is that judgment), and anyone unlisted degrades to the ADP seed.
+- *Residual optimism / tail:* +1.28/g bias remains, and the worst misses are the catastrophic
+  post-injury declines the model can't foresee (Cousins 21 vs 38, Rose 20 vs 34) — precisely why
+  these rows carry the chronic-widened ranges (Haliburton p10 1215 vs median 2445) and an optional
+  `games_cap`. Point estimate clean; downside owned by ranges + availability.
+- *Blast radius / sample:* zero for existing players (predict-only universe change). n=50 honest —
+  the MAE CI straddles 0, but the bias win and ρ are clear; re-validate as the cohort grows (~3-4/yr).
+
+**Verdict — adopted.** Better than the naive fallback and far better than today's nothing/ADP-only,
+with a trustworthy ordering; the residual optimism is owned by the ranges + `games_cap` by design.
+Board build unchanged — `project.py --model learned` reads `config/returning_vets.yaml`; currently
+seeded Haliburton / Kyrie / Lillard / Beasley (VanVleet joins at the Sept market re-pull). The big
+tell surfaced on the live board is the **model-vs-ADP gap** (Haliburton model rank 27 vs ADP 131.5):
+the market prices the injury/availability risk the clean per-game model doesn't — read it as a
+"size your `games_cap` here" flag, not a model error.
+
 _Next experiments — numbering reserved by [`docs/implementation-plan.md`](docs/implementation-plan.md)
 (the execution spec; run in its Step order, as re-routed by the dated notes in its tracker — latest:
 the **2026-07-09 draft-focus re-route + gap-closer addendum**). Done: EXP-011…014 (Phase 0+1),
