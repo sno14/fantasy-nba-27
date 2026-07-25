@@ -96,6 +96,15 @@ So a proposal has **one verb per factor**, and an action may carry either or bot
   Kessler read `21.3 mpg · 7.5p/7.9r/1.7blk · 33.4 fpts` = 1.568 fpts/min, 28% above his
   career best, for a belief that was actually conservative. `apply_proposals.py` now
   **rejects** a batch whose `sizing:` moves minutes without a `target_mpg` leg.
+- **The converse matters just as much: a bare `fpts_delta` is the RIGHT verb for a usage or
+  efficiency claim at stable minutes** — it is not a legacy fallback. "Usage-only", "no
+  minutes leap", "similar minutes either way", a shooting or efficiency rebound: all of these
+  are per-minute beliefs and belong in `fpts_delta` with no minutes leg. **Only ever set
+  `target_mpg` to a figure someone actually stated.** Deriving one from a delta asserts a
+  minutes change nobody claimed and can invert the story — Jayson Tatum's post-Achilles
+  *efficiency* rebound back-solves to 36.4 mpg, i.e. a minutes RISE for a player whose
+  minutes are more likely to fall. When no number was given, leave the entry as it is and
+  wait for a team preview or a fresh episode.
 
 **Team previews:** because a team is a closed ~240-minute system, `target_mpg` is what makes
 the budget real — set it for every rotation player BBM gives a number for, not just the

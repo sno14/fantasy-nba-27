@@ -81,7 +81,8 @@ Mechanics the rubric requires (full text in the contract README):
 - **Minutes & usage rule:** write BBM's stated minutes vs the model's `mpg`, and stated
   usage vs last-season USG% (formula in the README; computable from
   `player_season_stats` + `team_game_logs`) into every triangulation. ~2+ mpg or ~2+
-  usage-point gaps are presumptively actionable — overriding takes a NAMED mechanism.
+  usage-point gaps are presumptively actionable — overriding takes a NAMED mechanism. A
+  minutes gap is actioned with `target_mpg` (below); a usage gap with `fpts_delta`.
 - **Audit the base — do NOT re-anchor on it (EXP-033, 2026-07-25).** A base season under
   ~25 gp is a flag to check, never a licence to adopt the last healthy season's number:
   that was backtested and **inflates +3.34 fpts/g** (+5.56 when the per-minute rate really
@@ -112,6 +113,14 @@ Mechanics the rubric requires (full text in the contract README):
   - **A minutes belief MUST use `target_mpg`** — as an `fpts_delta` it leaves mpg and the
     stat line stale and becomes a silent efficiency claim. `apply_proposals.py` rejects a
     batch whose `sizing:` moves minutes without the leg.
+  - **But do NOT reach for `target_mpg` when the claim isn't about minutes.** A usage or
+    efficiency belief at stable minutes is a bare `fpts_delta`, and that is the *correct*
+    verb for it, not a fallback — "usage-only", "no minutes leap", "similar minutes either
+    way", a shooting/efficiency rebound. Inventing a minutes number for those asserts a
+    change nobody made and can be badly wrong (converting Tatum's post-Achilles *efficiency*
+    rebound would have implied 36.4 mpg for a player whose minutes are more likely down).
+    **Only ever set `target_mpg` to a figure someone actually stated** — if no number was
+    given, leave the entry alone and wait for a preview or a fresh episode.
   - **Team previews:** set `target_mpg` for every rotation player BBM numbers, not just the
     movers — that is what makes the ~240 budget checkable.
 - **`sizing:` block is mandatory on every non-`none` entry** — `base_fpts / base_mpg /
