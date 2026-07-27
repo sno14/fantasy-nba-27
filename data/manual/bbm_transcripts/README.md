@@ -24,8 +24,22 @@ committed exception) so every derived override has checkable provenance.
 
 ## Workflow v2 (user decisions 2026-07-12: a LIVING layer for THIS season)
 
-The repeatable per-transcript pass (steps 1–3 are Claude, 4 is Steven, 5–7 are standing):
+The repeatable per-transcript pass (steps 0–3 are Claude, 4 is Steven, 5–7 are standing):
 
+0. **Refresh the transactions cache (added 2026-07-27, user decision — mandatory before a team
+   preview, cheap enough to be routine for any pass):**
+
+       python scripts/pull_injuries.py --dataset transactions   # incremental
+
+   `preseason_roster_map` is what assigns players to teams for the ledger, the 240 budget and
+   every team-total sum, and it is only as current as `data/raw/transactions.parquet`. A stale
+   cache does not fail loudly — it silently keeps a departed player in a team's rotation and
+   drops an arrival out of it, which corrupts the budget in both directions. This was found the
+   hard way on 2026-07-27: a cache 14 days stale kept **Luguentz Dort on OKC at 24.6 mpg** and
+   left **Royce O'Neale on PHX** while the 07-22 preview discussed him as a Hornet. Compare the
+   cache's max date against the newest transcript date before sizing anything. If the pull
+   fails, record the affected players as DATA FLAGS in the ledger and proceed — **never
+   hand-edit the roster map** (boards and rosters are never fabricated).
 1. **Drop transcripts** — backlog and, going forward, each new video.
 2. **Extract (Claude):** every player-specific *fact* → append `data/manual/bbm_notes.csv`
    (`date, player, team, claim_type (injury|role|depth|rank|hype), direction, quote,
@@ -99,12 +113,29 @@ So a proposal has **one verb per factor**, and an action may carry either or bot
 - **The converse matters just as much: a bare `fpts_delta` is the RIGHT verb for a usage or
   efficiency claim at stable minutes** — it is not a legacy fallback. "Usage-only", "no
   minutes leap", "similar minutes either way", a shooting or efficiency rebound: all of these
-  are per-minute beliefs and belong in `fpts_delta` with no minutes leg. **Only ever set
-  `target_mpg` to a figure someone actually stated.** Deriving one from a delta asserts a
-  minutes change nobody claimed and can invert the story — Jayson Tatum's post-Achilles
-  *efficiency* rebound back-solves to 36.4 mpg, i.e. a minutes RISE for a player whose
-  minutes are more likely to fall. When no number was given, leave the entry as it is and
-  wait for a team preview or a fresh episode.
+  are per-minute beliefs and belong in `fpts_delta` with no minutes leg. **Never back-solve
+  `target_mpg` from a delta you have already chosen.** That asserts a minutes change nobody
+  claimed and can invert the story — Jayson Tatum's post-Achilles *efficiency* rebound
+  back-solves to 36.4 mpg, i.e. a minutes RISE for a player whose minutes are more likely to
+  fall. In a topic episode, when no number was given, leave the entry as it is and wait for a
+  team preview or a fresh episode.
+- **The one legitimate source of an unstated `target_mpg` is the 240 budget, in team-preview
+  mode only (amended 2026-07-27, user decision).** The rule above bans *circular* derivation
+  (delta → minutes). It does not ban *forward* derivation from independent inputs: when a
+  preview states a depth chart but no figures, the stated depth chart plus the closed
+  ~240-minute constraint is enough to allocate minutes, and every bump still lands against a
+  nameable teammate. Procedure and its limits are in the Team-preview mode section below.
+  **This never extends to topic episodes** — there is no closed system and no counterparty
+  there, so an invented number would be unchecked, which is exactly the Tatum failure.
+
+**Why this exception exists (the OKC 2026-07-27 pass).** The two verbs cover a numbered
+minutes belief and a rate belief at stable minutes. They do not cover a **directional minutes
+belief with no stated number** — which is most of what a scene-setting preview produces. That
+gap routed *every* OKC mechanism to `none` and returned a zero-mover batch off a roster that
+had just lost 64.1 mpg. The `already_priced` check did not save it either: the model looked
+like it had absorbed +27.6 mpg of the vacancy, but **+19.7 of that went to two players ranked
+361 and 565 whom the preview never mentions** (one off a 4-game sample), leaving the real
+rotation +10.0. Absorption concentrated outside the rotation is not absorption.
 
 **Team previews:** because a team is a closed ~240-minute system, `target_mpg` is what makes
 the budget real — set it for every rotation player BBM gives a number for, not just the
@@ -243,6 +274,27 @@ contains whatever part of the story the model has priced:
   blocks on pre-2026-07-25 entries are marked `retrofilled:` and record only what the standing
   delta *implies*; they are audit artifacts, not authored judgment, and any new pass on that
   player replaces them.
+- **The notes CSV and the proposals file use DIFFERENT vocabularies — do not carry one across
+  (added 2026-07-27, after it failed a batch mid-write).** `bbm_notes.csv` `claim_type` is
+  free-form extraction shorthand and in practice runs to nine values (`injury`, `role`,
+  `depth`, `rank`, `hype`, `usage`, `availability`, `transaction`, `other`). A proposal's
+  `category` is a **closed set of five** enforced by `parse_overrides`: `role`, `injury`,
+  `hype`, `rookie`, `other`. Map them on the way in:
+
+  | notes `claim_type` | proposal `category` |
+  |---|---|
+  | `role`, `depth`, `usage`, `transaction` | **`role`** |
+  | `hype` | `hype` |
+  | `injury` | `injury` (rare — availability normally isn't ours at all) |
+  | `availability` | *no proposal* → `config/overrides.yaml` candidate |
+  | `rank` | *no proposal* — hard rule 2 |
+
+  Team previews are depth-chart-heavy, so `depth` → `role` is the common case. **Do not add a
+  `depth` category** (considered and rejected 2026-07-27): `category`'s only job is gating
+  `BRIDGE_CATEGORIES = ("role", "hype")` for the Step-18 staleness check, that check reads
+  **only `fpts_delta`** entries, and a new value left out of `BRIDGE_CATEGORIES` would let a
+  composite entry's rate leg silently escape staleness. `role` is both semantically right — a
+  depth-chart position IS a role belief — and already the correct bridge class.
 - Concrete role/depth/injury/usage claims move numbers; generic praise/hype → `none`.
 - Every transcript-derived rationale starts with ``BBM <video-date>:`` + the quote.
 - The `triangulation` field records the model base the sizing used — the number Step 18's
@@ -326,6 +378,32 @@ The rest are recorded as ledger rows (verdict `none` / `defer(rookie)` / `note-o
 where they carry a fact, `bbm_notes.csv` rows. The proposals **batch header** carries a compact
 coverage table (player | verdict) and cites the ledger file, so review shows nothing was
 silently skipped.
+
+**When the preview states a depth chart but NO minutes figures (added 2026-07-27, user
+decision).** CHA and WAS both handed over numbers, so this case had no procedure and the OKC
+pass collapsed to zero movers. The fix is to let the budget supply the number:
+
+1. **Check the depth chart is really stated** — a named starting five, a stated rotation
+   depth ("shrink to nine or eight", "top eight guys"), named departures/arrivals, and a read
+   on which reserves are and are not ready. Without those, there is nothing to allocate from;
+   fall back to `none` and wait. A vague "they're deep" is not a depth chart.
+2. **Allocate 240 minutes across that depth chart** using the stated order, and record the
+   allocation in the ledger's `budget_mpg` column — **never in `bbm_mpg`, which stays blank
+   because he gave no figure.** The two columns must never be conflated: one is testimony,
+   the other is our arithmetic, and only the first carries his gauge's priority weight.
+3. **The allocation is the reviewable object.** It is one number per player that sums to 240,
+   so Steven can argue with a single figure instead of a delta with reasoning buried in it.
+   Rookie and deep-bench minutes come out of the same 240 — budgets that quietly under-feed
+   the tail are what manufacture fake positives at the top.
+4. **Write entries only for material movers** (|Δmpg| ≳ 1.5); the full allocation lives in the
+   ledger. Sub-1-mpg churn on a derived number is noise pretending to be a belief.
+5. **Say in every such entry that the minutes number is budget-derived, not stated.** These
+   carry *less* conviction than a quoted figure, and the mid-Oct re-review should treat them
+   as the first to re-open.
+
+Expect the yield to be asymmetric: modest positives on the named rotation and large negatives
+on players the model over-minutes because it watched them play on an injured or bad team. That
+is the depth-chart redistribution working, not a bug — but it is also why the tail matters.
 
 **Routing the preview-only signals:**
 

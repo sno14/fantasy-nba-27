@@ -11,6 +11,22 @@ target-level sizing frame, the minutes & usage priority rule, multiple-mechanism
 re-triangulation, the delta lifecycle). **Read that file in full before drafting
 anything.** If this skill and that README ever disagree, the README wins.
 
+## 0 — Refresh transactions FIRST (added 2026-07-27, user decision — mandatory for previews)
+
+```bash
+python -c "import pandas as pd; print(pd.read_parquet('data/raw/transactions.parquet')['date'].max())"
+python scripts/pull_injuries.py --dataset transactions   # incremental; opens a REAL browser window
+```
+
+**If the cache's max date is older than the newest transcript, refresh before sizing anything.**
+`preseason_roster_map` is what puts players on teams for the ledger, the budget, and every
+team-total sum — a stale cache silently prices a departed player into a team and hides an
+arrival. On 2026-07-27 a 14-day-stale cache had **Luguentz Dort still on OKC at 24.6 mpg** and
+**Royce O'Neale on PHX** while BBM discussed him as a Hornet, corrupting two team budgets.
+Incremental pulls are cheap (resumes from the cached max date); a full history re-pull is not,
+so never pass `--full` here. If the pull fails (Cloudflare, no Playwright), say so and carry
+the affected players as explicit DATA FLAGS in the ledger — **never hand-edit the roster map.**
+
 ## 1 — Detect state (do this before reading transcripts)
 
 ```bash
@@ -67,6 +83,12 @@ transcript filename). Facts only — role / minutes / usage / depth / injury / t
 Every entry: `name / date (today) / category / action / preview / rationale / status:
 proposed / triangulation`, under a dated batch header comment naming the source episodes.
 Schema and precedent: read the existing batches in that file — match their style exactly.
+
+> **`category` is a closed set of FIVE — `role`, `injury`, `hype`, `rookie`, `other` — and is
+> NOT the notes CSV's `claim_type`.** `depth` / `usage` / `transaction` are valid `claim_type`
+> values and will be **rejected** as a proposal category (`parse_overrides` raises). Map them
+> all to **`role`**; previews are depth-chart-heavy so this is the common case. Full mapping
+> table + why a `depth` category was rejected: the contract README.
 
 Pull the model bases before sizing anything:
 

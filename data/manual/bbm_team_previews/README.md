@@ -39,6 +39,11 @@ rows:
   - player: Trae Young
     model_mpg: 31.8             # board mpg base (null if not on the learned board)
     bbm_mpg: "33-35"            # BBM's stated minutes, verbatim/normalized; "" if none
+    budget_mpg: null            # OUR 240-budget allocation, used ONLY when the preview states a
+                                # depth chart but no figures (added 2026-07-27). Never a substitute
+                                # for bbm_mpg: testimony and arithmetic stay in separate columns,
+                                # and only bbm_mpg carries his gauge's priority weight. The
+                                # budget_mpg column must sum to 240 across ALL rows incl. rookies.
     model_usg: 34.1            # computed last-season USG% (formula in transcripts README); null if n/a
     bbm_usg: "down from peak, playmaker role"    # "" if none
     verdict: "+2.0"            # fpts_delta value | none | defer(rookie) | note-only

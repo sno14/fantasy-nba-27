@@ -128,8 +128,110 @@ rows:
     verdict: "defer(rookie)"
     proposal: false
     note: "Draft pick, not on the board, no role detail. Defer to October."
-sum_model_mpg: 312.9     # 12 non-rookie rotation players — model is badly blind to this depth chart
-sum_bbm_mpg: 240         # realistic competitive 10-man core (Riley/Whitmore/Champagnie = fringe/DNP-CD nights)
+  # ==== COVERAGE REPAIR 2026-07-27 — board players the original pass never rowed ====
+  # Found by an OKC-triggered audit: the ledger covered the rotation BBM discussed and left 7 more
+  # board-rostered WAS players (119.0 model mpg) invisible. NONE appears in bbm_notes.csv for this
+  # transcript — BBM never mentions them — so bbm_mpg stays "" and budget_mpg carries our allocation.
+  - player: Julian Reese
+    model_mpg: 26.1
+    bbm_mpg: ""
+    budget_mpg: 12.0
+    model_usg: 17.7                  # 13-gp sample
+    bbm_usg: ""
+    verdict: "-14.14"
+    proposal: true
+    note: >
+      THE ONE MATERIAL OMISSION IN EITHER REPAIR, and the reason this lookback was worth doing. Rank
+      171 at 26.1 mpg — a top-200 player on starter minutes — yet completely absent from a preview that
+      walks the WAS roster far enough down to name Cam Whitmore and Justin Champagnie. The stated
+      frontcourt is Sarr (~30) + Davis (~30) + Ayton (~20), three deep and all named; Reese is a fourth
+      big whose model minutes rest on a 13-game / 30.9-mpg TANK-TEAM sample. Budget 12.0 rather than ~8
+      because this ledger already flags real contingency above him — Davis's games-played risk and
+      Sarr's foot fracture — and that hedge is priced once, here, not again as a rate trim.
+  - player: Tristan Vukcevic
+    model_mpg: 15.4
+    bbm_mpg: ""
+    budget_mpg: 6.0
+    model_usg: 26.6                  # highest usage on the roster after Trae — a bench-scorer profile
+    bbm_usg: ""
+    verdict: "note-only"
+    proposal: false
+    note: >
+      Rank 312. 49 gp at 13.7 mpg on a 26.6 usage — a real bench-scoring role on last year's tank team,
+      unmentioned now that Trae, Davis, Dybantsa and Middleton have arrived. Just outside board
+      materiality, so noted rather than proposed; the first row to revisit if the frontcourt thins.
+  - player: Jamir Watkins
+    model_mpg: 18.1
+    bbm_mpg: ""
+    budget_mpg: 5.0
+    model_usg: 15.1
+    bbm_usg: ""
+    verdict: "note-only"
+    proposal: false
+    note: >
+      Rank 350. Played 50 games at 20.6 mpg — a genuine rotation wing last season — and is now
+      unmentioned in a wing group the preview describes as a logjam (George, Coulibaly, Tre Johnson,
+      Riley, Dybantsa, Middleton all named ahead of him).
+  - player: Kadary Richmond
+    model_mpg: 18.2
+    bbm_mpg: ""
+    budget_mpg: 3.0
+    model_usg: 12.1                  # 3-gp sample
+    bbm_usg: ""
+    verdict: "note-only"
+    proposal: false
+    note: "Rank 395. Model projects 18.2 mpg off a THREE-game sample — an artifact of the same class as OKC's Boeheim row."
+  - player: Malaki Branham
+    model_mpg: 16.2
+    bbm_mpg: ""
+    budget_mpg: 2.0
+    model_usg: 18.3
+    bbm_usg: ""
+    verdict: "note-only"
+    proposal: false
+    note: "Rank 457. 28 gp at 9.8 mpg; model's 16.2 expects growth the stated depth chart has no room for."
+  - player: Alondes Williams
+    model_mpg: 13.5
+    bbm_mpg: ""
+    budget_mpg: 1.0
+    model_usg: 14.3                  # 4-gp sample
+    bbm_usg: ""
+    verdict: "note-only"
+    proposal: false
+    note: "Rank 500. 4 games last season; 13.5 mpg is a small-sample artifact."
+  - player: Skal Labissiere
+    model_mpg: 11.5
+    bbm_mpg: ""
+    budget_mpg: 0.0
+    model_usg: 12.2                  # 3-gp sample
+    bbm_usg: ""
+    verdict: "note-only"
+    proposal: false
+    note: "Rank 581. 3 games last season. Not a rotation player; zero budget."
+sum_model_mpg: 431.9     # CORRECTED 2026-07-27: all 19 board-rostered WAS players (was 312.9 across 12 —
+                         # it excluded the 7 repair rows above)
+sum_bbm_mpg: 274         # CORRECTED: strict sum of BBM's STATED figures across the 13 he numbered. The
+                         # previously declared 240 was not a sum — it dropped "fringe/DNP-CD" players by
+                         # hand, which is exactly how the over-subscription stayed hidden.
+sum_budget_mpg: 29.0     # our allocation for the 7 he never mentioned
+budget_note_repair_2026_07_27: >
+  COVERAGE REPAIR (triggered by the OKC pass; user-approved scope). The original note below was sized
+  against an undercounted denominator, and WAS is the worst case of it. Two corrections:
+  .
+  (1) SEVEN board-rostered players holding 119.0 model mpg were never rowed — the ledger covered the
+  rotation BBM discussed and stopped. True WAS board total is 431.9 mpg across 19 players, not 312.9
+  across 12. So the minutes that must evaporate are ~192, not the ~70 the original note computed.
+  .
+  (2) The declared `sum_bbm_mpg: 240` was NOT a sum. BBM's stated figures actually total 274 — he
+  over-subscribes the 240 budget by ~34 before a single uncovered player is seated — and the original
+  pass reconciled that by informally dropping Riley/Whitmore/Champagnie as "fringe/DNP-CD nights".
+  Declaring a budget balanced is not the same as balancing it, and it is what let the seven omissions
+  stay invisible. All seven repair rows are therefore allocated at or near zero.
+  .
+  NO APPROVED ENTRY IS RE-OPENED. The covered players' targets came from BBM's stated numbers, the
+  highest-authority input we have; the defect was never that those targets were wrong, only that nobody
+  was cut to pay for them. ONE new proposal falls out — Julian Reese (rank 171, 26.1 mpg, absent from a
+  preview that names players 200 ranks below him). The other six are rank 312+ and stay note-only.
 budget_note: >
   The starkest budget in the batch: the model hands out ~313 mpg to 12 holdovers because it prices each on
   their own TANK-TEAM history, blind to Trae + Davis + Dybantsa + Middleton arriving. A competitive 10-man
