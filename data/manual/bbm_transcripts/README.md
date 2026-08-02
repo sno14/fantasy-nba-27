@@ -387,6 +387,46 @@ pass collapsed to zero movers. The fix is to let the budget supply the number:
    depth ("shrink to nine or eight", "top eight guys"), named departures/arrivals, and a read
    on which reserves are and are not ready. Without those, there is nothing to allocate from;
    fall back to `none` and wait. A vague "they're deep" is not a depth chart.
+
+   **This is a GATE, not a formality — calibrated 2026-08-02 after running it on five previews
+   and passing only two** (BOS and ORL passed; DAL, DEN and SAC produced no budget at all). The
+   three failures each teach a distinct disqualifier, and they are worth checking by name:
+   - **A named starting five is NOT a depth chart** (SAC 08-01, the closest call). Sacramento's
+     five was stated as firmly as Orlando's — "I don't think so" to any debate — and the pass
+     still produced nothing, because there was no rotation size, no bench order beyond "Monk is
+     the backup point guard", and the one forward-looking rotation claim was a conditional with
+     no counterparty ("somewhere along the way these guys are going to lose some minutes to a
+     guy like Sharp, to a guy like Clifford" — which guys, how many, in what proportion, all
+     unstated). You cannot allocate a bench the beat writer declined to name.
+   - **Rotation depth that is DISCLAIMED is worse than rotation depth merely unstated**
+     (DAL 07-28). "No coach plays 12 players, let alone like 15. There's no way that all these
+     guys get minutes... I'm fascinated to see how this plays out" is the source telling you the
+     allocation is unknown. Take him at his word.
+   - **An unresolved player INSIDE the projected starting five disqualifies hardest** (DEN
+     07-31): Peyton Watson was an unsigned RFA and in the five, with Cam Johnson expected to be
+     traded on top. A closed 240 cannot be allocated over a lineup whose members are not
+     contracted.
+   - **A roster that is not final is a disqualifier in its own right** — cuts pending, a starter
+     openly shopped, "they have one more move in them somewhere". Allocating over a roster about
+     to change is arithmetic pretending to be a belief.
+   - **The tell that you are on the right side of the gate:** the hosts stop hedging about
+     *personnel* and start hedging about *performance*. Both passing previews also promised
+     nothing further; all three failures explicitly promised a per-player pass in September, and
+     that promise is itself evidence the gate should hold.
+
+   Expect roughly half of scene-setting summer previews to fail this. A zero-mover preview is a
+   correct outcome when the source has not decided anything — the OKC episode that produced this
+   amendment was different in kind, because OKC *did* state a depth chart and the old rule still
+   returned nothing.
+
+   **But a QUOTED FIGURE NEVER NEEDS THE BUDGET, even inside a failed preview (2026-08-02).**
+   The gate governs *budget-derived* `target_mpg` only. `target_mpg` is the verb for a stated
+   minutes number, full stop — a figure someone actually said stands on its own testimony and
+   needs no closed system to check it against. Denver failed the gate on every count above and
+   still yielded one entry, because Julian Strawther is the one player the episode numbers ("I
+   think he'll probably start at 15. I think the goal is to get him to 20"). So the order of
+   operations is: harvest every stated figure first, THEN decide whether the remainder can be
+   allocated. Do not let a failed gate suppress testimony.
 2. **Allocate 240 minutes across that depth chart** using the stated order, and record the
    allocation in the ledger's `budget_mpg` column — **never in `bbm_mpg`, which stays blank
    because he gave no figure.** The two columns must never be conflated: one is testimony,

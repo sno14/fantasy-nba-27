@@ -179,7 +179,10 @@ data/              raw/ and processed/ caches (gitignored)
                    mid-prior-season or opens the season interim); feeds models/coaches.py.
                    bbm_transcripts/ = the BBM video-transcript drop zone that feeds the
                    analyst layer (workflow v2 — rubric + contract in its README);
-                   bbm_notes.csv = the extracted per-player fact ledger
+                   bbm_notes.csv = the extracted per-player fact ledger;
+                   bbm_team_previews/ = one dated minutes+usage ledger per processed
+                   whole-roster team preview (the closed ~240-minute rotation the
+                   preview's proposals fall out of; schema in its own README)
 docs/              design docs (see the documentation map above)
 tests/             unit tests: scoring, model arithmetic, as-of engine, absorption,
                    Stage-7 infra (no-leakage / determinism pins), draft room (ESPN payload

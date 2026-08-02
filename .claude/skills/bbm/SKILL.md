@@ -30,12 +30,23 @@ the affected players as explicit DATA FLAGS in the ledger — **never hand-edit 
 ## 1 — Detect state (do this before reading transcripts)
 
 ```bash
-ls data/manual/bbm_transcripts/*.md                       # the drop zone (skip README.md)
-cut -d, -f7 data/manual/bbm_notes.csv | sort -u           # source_file = processed episodes
-md5sum data/manual/bbm_transcripts/*.md | sort            # catch duplicate-paste files
+# `cut -d, -f7` DOES NOT WORK here — quote-wrapped quotes contain commas and it returns
+# fragments of prose instead of filenames (it did exactly that on 2026-08-02). Parse the CSV.
+python -c "
+import pandas as pd, glob, os, hashlib
+proc = set(pd.read_csv('data/manual/bbm_notes.csv')['source_file'].dropna())
+for f in sorted(glob.glob('data/manual/bbm_transcripts/*.md')):
+    b = os.path.basename(f)
+    if b == 'README.md': continue
+    h = hashlib.md5(open(f,'rb').read()).hexdigest()[:12]
+    print(f'{b:52s} {h}  processed={b in proc}')
+"
 ```
 
-- Unprocessed = files not appearing in the notes CSV's `source_file` column.
+- Unprocessed = files not appearing in the notes CSV's `source_file` column. **Two early drops
+  are recorded without the `.md` suffix** (`2026-07-08-regression-risks`,
+  `2026-07-13-top-players-on-new-teams`) — they ARE processed; an exact-match check will show
+  them as unprocessed, so eyeball the stems before re-processing anything from July.
 - **Duplicate hashes mean a paste error** (it has happened: a file named for one episode
   containing another's text). Flag it to Steven and process the content once, attributed
   to the episode it actually is; ask for a re-drop of the missing one.
@@ -62,6 +73,17 @@ README** — read it; this is just the checklist.
 4. **Route the preview-only signals:** rookies → `defer(rookie)`, ledger+notes, no proposal
    (feeds the Oct sheet); team availability/tanking/rest → `config/overrides.yaml` candidate
    flagged to Steven; scheme/pace/wins → conviction context, not a standalone delta.
+
+**0. Before any of that — decide whether you may allocate 240 at all.** The budget only supplies
+minutes when the preview states a real depth chart, and on 2026-08-02 that gate failed on 3 of 5
+previews. Disqualifiers, each learned from a specific episode (full text + examples in the
+contract README, Team-preview mode step 1): a named starting five with **no rotation size and no
+bench order** is not a depth chart (SAC); rotation depth **disclaimed** outright is worse than
+unstated (DAL); an **unsigned or expected-to-be-traded player inside the starting five** (DEN);
+a **roster that is not final**. When it fails, still write the full ledger with `bbm_mpg` AND
+`budget_mpg` blank, `sum_budget_mpg: null`, and the reason at the top — that is the rule working.
+**Harvest every STATED figure first regardless** — a quoted number is testimony and needs no
+budget, so a failed preview can still produce entries (DEN's Strawther did).
 
 Then rejoin the normal flow at step 3 (triangulate the movers) → 4 (validate) → **STOP**.
 

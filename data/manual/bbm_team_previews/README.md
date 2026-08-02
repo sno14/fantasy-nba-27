@@ -53,6 +53,21 @@ sum_model_mpg: 238.4            # informational
 sum_bbm_mpg: 242               # BUDGET CROSS-CHECK: flag if > ~245 or < ~235
 ```
 
+## A ledger with `budget_mpg` null everywhere is a legitimate, expected shape (added 2026-08-02)
+
+Three of the five previews processed on 2026-08-02 (DAL, DEN, SAC) **failed step 1** of the
+budget-derivation amendment — no stated rotation depth, or a roster that was not final, or an
+unsigned player inside the projected starting five. Their ledgers are still written in full,
+with `bbm_mpg` AND `budget_mpg` blank on every row, `sum_budget_mpg: null`, and the reason
+stated at the top of the file. **That is the rule working, not a skipped pass**, and the ledger
+is the artifact that proves the rotation was swept rather than ignored — plus the baseline the
+promised September re-open gets argued against. The disqualifier list lives in the transcripts
+README (`../bbm_transcripts/README.md`, Team-preview mode, step 1); write which one applied.
+
+Note that a **stated** figure still populates `bbm_mpg` and can still produce a proposal in such
+a ledger — the gate governs our *arithmetic*, never someone's testimony (DEN's Julian Strawther
+is the worked example).
+
 Rows cover the **full projected rotation** (~10-12), including `none` / `defer(rookie)` /
 `note-only` verdicts — systematic coverage is the whole point of a preview. `model_mpg` /
 `model_usg` come from `learned_2026-27.parquet` + the USG% formula over

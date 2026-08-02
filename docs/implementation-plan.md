@@ -832,6 +832,20 @@ def preseason_roster_map(season_stats, transactions, target_season,
     """[PLAYER_ID, team]: prior-season primary team + transactions dated ≤ Oct 1 of the
     target season. The honest replacement for context.target_team_map in backtests."""
 ```
+> **Amended 2026-08-02 (user decision) — missed-season carry-forward.** The seed is keyed on
+> minutes *played*, so a player who missed the ENTIRE prior season had no row and dropped off
+> every roster. Kyrie Irving was on no team at all despite ranking 30 on the live board (0 gp
+> in 2025-26; same for Haliburton and Lillard). A player absent from the prior season is now
+> seeded from the season **before** it — lookback deliberately **one** season, because a
+> two-season gap is a retiree and carrying those forward would put dead names on rosters. The
+> transaction pass still runs on top, so anyone who genuinely left is cleared by his own
+> `relinquished` row. Recovers 4 board players on the live map (Irving→DAL, Haliburton→IND,
+> Lillard→MIL, Beasley→DET); teamless 88 → 84. Dated addendum under EXP-016.
+>
+> **The shipped board does NOT consume this map** — `project.py --model learned` runs with
+> `use_context=False` and `minutes_mode="regression"`, the two gates on `target_team_map`, and
+> a post-fix re-run is bit-identical. The map drives team display, the BBM preview ledgers and
+> their 240 budgets, EXP-030 redistribution, and backtest consumers only.
 **8.2 Validate before using:** against each backtest season, compare to the team each
 player actually logged his first ≥ 3 games for (from game logs). Report agreement; require
 ≥ 90% on the draftable pool. Investigate the misses (mid-Oct trades are legitimate misses;

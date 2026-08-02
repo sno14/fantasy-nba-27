@@ -48,7 +48,9 @@ league). Read in this order before changing anything:
   dates: mid-Aug schedule pull → Sept market re-pulls (+ first transaction/roster refresh)
   → mid-Oct preseason re-pull (logs + `draft_history` + **transactions & injuries** —
   `preseason_roster_map` only puts players on their new teams once transactions ≤ Oct 1 are
-  cached; drives sheet team assignments, EXP-030 redistribution, depth features) + analyst
+  cached; drives sheet team assignments, EXP-030 redistribution, depth features — but **not**
+  the shipped board, which runs `use_context=False`/`minutes_mode="regression"` and never reads
+  the map; re-run its backtest consumers after the 2026-08-02 carry-forward fix) + analyst
   re-review + **the Step-19 draft-room sweep (impl-plan 19.1b: re-read league id / teams /
   size / roster slots / pick order live — all drift as members join, and a resize re-prices
   the board; + the mock draft, the only test of ESPN polling latency)** + dual board freeze →

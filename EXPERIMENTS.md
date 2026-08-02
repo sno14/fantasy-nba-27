@@ -657,6 +657,42 @@ follow-on sequence EXP-011+ is specified in [`docs/implementation-plan.md`](docs
 - **Covid caveat:** target 2020-21's Oct-1 cutoff predates that November's offseason — the
   map degrades to "prior teams" for that one season (documented in `rosters.py`; panel-only,
   eval seasons unaffected).
+- **Addendum (2026-08-02, user decision — missed-season carry-forward; correctness fix, no
+  re-run):** the seed above is `_primary_team_minutes(prior_season)`, which is keyed on minutes
+  **played**. A player who missed the ENTIRE prior season therefore had no row to seed from and
+  silently dropped off every roster — not because he was a free agent but because he never
+  checked in. Found via the BBM team-preview pass: **Kyrie Irving appeared on no team at all**
+  despite ranking 30 on the live board, and the same held for Tyrese Haliburton and Damian
+  Lillard (all 0 gp in 2025-26). Fix: a player absent from the prior season is seeded from the
+  season **before** it. The lookback is deliberately **one** season — a two-season gap is a
+  player realistically out of the league, and carrying those forward would resurrect retirees
+  onto rosters. The transaction pass still runs on top unchanged, so a carried player who did
+  leave in free agency is cleared by his own `relinquished` row (covered by the new test
+  `test_preseason_roster_map_carries_a_missed_season_forward`).
+  **Effect on the live 2026-27 map:** recovers exactly **4** board players, every one verified
+  to have no post-Apr-20 transaction, i.e. all genuinely under contract — Irving→DAL,
+  Haliburton→IND, Lillard→MIL, Beasley→DET. Board players with no team 88 → 84; the remainder
+  are real unsigned free agents and correctly stay off.
+  **Skeptic pass:** (leakage) an *older* season is strictly less information than the prior one,
+  so the map cannot learn anything it did not already have — the 8.2 validation logic is
+  unaffected in kind, and the change can only add rows, never alter an existing player's team.
+  (selection) the carried set is defined by a zero-minutes record, not by an outcome.
+  (blast radius) **the shipped board does not consume this map** — see the note below — so no
+  projection moved and nothing was re-run. Backtest consumers that DO read it (coaches, rookies,
+  allocation/EXP-030, `use_context` variants) have cached results predating this fix; the 8.2
+  agreement figures above were not recomputed, and re-running them is a mid-Oct item.
+- **Companion finding (2026-08-02) — the shipped board never used this map, and it is worth
+  writing down because a session assumed otherwise and nearly regenerated the board for nothing.**
+  `scripts/project.py --model learned` calls `project_learned` with `use_context=False` and
+  `minutes_mode="regression"`, the two flags that gate the `target_team_map` requirement
+  (`learned.py`). Verified empirically: re-running the projection after the carry-forward fix is
+  **bit-identical** (max |Δfpts| = 0.0, max |Δmpg| = 0.0, including for all four recovered
+  players). `preseason_roster_map` drives **team display** (`api/boards.py`), the BBM preview
+  ledgers and their 240 budgets, EXP-030 redistribution, and backtest consumers — never the
+  shipped per-game projections. **Corollary, and a real trap:** never blind-re-run
+  `project.py --model learned` to "refresh" the board. The saved
+  `learned_2026-27.parquet` carries `fpts_p10..p90` / `risk` / `draft_value` / `breakout_p` and
+  is ranked `--rank-by safe`; a plain re-run strips those columns and re-ranks on raw fpts.
 
 ### EXP-016b — honest-map vacated-usage features  ·  Status: **parked** (aggregate gain, movers unmoved — the EXP-009 profile, done right and still short)
 - **Date:** 2026-07-09  ·  **Commit:** this commit  ·  **Step:** implementation-plan Step 8.4

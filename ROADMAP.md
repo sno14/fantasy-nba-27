@@ -471,6 +471,15 @@ eval-only (opt-in `--recency`); the shipped board uses the plain `learned` found
       depth features, once cached ≤ Oct 1) mid-Oct, then regenerate the sheet + both freeze
       boards with it. See the standing calendar's transaction-refresh note in
       docs/implementation-plan.md.
+      **Roster-map correctness fix, 2026-08-02 (EXP-016 addendum):** the map seeded from the
+      prior season's primary team *by minutes played*, so anyone who missed a FULL season had no
+      row and fell off every roster — Kyrie Irving was on no team despite ranking 30. Now carried
+      forward from the season before (one season only; a two-season gap is a retiree), with the
+      transaction pass still applied on top. Recovers Irving→DAL, Haliburton→IND, Lillard→MIL,
+      Beasley→DET; teamless board players 88 → 84. **The shipped board never consumed this map**
+      (`project_learned` runs `use_context=False` / `minutes_mode="regression"`; a post-fix
+      re-run is bit-identical) — it drives team display, the BBM preview ledgers + 240 budgets,
+      EXP-030 and the backtest consumers, whose cached results predate the fix.
 
 #### 7.C — External availability / injury data  ← DONE (EXP-015, 2026-07-09: split verdict)
 - [x] Ingested: prosportstransactions injury+IL history 2009→today (`scripts/pull_injuries.py`,
