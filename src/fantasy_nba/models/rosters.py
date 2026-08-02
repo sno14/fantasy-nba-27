@@ -71,13 +71,30 @@ def preseason_roster_map(
     if he was on it. Players left teamless (unsigned free agents) drop out of the map —
     honest: on draft day they had no team. The honest replacement for
     ``context.target_team_map`` in backtests (Step 8.3 re-runs its consumers).
+
+    **Missed-season carry-forward (2026-08-02).** The seed is keyed on minutes *played*, so a
+    player who missed the ENTIRE prior season through injury had no row and silently vanished
+    from every team — not because he was a free agent but because he never checked in. That is
+    a data artifact, not a fact: Kyrie Irving (0 gp 2025-26, ACL) was under contract with Dallas
+    the whole time, as were Tyrese Haliburton and Damian Lillard with their teams. So a player
+    absent from the prior season is seeded from the season **before** it instead. The lookback
+    is deliberately ONE season: a two-season gap is a player who is realistically out of the
+    league, and carrying those forward would resurrect retirees onto rosters. Leakage-safe by
+    construction (an older season is strictly less information than the prior one), and the
+    transaction pass still runs on top — so a carried player who did leave in free agency is
+    cleared by his own ``relinquished`` row exactly as before.
     """
     ty = _season_start(target_season)
     lo = pd.Timestamp(f"{ty}-{OFFSEASON_FROM_MONTH_DAY}")
     hi = pd.Timestamp(f"{ty}-{as_of_month_day}")
 
-    base = _primary_team_minutes(season_stats, season_before(target_season))
+    prev_season = season_before(target_season)
+    base = _primary_team_minutes(season_stats, prev_season)
     team_of: dict[int, str | None] = dict(zip(base["PLAYER_ID"], base["team"]))
+
+    carried = _primary_team_minutes(season_stats, season_before(prev_season))
+    for pid, team in zip(carried["PLAYER_ID"], carried["team"]):
+        team_of.setdefault(pid, team)
 
     tx = transactions.copy()
     tx["date"] = pd.to_datetime(tx["date"])

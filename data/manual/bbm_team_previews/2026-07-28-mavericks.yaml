@@ -1,0 +1,361 @@
+# DAL minutes+usage ledger — BBM team-preview snapshot (Nick Angstadt, Locked On Mavs).
+# DATED SNAPSHOT as of preview_date: model_* columns are the learned_2026-27 base then; not live.
+# Schema + contract: ./README.md. Full sizing rules: ../bbm_transcripts/README.md (Team-preview mode).
+#
+# *** NO MINUTES FIGURES, NO USAGE FIGURES, AND — DELIBERATELY — NO 240 ALLOCATION EITHER. ***
+# This is the first preview to FAIL step 1 of the 2026-07-27 budget-derivation amendment, and the failure
+# is the rule working, not a gap in the pass. The amendment permits us to allocate the closed 240 only
+# when the preview "states a depth chart": a named starting five, a stated rotation depth, named
+# departures/arrivals, AND a read on which reserves are and are not ready. DAL gives us the first and
+# third and explicitly REFUSES the other two:
+#
+#   * Rotation depth — the opposite of stated. "No coach plays 12 players, let alone like 15. Like,
+#     there's no way that all these guys get minutes... I'm fascinated to see how this plays out."
+#     No rotation size, no bench order, no minute split anywhere in 37 minutes of tape.
+#   * Reserves-ready — this is the episode's OPEN QUESTION, not its answer. The "who's under pressure"
+#     segment IS "who's going to stand out in Dusty May's system?", and de Larrea "could come over and
+#     not be super ready right away".
+#   * The roster is not even final: 16 under contract with cuts required, Gafford "I would guess not" on
+#     the opening-night roster, Klay in the same sentence, and "the Mavs have some one more move in them
+#     somewhere". Allocating 240 across a roster that is going to change is arithmetic pretending to be
+#     a belief.
+#   * Josh says it outright: "all that will be covered when we do the Dallas Mavericks again in September
+#     when everything is settled and finalized."
+#
+# So every bbm_mpg AND every budget_mpg cell here is blank, and this ledger produces ZERO proposals. The
+# contract's instruction for this case is explicit: "Without those, there is nothing to allocate from;
+# fall back to `none` and wait. A vague 'they're deep' is not a depth chart." The September DAL episode
+# is the re-open, and it is on the calendar by name.
+#
+# THIS IS NOT THE OKC SITUATION. The 2026-07-27 amendment exists because OKC handed over a stated depth
+# chart and our OLD rule still returned zero movers off a roster that had shed 64.1 mpg. DAL is the
+# genuinely different case the amendment's step 1 was written to separate out: the beat writer declined
+# to name a rotation because the front office has not chosen one yet. The signal is real and it is that
+# the minutes are UNKNOWN — which is a reason to wait, not a licence to invent twelve numbers.
+#
+# WHAT THE MODEL LOOKS LIKE ANYWAY (recorded so September has a baseline to argue with, NOT sized here):
+# the 12 named rotation rows below carry 299.6 model mpg (ex-Kyrie) against a 240 budget — 379.5 once the
+# 5 deep-bench rows are added, 412.9 with Kyrie — and the guest's projected
+# day-one starting center is a rookie with no learned base at all. The overhang is large. It is also
+# unallocatable today.
+team: DAL
+team_full: Dallas Mavericks
+preview_date: 2026-07-28
+source_file: 2026-07-28-mavericks-season-preview.md
+win_proj: 41            # up from 26, but the guest immediately deflates the jump: under the new
+                        # lottery-reform baseline "a 26 win team's probably a 32-win team", so the real
+                        # improvement claimed is ~9 wins, and it is conditioned on "assuming a healthy
+                        # Kyrie Irving, a NOT healthy Dereck Lively and second year Cooper Flagg".
+availability_note: >
+  No team-level tanking or rest signal — the opposite, if anything: the guest notes "the Mavericks to
+  their credit did not intend to lose a lot of those games last year". What this episode carries instead
+  is the largest PLAYER-level availability content of any preview so far, and TWO items have enough
+  substance to be config/overrides.yaml candidates for Steven rather than mere watch flags:
+  (1) DERECK LIVELY II — the strongest availability signal in any transcript to date. BOTH hosts
+  independently land on "less than 10% chance he's ready opening night"; as of July 22 he "is not running
+  or jumping or doing any of that stuff yet"; "it's a foot injury for a big, which is kind of a big deal"
+  on top of a career of lower-body problems (55 gp -> fewer -> 7 gp). Model base is 22.9 mpg / 54 gp,
+  which looks far too generous. NOTE: routing this to overrides.yaml is the COMPLETE answer, not a
+  partial one — a confirmed out-timeline there also drives the EXP-030 nightly redistribution of his
+  minutes to Gafford / Cisse / Morez Johnson, so writing analyst-layer deltas on those three would
+  double-count the same fact.
+  (2) KYRIE IRVING — "34 off an ACL"; "Kyrie is not going to play back to back especially early on", with
+  the follow-on question "what do they do? Who do they position to that spot?" left open. Model base 54 gp.
+  Neither is analyst-layer material under the standing hard rule.
+budget_min: 240
+rows:
+  # ---- the guest's projected starting five: Kyrie / Christie / Flagg / PJ Washington / Morez Johnson ----
+  - player: Cooper Flagg
+    model_mpg: 34.4
+    bbm_mpg: ""                       # none stated
+    budget_mpg: null                  # no allocation — see header
+    model_usg: 26.9
+    bbm_usg: "two-sided and unnumbered: Kyrie back means 'he doesn't have to run 38 usage' (down) vs 'Dusty May has already said that he's going to take more threes' (volume up)"
+    verdict: "none"
+    proposal: false
+    note: >
+      The centerpiece, and genuinely two-sided. The model already prices a large sophomore leap: fpm
+      1.3108 against last season's actual 1.1852 is +4.3 fpts/g of unpriced-to-priced rate improvement on
+      top of +0.9 mpg. BBM's content cuts BOTH ways against that — Kyrie's return is framed as a usage
+      RELIEF ("a pressure release valve"), while the more-threes mandate is volume at a .295 clip on 3.49
+      attempts, which at his percentages is roughly neutral-to-negative per shot swapped out of twos. No
+      component is mechanically reversible enough to price, so `none` is honest.
+      WATCH FOR SEPTEMBER: the model's big rate leap and the arrival of a 27-usage guard it cannot see
+      (Kyrie was teamless in the roster map when this was written — see his row) point the same direction —
+      but neither is sizable without a stated rotation.
+  - player: Kyrie Irving
+    model_mpg: 33.4
+    bbm_mpg: ""                       # none stated
+    budget_mpg: null
+    model_usg: 27.4                   # 2024-25 — there is no 2025-26 season to compute from
+    bbm_usg: ""                       # none stated
+    verdict: "none"
+    proposal: false
+    note: >
+      *** DATA FLAG — RESOLVED 2026-08-02 (Steven's call), in code, not by hand. *** As first written this
+      row recorded that Kyrie was ABSENT from preseason_roster_map and so appeared on no team at all,
+      despite being unambiguously a Maverick and the subject of a whole chapter. The cause was structural:
+      the map seeded from the prior season's primary team BY MINUTES PLAYED, and Kyrie played 0 games in
+      2025-26 (ACL), so he had no row to seed from and fell out as "teamless" — an artifact of the query,
+      not a fact about his contract. Fixed in `rosters.preseason_roster_map` with a one-season
+      carry-forward: a player absent from the prior season is seeded from the season before it, with the
+      transaction pass still running on top so anyone who really did leave is cleared by his own
+      relinquished row. Lookback is deliberately ONE season so retirees are not resurrected. Recovers
+      exactly 4 board players: Kyrie (DAL), Haliburton (IND), Lillard (MIL), Malik Beasley (DET) — all
+      four verified to have no post-Apr-20 transaction, i.e. all four genuinely under contract. Board
+      players still teamless: 84, down from 88, and those are real unsigned free agents.
+      On value: the model already fades him 36.1 -> 33.4 mpg and prices fpm 1.2509, between his 2024-25
+      (1.1892) and 2023-24 (1.3387). rate_held is not computable (no sample at all). BBM adds availability
+      only. `none`.
+      OPEN, for Steven: the learned board's own context/allocation features were computed while he was
+      teamless, so his 41.78 fpts is a no-team projection. Regenerating the board would change every
+      player's numbers and invalidate the sizing blocks in the 7 pending Batch-12 proposals, so it has NOT
+      been done — it belongs with the mid-Oct re-pull, or on your explicit say-so.
+  - player: Max Christie
+    model_mpg: 29.3
+    bbm_mpg: ""                       # none stated
+    budget_mpg: null
+    model_usg: 16.4
+    bbm_usg: ""                       # none stated
+    verdict: "none"
+    proposal: false
+    note: >
+      Coach-hype with no mechanism, which the rubric routes straight to `none`: "Dusty May specifically
+      said Max Christie is going to have a breakout year" and "he's almost certainly going to start". He
+      ALREADY started 77 games at 29.1 mpg and the model has him at 29.3 — the starting job is not news
+      and there is no minutes gap to act on. Josh's counter-case is the more specific half of the segment
+      ("he doesn't generate turnovers. He never passes... not a big self-created player"), and the guest's
+      own defence is an appeal to authority: "I'll go with what Dusty May says."
+  - player: P.J. Washington
+    model_mpg: 28.9
+    bbm_mpg: ""                       # none stated
+    budget_mpg: null
+    model_usg: 20.1
+    bbm_usg: ""                       # none stated
+    verdict: "none"
+    proposal: false
+    note: >
+      Projected starting PF and simultaneously floated as outgoing salary ("maybe a PJ Washington"). Model
+      28.9 vs 31.0 actual is already a mild fade. The only specific claim is a shooting negative that is
+      already in the base ("has been up and down, has been down lately" — .325 3PT last season, against
+      .381 the year before). No number either way.
+  - player: Morez Johnson Jr.
+    model_mpg: null                   # not on the learned board
+    bbm_mpg: ""
+    budget_mpg: null
+    model_usg: null
+    bbm_usg: ""
+    verdict: "defer(rookie)"
+    proposal: false
+    note: >
+      The guest's projected DAY-ONE STARTING CENTER — and he has no learned base, which is on its own a
+      reason this roster cannot be allocated today. Top-10 pick, played for Dusty May at Michigan, "6'9
+      undersized center", "same size as Al Horford and Bam Adebayo", selling point is "motor... a floor
+      raiser". The projection is explicitly conditional on Lively being out AND Gafford being traded, and
+      the player himself disclaims it: "I'm not expecting like a bunch of minutes just because he was my
+      coach." Defer; this is high-priority context for the Oct market seed / sheet.
+  # ---- centers: the position the episode leaves most unresolved ----
+  - player: Dereck Lively II
+    model_mpg: 22.9
+    bbm_mpg: ""                       # none stated
+    budget_mpg: null
+    model_usg: 11.8                   # 7-gp sample
+    bbm_usg: ""
+    verdict: "none"
+    proposal: false
+    note: >
+      All availability, none of it ours — see availability_note (1); routed to Steven for
+      config/overrides.yaml, where it also drives EXP-030 redistribution. Recorded for completeness on the
+      value side: base season is 7 gp, far under the ~25 flag, and rate_held = 1.1711 / 1.2321 (2024-25) =
+      0.950, below 1.0. Per EXP-033 the model's fade is right and there is no upward delta to write; the
+      model in fact prices fpm 1.2358, slightly ABOVE his last healthy rate, exactly the pattern EXP-033
+      describes. The question on Lively is games, not per-game.
+  - player: Daniel Gafford
+    model_mpg: 23.8
+    bbm_mpg: ""                       # none stated
+    budget_mpg: null
+    model_usg: 15.8
+    bbm_usg: ""
+    verdict: "none"
+    proposal: false
+    note: >
+      Unsizable by construction: "if you had to guess, would you think that he is on the roster opening
+      night? No, I would guess not." A role cannot be priced without knowing the team. If he stays he
+      starts at C while Lively is out; if he goes, the minutes move to Cisse and Morez Johnson. The 2025-26
+      collapse is real and already in the base (fpm 1.1579 vs 1.4020 the year before, from "an extreme
+      amount of ankle problems"), and the model prices a partial recovery to 1.1878. Re-open when the
+      trade resolves.
+  - player: Moussa Cisse
+    model_mpg: 18.8
+    bbm_mpg: ""                       # none stated
+    budget_mpg: null
+    model_usg: 14.3
+    bbm_usg: ""
+    verdict: "note-only"
+    proposal: false
+    note: >
+      The clearest positive DIRECTION in the episode with no number attached: "breathing down Daniel
+      Gafford's neck because he does everything that Daniel Gafford does and is way more athletic at this
+      point in his career". Two contingencies stack on it (Lively's return date, Gafford's trade), and the
+      Lively half is already handled by the overrides.yaml + EXP-030 route. Model 18.8 mpg off a 38-gp /
+      13.9 mpg season is already a generous projection. Watch for September.
+  # ---- the wing herd: the episode's stated PROBLEM, with no stated solution ----
+  - player: Santi Aldama
+    model_mpg: 28.1
+    bbm_mpg: ""                       # none stated
+    budget_mpg: null
+    model_usg: 20.2
+    bbm_usg: ""
+    verdict: "none"
+    proposal: false
+    note: >
+      New arrival, and the guest openly cannot place him: "where does he play like on this team... it's
+      just where does it all fit together". Counted among the added shooting; positionally "a four or a
+      five, but he steps out and takes a three". Model 28.1 mpg — the highest of the DAL bench group and
+      unchanged from his Memphis role, on a roster the guest says has far too many forwards. A likely
+      negative in September; not sizable now.
+  - player: Zaccharie Risacher
+    model_mpg: 26.7
+    bbm_mpg: ""                       # none stated
+    budget_mpg: null
+    model_usg: 17.6
+    bbm_usg: ""
+    verdict: "none"
+    proposal: false
+    note: >
+      Arrived from ATL in the Dort/Nembhard trade (the follow-on the OKC batch flagged as unsizable
+      without a DAL preview — this preview does not resolve it either). Framed as a reclamation bet
+      ("maybe he flourishes in our system where he couldn't in Atlanta") and floated, remarkably, as a
+      starting-CENTER option over Gafford. Model projects him UP, 22.4 -> 26.7 mpg. Direction plausible,
+      magnitude unallocatable.
+  - player: Naji Marshall
+    model_mpg: 26.0
+    bbm_mpg: ""                       # none stated
+    budget_mpg: null
+    model_usg: 20.5
+    bbm_usg: ""
+    verdict: "none"
+    proposal: false
+    note: >
+      Named among the crowded wings and among the shooting worries ("really the only players that you're
+      worried about their shooting are like Naji, PJ Washington"). The model already fades him 29.5 -> 26.0
+      mpg, i.e. it agrees with the direction; with no stated rotation there is no magnitude to add.
+  - player: Klay Thompson
+    model_mpg: 21.9
+    bbm_mpg: ""                       # none stated
+    budget_mpg: null
+    model_usg: 22.7
+    bbm_usg: ""
+    verdict: "note-only"
+    proposal: false
+    note: >
+      Grouped with Gafford as expected outgoing salary in three separate passages. Same problem: no team,
+      no role, no entry. Model 21.9 mpg is flat against last season's 21.7 after two years of steep
+      decline (29.7 -> 27.3 -> 21.7).
+  - player: Marcus Sasser
+    model_mpg: 19.5
+    bbm_mpg: ""                       # none stated
+    budget_mpg: null
+    model_usg: 19.7
+    bbm_usg: ""
+    verdict: "none"
+    proposal: false
+    note: >
+      A positive and a negative from the same guest inside two minutes: "I expect is a guy to come over and
+      maybe play a bigger role... what's the point of going and getting him if you don't give him a
+      chance" versus "6'1 Marcus Sasser who I'm not — I just don't think is good". Model already projects
+      him UP from 12.0 to 19.5 mpg on scarcity of ball-handlers, which is the same logic BBM uses. Net
+      `none`.
+  - player: Caleb Martin
+    model_mpg: 19.3
+    bbm_mpg: ""                       # none stated
+    budget_mpg: null
+    model_usg: 12.5
+    bbm_usg: ""
+    verdict: "note-only"
+    proposal: false
+    note: >
+      An explicit exclusion from the rotation — "I don't think he factors in all the minutes we've already
+      talked about with those guys either" — which under a stated rotation size would be a clean negative.
+      There is no stated rotation size, and at rank 393 he is immaterial to a 10-team board either way.
+      Model 19.3 mpg against 14.8 actual is nonetheless too high.
+  # ---- rookies / first-year arrivals, no learned base ----
+  - player: Sergio de Larrea
+    model_mpg: null
+    bbm_mpg: ""
+    budget_mpg: null
+    model_usg: null
+    bbm_usg: ""
+    verdict: "defer(rookie)"
+    proposal: false
+    note: >
+      First-round rookie guard, and structurally important to DAL because he is one of only three players
+      on the roster the guest considers able to run an offence ("it's 35-year-old, 34-year-old Kyrie
+      Irving and a 20-year-old rookie... and like 6'1 Marcus Sasser"). Named as the likely starter on
+      Kyrie's rest nights; "averaged almost eight assists per game in summer league"; hedged with "he could
+      come over and not be super ready right away". Defer; strong Oct-sheet context.
+  - player: Tarik Biberovic
+    model_mpg: null
+    bbm_mpg: ""
+    budget_mpg: null
+    model_usg: null
+    bbm_usg: ""
+    verdict: "defer(rookie)"
+    proposal: false
+    note: "First-year arrival, no learned base. Counted among the added shooting / 'play finishers'; 'an interesting player'. Defer."
+  # ---- on the DAL board, outside anything the preview discusses ----
+  # 5 more rows carrying 79.9 model mpg. Recorded so the overhang is visible; none is material
+  # (rank 348+) and none is sizable without a rotation.
+  - player: Jett Howard
+    model_mpg: 18.3
+    bbm_mpg: ""
+    budget_mpg: null
+    model_usg: 17.2
+    bbm_usg: ""
+    verdict: "note-only"
+    proposal: false
+    note: "Acquired from ORL (55 gp / 12.6 mpg there last season). Mentioned once in passing as a two-way/deep-bench name. Model 18.3 mpg is overhang."
+  - player: John Poulakidas
+    model_mpg: 18.0
+    bbm_mpg: ""
+    budget_mpg: null
+    model_usg: 16.2
+    bbm_usg: ""
+    verdict: "note-only"
+    proposal: false
+    note: "13 gp / 19.5 mpg for DAL last season. The episode says he MAY LEAVE — 'a European news source that said that Poulakidas is going to get an offer in Europe that's more than a two-way spot and go over there'. Roster-status flag for the Oct pass."
+  - player: Jeremiah Robinson-Earl
+    model_mpg: 14.5
+    bbm_mpg: ""
+    budget_mpg: null
+    model_usg: 13.9
+    bbm_usg: ""
+    verdict: "note-only"
+    proposal: false
+    note: "22 gp / 16.4 mpg last season. Never mentioned; one of the guys the 16-man roster crunch squeezes. Overhang only."
+  - player: Miles Kelly
+    model_mpg: 15.6
+    bbm_mpg: ""
+    budget_mpg: null
+    model_usg: 15.8
+    bbm_usg: ""
+    verdict: "note-only"
+    proposal: false
+    note: "14 gp / 9.6 mpg last season. Never mentioned. Overhang only."
+  - player: Garrett Temple
+    model_mpg: 13.5
+    bbm_mpg: ""
+    budget_mpg: null
+    model_usg: 15.3
+    bbm_usg: ""
+    verdict: "note-only"
+    proposal: false
+    note: "Age 40; 22 gp / 3.3 mpg for TOR last season. Never mentioned. Model 13.5 mpg off a 3.3-mpg season is a clear deep-tail artifact; immaterial (rank 525)."
+sum_model_mpg: 412.9      # all 18 rows with a learned base, against a 240 budget. Includes Kyrie Irving
+                          # (33.4), who was teamless in preseason_roster_map when this ledger was first
+                          # written and is on DAL as of the 2026-08-02 carry-forward fix (see his row).
+                          # The 12 NAMED rotation rows (ex-Kyrie) are 299.6; the 5 deep-bench rows add 79.9.
+sum_bbm_mpg: null         # no minutes figure stated for any player
+sum_budget_mpg: null      # DELIBERATELY UNALLOCATED — the preview fails step 1 of the 2026-07-27
+                          # amendment (no stated rotation depth, reserves-ready explicitly open, roster
+                          # not final). Re-open at the September DAL episode.

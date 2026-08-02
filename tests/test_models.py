@@ -322,6 +322,35 @@ def test_preseason_roster_map_applies_dated_offseason_moves():
     assert list(v["misses"]["PLAYER_ID"]) == [3]
 
 
+def test_preseason_roster_map_carries_a_missed_season_forward():
+    # The seed is keyed on minutes PLAYED, so a player who missed the whole prior season used
+    # to vanish from every roster (Kyrie Irving, 0 gp in 2025-26, was still a Maverick).
+    # P1 misses 2023-24 entirely; P2 plays it; P3 last played 2022-23 AND 2021-22 is his last
+    # appearance before that -> a two-season gap, which must NOT be carried (retirees).
+    ss = pd.DataFrame({
+        "PLAYER_ID": [1, 2, 3, 2, 4],
+        "PLAYER_NAME": ["Alpha One", "Beta Two", "Gamma Three", "Beta Two", "Delta Four"],
+        "SEASON": ["2022-23", "2022-23", "2021-22", "2023-24", "2022-23"],
+        "TEAM_ABBREVIATION": ["DAL", "BOS", "MIA", "BOS", "PHX"],
+        "MIN": [1800.0, 1500.0, 1200.0, 1600.0, 900.0],
+    })
+    empty_tx = pd.DataFrame(
+        {"date": [], "team": [], "acquired": [], "relinquished": [], "notes": [], "category": []})
+    m = rosters.preseason_roster_map(ss, empty_tx, "2024-25").set_index("PLAYER_ID")
+    assert m.loc[2, "team"] == "BOS"   # played the prior season -> unchanged
+    assert m.loc[1, "team"] == "DAL"   # missed 2023-24 only -> carried from 2022-23
+    assert m.loc[4, "team"] == "PHX"   # same one-season gap
+    assert 3 not in m.index            # two-season gap -> stays off the map
+
+    # A carried player who really did leave is still cleared by his own transaction.
+    tx = pd.DataFrame({
+        "date": ["2024-07-02"], "team": ["Mavericks"], "acquired": [""],
+        "relinquished": ["• Alpha One"], "notes": ["waived"], "category": ["movement"],
+    })
+    m2 = rosters.preseason_roster_map(ss, tx, "2024-25").set_index("PLAYER_ID")
+    assert 1 not in m2.index
+
+
 def test_project_learned_use_vacated_runs():
     seasons = ["2019-20", "2020-21", "2021-22", "2022-23"]
     ss, bio = _synthetic_league(seasons)

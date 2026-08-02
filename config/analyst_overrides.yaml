@@ -1328,3 +1328,170 @@
     and Justin Champagnie (''brings value defensively crashing the offensive glass'')
     — both ranked ~180 places BELOW Reese on our board. A fourth big carrying 26.1
     projected mpg does not survive that depth chart unmentioned.'
+- name: Mitchell Robinson
+  date: 2026-07-31
+  category: role
+  action:
+    target_mpg: 24.0
+  rationale: 'BBM 2026-07-31 (BOS preview): the ONLY stated minutes figure in the
+    episode. Josh: ''is that a okay here is 24 minutes a piece? Do they push Robinson
+    further than that? Does Robinson play 20 minutes and start games and close games
+    and Queta takes the other bulk minutes?'' Karalis: ''I do think that it''s going
+    to be basically mid 20 minutes for one guy, mid 20 minutes for the other guy.
+    And so I don''t really think it matters. They''ll probably close with Queta.''
+    He is also Karalis''s projected STARTER, on a specific mechanism: ''the number
+    one reason why I''m saying start Mitchell Robinson is because there are no team
+    fouls at the beginning of a game and you can''t play the hack at the beginning
+    of a game... if you put him in a position where you eliminate that one thing that
+    teams do to negate him, then you maximize him.'''
+- name: Derrick White
+  date: 2026-07-31
+  category: role
+  action:
+    fpts_delta: 2.0
+  rationale: 'BBM 2026-07-31 (BOS preview): Karalis''s pick for the player who determines
+    Boston''s ceiling. ''His offense last year really did dip. There''s no sugar coating
+    that. His shooting percentages were horrible.'' The named mechanism for the rebound
+    is a shot-diet change, not effort: ''He plays better next to Jason Tatum. Statistically
+    over the years, he has played better next to Tatum''; ''maybe a little bit more
+    catch and shoot opportunities next to Jason who''s a little bit more of a willing
+    passer than Jaylen was''; ''with Paul George there... there''s still at least
+    some of that pressure taken off of Derrick White and at least in those scenarios,
+    he will have more catch and shoot opportunities''; ''He''s definitely a confidence
+    shooter.'' Josh: ''every year without fail, every impact stat says this is a top
+    20 player in the NBA.'''
+- name: Luka Garza
+  date: 2026-07-31
+  category: role
+  action:
+    target_mpg: 5.0
+  rationale: 'BBM 2026-07-31 (BOS preview): ''They''ll have some five out because
+    Luka Garza is still going to be your third string center, and there are going
+    to be some matchups where that''s just what you need.'' Third behind a center
+    split the same episode numbers at ''mid 20 minutes for one guy, mid 20 minutes
+    for the other guy''.'
+- name: Jordan Walsh
+  date: 2026-07-31
+  category: role
+  action:
+    target_mpg: 8.0
+  rationale: 'BBM 2026-07-31 (BOS preview): given the faintest praise of the three
+    young wings — ''Jordan Walsh took, you know, at least a decent step forward'',
+    against Scheierman''s ''took a big step forward''. He is not in the projected
+    starting five, is not named anywhere in the bench ball-handler order (''Pritchard
+    ball handler, Scheierman secondary ball handler or Hugo secondary ball handler''),
+    and appears only inside the speculative clause ''if Scheierman and Hugo, or Jordan
+    Walsh, if two of those guys can have double digit seasons''.'
+- name: Mike Conley
+  date: 2026-07-31
+  category: role
+  action:
+    target_mpg: 9.0
+  rationale: 'BBM 2026-07-31 (BOS preview): signed as ''veteran point guard help'',
+    but the episode''s one substantive remark about him is a demotion. The entire
+    reason Pritchard must come off the bench is ''those are your two ball handlers
+    and I''m not going to put too much on Mike Conley. So yeah, you need one ball
+    handler to start, one to come off the bench.'' He is emergency insurance behind
+    Derrick White and Payton Pritchard, not the backup point guard.'
+- name: Hugo González
+  date: 2026-07-31
+  category: role
+  action:
+    target_mpg: 10.0
+  rationale: 'BBM 2026-07-31 (BOS preview): a bench wing and the ALTERNATE secondary
+    ball-handler, named third in that order — ''off the bench I just like the Pritchard
+    ball handler, Scheierman secondary ball handler or Hugo secondary ball handler.''
+    Cited as a player who now has ''a little bit more definition to their games and
+    roles'' after a season in which ''we didn''t know what Hugo Gonzalez was'', and
+    grouped in the speculative ''if two of those guys can have double digit seasons''
+    line.'
+- name: Baylor Scheierman
+  date: 2026-07-31
+  category: role
+  action:
+    target_mpg: 15.0
+  rationale: 'BBM 2026-07-31 (BOS preview): a BENCH secondary ball-handler behind
+    Payton Pritchard — ''off the bench I just like the Pritchard ball handler, Scheierman
+    secondary ball handler.'' Karalis considered and rejected him for the starting
+    job in favour of Sam Hauser (''I went with Hauser because he''s a little bit more
+    established''). Credited with real development — ''Baylor Scheierman took a big
+    step forward'' — but Josh notes his 2025-26 starts existed only because Tatum
+    was out: ''when Tatum came back, he was on the bench and they rotated in Gonzalez,
+    they rotated in Scheierman started big chunks of those games.'''
+- name: Nikola Vučević
+  date: 2026-08-02
+  category: role
+  action:
+    target_mpg: 18.0
+  rationale: 'BBM 2026-08-02 (ORL preview): ''Nikola Vucevic comes in to be a backup
+    center and basically to retire in Orlando.'' Rossman-Reich: ''I suspect Nikola
+    Vucevic will be the backup center and he''ll get 15 to 20 minutes a game. Wendell
+    Carter played only like 24, 25, 26 minutes a game. So Vuc I think will get a healthy
+    amount of time on the court. But I don''t see him pushing for starters minutes.
+    Nicola Vucevic is just not, and probably has never been, a starting center on
+    a championship level team.'' On the value that remains: ''coming off the bench,
+    you can get 12 14 points per game out of him'' — he is signed to replace the departed
+    Moritz Wagner on a bench that fell to 27th-28th in the league in scoring. Hedge,
+    from the same passage: ''there''ll definitely be nights where Vuc plays more because
+    Carter''s in foul trouble or Carter''s hurt.'''
+- name: Goga Bitadze
+  date: 2026-08-02
+  category: role
+  action:
+    target_mpg: 8.0
+  rationale: 'BBM 2026-08-02 (ORL preview): squeezed out of the rotation by the Vucevic
+    signing. Both of his mentions are historical and unflattering — ''Jamal Mosley
+    tended to favor playing Mo Vagner over Goga Bitadze because they need the offense'',
+    and ''Bitadze went in the starting lineup when Wendell Carter got hurt.'' The
+    same episode fixes the two men in front of him with figures: Carter ''played only
+    like 24, 25, 26 minutes a game'' and Vucevic ''will get 15 to 20 minutes a game'',
+    with Jason Tatum-style small-ball five minutes going to nobody here (''it''s mostly
+    going to be a big somewhere in the dunker spot'').'
+- name: Jase Richardson
+  date: 2026-08-02
+  category: role
+  action:
+    target_mpg: 11.0
+  rationale: 'BBM 2026-08-02 (ORL preview): not mentioned. The episode states a full,
+    healthy guard/wing rotation ahead of him — Suggs and Bane starting, Anthony Black
+    as ''your sixth man... the main creator of their bench groups'' — and frames the
+    whole roster as settled: ''the Magic sticking with the same starting lineup is
+    a show of faith.'''
+- name: Tristan da Silva
+  date: 2026-08-02
+  category: role
+  action:
+    target_mpg: 21.0
+  rationale: 'BBM 2026-08-02 (ORL preview): not mentioned, but the episode is explicit
+    that his 2025-26 minutes existed because the team in front of him was hurt — Franz
+    Wagner ''missed 47 to 51 games in the middle of the season'', Jalen Suggs ''played
+    57 games'', Paolo Banchero missed time with a groin strain — and that the starting
+    five is now settled and expected healthy: ''there''s no real debate to me with
+    this'' / ''I think that''s the starting five.'''
+- name: Jalen Suggs
+  date: 2026-08-02
+  category: role
+  action:
+    target_mpg: 30.0
+  rationale: 'BBM 2026-08-02 (ORL preview): ''you just kind of have to plan for him
+    to miss 20 games. And that''s a lot to plan to miss for someone who''s really
+    important.'' He played 57 games last season, which the guest calls ''the second
+    most he''s played in his career'' while still describing it as an injury-filled
+    year, at 27.6 mpg. The guest raises an Alex-Caruso-style minutes cap — ''you can''t
+    play more than 22 minutes'' — and then explicitly WITHDRAWS it: ''I''m not saying
+    that they''re going to do that with Suggs now.'''
+- name: Julian Strawther
+  date: 2026-07-31
+  category: role
+  action:
+    target_mpg: 18.0
+  rationale: 'BBM 2026-07-31 (DEN preview): the ONLY stated minutes figure in the
+    episode. Josh: ''he averaged seven points a game... he played 15 minutes a night.
+    Is he just going to have to be like a 25 minute a night player now?'' Matt Moore:
+    ''I think he''ll probably start at 15. I think the goal is to get him to 20. He''s
+    going to have to play more. Absolutely.'' He is named as the player who determines
+    Denver''s ceiling because Tim Hardaway Jr. and Bruce Brown left (''spacing is
+    going to be a problem for them''). But the ceiling is stated just as plainly:
+    ''there''s no chance that Julian Strawther starts on a fully healthy team with
+    Christian Braun and Peyton Watson or Cam Johnson'', and ''I''m not going to predict
+    a breakout because I don''t know if he''s going to have the opportunity.'''

@@ -3182,3 +3182,634 @@
     Steven: if you want the WAS-tail treatment applied consistently — you concentrated Batch 7's cuts onto
     the cleanest displacements and lightened the rest — the cushioned version is ~16 mpg (about -10). I
     have written the honest number rather than pre-applying that trim."
+
+# ============ Batch 12 — BOS team preview (2026-07-31) + DAL team preview (2026-07-28) ============
+# Sources: 2026-07-31-celtics-season-preview.md (John Karalis, Locked On Celtics)
+#          2026-07-28-mavericks-season-preview.md (Nick Angstadt, Locked On Mavs)
+# Ledgers: data/manual/bbm_team_previews/2026-07-31-celtics.yaml  (17 rows; budget sums to exactly 240)
+#          data/manual/bbm_team_previews/2026-07-28-mavericks.yaml (21 rows; budget DELIBERATELY unallocated)
+# Notes: 32 rows appended to data/manual/bbm_notes.csv (15 BOS, 17 DAL).
+# Step 0 transactions refresh RAN before sizing: cache 2026-07-23 -> 2026-07-25 (11 rows). It mattered —
+# Risacher and Aldama are correctly on DAL, and all four BOS signings (Robinson, Conley, Bassey, Amari
+# Williams) resolve. 2026-07-25 is the newest date the source has posted, so nothing is missing.
+#
+# TWO PREVIEWS, TWO DIFFERENT VERDICTS ON THE SAME QUESTION — and that is the point of this batch.
+# The 2026-07-27 amendment lets the closed 240 budget supply a minutes number when a preview states a
+# depth chart but no figures. Its step 1 is a GATE, not a formality, and these two episodes land on
+# opposite sides of it:
+#
+#   BOS PASSES. Named starting five (White/Tatum/George/Hauser/Robinson), a named bench order (Pritchard
+#   the six-man ball-handler, Scheierman and Gonzalez the secondary handlers, Conley explicitly NOT
+#   trusted with the ball, Garza "still going to be your third string center"), named departures/arrivals,
+#   and a reserves-ready read. PLUS the only stated minutes figure in either episode: the center split,
+#   "mid 20 minutes for one guy, mid 20 minutes for the other guy" against Josh's "24 minutes a piece".
+#   -> 7 entries below.
+#
+#   DAL FAILS, and I have written ZERO proposals for it. The contract's words for this case are exact:
+#   "Without those, there is nothing to allocate from; fall back to `none` and wait." Rotation depth is
+#   not merely unstated, it is disclaimed — "no coach plays 12 players, let alone like 15. There's no way
+#   that all these guys get minutes... I'm fascinated to see how this plays out." Which reserves are ready
+#   is the episode's open QUESTION (the whole "who's under pressure" segment). And the roster is not final:
+#   16 under contract with cuts required, Gafford "I would guess not" on the opening-night roster, Klay in
+#   the same breath, "the Mavs have one more move in them somewhere". Josh closes by saying the real pass
+#   comes in September "when everything is settled and finalized".
+#   Steven: this is NOT a repeat of the OKC zero-mover failure that produced the amendment. OKC handed
+#   over a stated depth chart and our old rule still returned nothing. DAL is the case step 1 was written
+#   to separate out — the beat writer declined to name a rotation because nobody has chosen one. If you
+#   would rather I allocate 240 across DAL anyway, say so and I will; I judged that inventing twelve
+#   numbers over a roster that is about to change is the unchecked-number failure the rule guards against.
+#   The DAL ledger carries full coverage (21 rows) so nothing was silently skipped.
+#
+# SHAPE OF THE BOS BATCH: exactly what the contract predicts for preview mode — one stated-minutes
+# positive, one rate entry at the top of the board, and four large cuts on a tail the model over-minutes.
+# Jaylen Brown (~34 mpg) leaves while Tatum (16 gp last season) and Paul George arrive into the SAME 240,
+# so ~28 mpg must come out of the bench. The model moves it the WRONG WAY — Scheierman 18.6 -> 21.7,
+# Gonzalez 14.6 -> 18.1, Walsh 17.8 -> 18.9 — because it watched those three absorb a Tatum-less season
+# and read it as growth. The 12 rotation rows sum to 280.6 model mpg against 240.
+#
+# THE THREE LOUDEST NARRATIVES IN THE BOS EPISODE ALL PRICE TO `none`, and the reasons differ:
+#   * Payton Pritchard — a full chapter demolishing the "next Brunson" story, and the MODEL ALREADY
+#     AGREES: it fades him 32.3 -> 28.1 mpg, which is almost exactly the 28.4 he played as a six-man in
+#     2024-25, the last season with a full-strength roster ahead of him. Budget 27.0 = -1.1, inside the
+#     floor. Assurance, not an addition. His stated "21 usage in 32 minutes" verifies our cache to a
+#     decimal (computed 21.4 at 32.3) — a good check on the model_usg column.
+#   * Jayson Tatum — "zero worries", full offseason, no hint of prior injury. Every word of it is GAMES
+#     PLAYED, which is not ours. rate_held = 1.3069/1.3271 = 0.985 (under 1.0, so EXP-033 says the fade is
+#     right), and the model already puts the fade in MINUTES (36.4 -> 34.5) where EXP-033 says it belongs.
+#     The README names him as the case where back-solving a target_mpg inverts the story; it would here.
+#   * Neemias Queta — the stated 24 is only +1.2 over the model, inside both the materiality floor and the
+#     ~2 mpg priority threshold. BBM's testimony CONFIRMS the model. Only Robinson was mispriced.
+#
+# COVERAGE — BOS (17 ledger rows, 7 movers):
+#   Jayson Tatum | none      Derrick White | +2.0        Paul George | none
+#   Sam Hauser | none        Mitchell Robinson | +5.04   Payton Pritchard | none
+#   Neemias Queta | none     Baylor Scheierman | -4.83   Hugo Gonzalez | -6.35
+#   Mike Conley | -8.35      Jordan Walsh | -9.11        Luka Garza | -10.67
+#   Chris Cenac Jr. | defer(rookie)
+#   Ron Harper Jr. / Chris Boucher / Amari Williams / Charles Bassey | note-only (55.9 mpg of board
+#     overhang the stated rotation has no room for; all rank 375+, budget 0.0 each)
+# COVERAGE — DAL (21 ledger rows, 0 movers): Cooper Flagg / Kyrie Irving / Max Christie / P.J. Washington /
+#   Dereck Lively II / Daniel Gafford / Santi Aldama / Zaccharie Risacher / Naji Marshall / Marcus Sasser
+#   | none  ·  Moussa Cisse / Klay Thompson / Caleb Martin + 5 deep-bench rows | note-only  ·  Morez
+#   Johnson Jr. / Sergio de Larrea / Tarik Biberovic | defer(rookie).
+#
+# THREE ITEMS ROUTED TO STEVEN (none is analyst-layer material):
+# 1. AVAILABILITY, config/overrides.yaml candidates — the two with real substance:
+#    * DERECK LIVELY II (DAL) — the strongest availability signal in any transcript so far. BOTH hosts
+#      independently reach "less than 10% chance he's ready opening night"; as of July 22 he "is not
+#      running or jumping"; "a foot injury for a big" on a career of lower-body problems (55 gp -> 7 gp).
+#      Model base 22.9 mpg / 54 gp. NOTE: overrides.yaml is the COMPLETE answer here, not a partial one —
+#      a confirmed out-timeline there also drives EXP-030 nightly redistribution to Gafford / Cisse /
+#      Morez Johnson, so analyst-layer deltas on those three would double-count the same fact. That is why
+#      the DAL ledger leaves them at none/note-only rather than crediting them the vacancy.
+#    * PAUL GEORGE (BOS) — "I know for maybe half the season, Paul George won't play", plus no back-to-
+#      backs. ~41 games against the model's gp base of 53. The one availability claim in either episode
+#      that carries a quasi-number.
+#      Lesser watch items: Mitchell Robinson ("he's going to miss games"; model gp already a low 41) and
+#      Kyrie Irving ("34 off an ACL"; "not going to play back to back especially early on"; gp base 54).
+#      Jayson Tatum is the rare POSITIVE availability signal — "zero worries", first real offseason since
+#      the Achilles — if you want gp adjusted upward anywhere, that is the candidate.
+# 2. DATA FLAG — KYRIE IRVING WAS ABSENT FROM THE DAL BOARD. *** RESOLVED 2026-08-02, in code. ***
+#    As first reported: he was teamless in preseason_roster_map and appeared on no team despite a rank of
+#    30 at 33.4 mpg. The cause was structural, not a stale cache — the map seeded from the prior season's
+#    primary team BY MINUTES PLAYED, and Kyrie played 0 games in 2025-26 (ACL), so there was no row to
+#    seed from. Per Steven (2026-08-02) this is now fixed in `rosters.preseason_roster_map` rather than by
+#    hand-editing the map: a player absent from the prior season is seeded from the season BEFORE it, with
+#    the transaction pass still applied on top so anyone who genuinely left is cleared by his own
+#    relinquished row. The lookback is ONE season by design — a two-season gap is a retiree, and carrying
+#    those forward would put dead names on rosters. Recovers exactly 4 board players, all verified to have
+#    no post-Apr-20 transaction (i.e. all under contract): Kyrie -> DAL, Haliburton -> IND, Lillard -> MIL,
+#    Malik Beasley -> DET. Teamless board players 88 -> 84; the remainder are real unsigned free agents.
+#    Covered by a new test (`test_preseason_roster_map_carries_a_missed_season_forward`); full suite 171
+#    passing. NOTE the DAL ledger's sums were written pre-fix and are annotated accordingly.
+#    STILL OPEN, and deliberately NOT done: the learned board's own context/allocation features were
+#    computed while these four were teamless, so their projections are no-team projections. Regenerating
+#    learned_2026-27.parquet would move EVERY player's numbers and invalidate the sizing blocks in the 7
+#    proposals below, which are mid-review — so it is parked for the mid-Oct re-pull or your explicit
+#    say-so. Same question applies to the backtest consumers of the map (coaches, rookies, allocation /
+#    EXP-030, context features): their cached results predate this fix.
+# 3. CALENDAR — the September DAL re-open. Josh states on tape that the per-player DAL pass with ADP comes
+#    in September; the DAL ledger is written to be argued with then. First things to re-open: Aldama
+#    (28.1 mpg unchanged from his Memphis role on a roster the guest says is drowning in forwards),
+#    Risacher (projected UP 22.4 -> 26.7), Caleb Martin (explicitly excluded from the rotation, still at
+#    19.3), and Garrett Temple (13.5 mpg off a 3.3-mpg season, age 40 — a clear deep-tail artifact).
+
+- name: Mitchell Robinson
+  date: 2026-07-31
+  category: role
+  action: {target_mpg: 24.0}
+  preview: "rank 388 · 19.0 mpg · 19.17 fpts/g -> 24.0 mpg · 24.21 (+5.04)"
+  rationale: "BBM 2026-07-31 (BOS preview): the ONLY stated minutes figure in the episode. Josh: 'is that
+    a okay here is 24 minutes a piece? Do they push Robinson further than that? Does Robinson play 20
+    minutes and start games and close games and Queta takes the other bulk minutes?' Karalis: 'I do think
+    that it's going to be basically mid 20 minutes for one guy, mid 20 minutes for the other guy. And so I
+    don't really think it matters. They'll probably close with Queta.' He is also Karalis's projected
+    STARTER, on a specific mechanism: 'the number one reason why I'm saying start Mitchell Robinson is
+    because there are no team fouls at the beginning of a game and you can't play the hack at the
+    beginning of a game... if you put him in a position where you eliminate that one thing that teams do
+    to negate him, then you maximize him.'"
+  sizing:
+    base_fpts: 19.17
+    base_mpg: 19.0
+    target_mpg: 24.0      # STATED, not budget-derived — 'mid 20 minutes', read at the low end of that
+                          # range because Queta closes games and Robinson's fouling caps his late minutes.
+                          # Hedged ONCE, inside the minutes component, per the no-second-trim rule.
+    target_fpm: 1.0089    # HELD at the model's own rate. The episode's rate content is either already in
+                          # the base ('Robinson can't even hit a free throw' — .408 FT) or is a minutes
+                          # argument in rate clothing (the no-team-fouls case). No rate leg.
+    target_fpts: 24.21
+    healthy_fpm: 1.2107   # his 2025-26 actual; the target sits well below it, so no advisory
+  triangulation: "Model base 19.0 mpg / 19.17 fpts (rank 388, gp 41) vs BBM ~24 mpg. THE GAP IS +5.0 MPG —
+    the largest in either ledger and more than double the ~2 mpg presumptive-action threshold, and unlike
+    every other minutes number in this batch it is TESTIMONY, not our arithmetic. The model is pricing a
+    New York backup: he played 19.6 mpg for 60 games behind Karl-Anthony Towns. Boston signed him
+    2026-07-06 on 3yr/$47.4M to start at a position whose incumbent rotation the episode calls 'on paper
+    maybe one of the worst in the NBA'. The 24+24 center split is internally consistent — it is exactly
+    the 48 center minutes — and it comes with a named counterparty for every minute: Luka Garza, whose
+    -10.67 entry is in this same batch. Rate deliberately untouched: the model already fades him 1.2107 ->
+    1.0089 fpm, which is aggressive but has no named mechanism against it. Availability deliberately
+    untouched too, and it is the caveat on this entry — 'Robinson's always a question', 'he's got a lot
+    of ankle problems, he's going to miss games', 'not going to play back to backs'. That is gp, it is
+    not ours, and the model's 41-gp base already prices it. This entry claims minutes per game PLAYED and
+    assumes no more games than the board already gives him."
+  status: approved
+
+- name: Derrick White
+  date: 2026-07-31
+  category: role
+  action: {fpts_delta: 2.0}
+  preview: "rank 51 · 31.7 mpg · 33.45 fpts/g -> 35.45 (+2.0), mpg unchanged"
+  rationale: "BBM 2026-07-31 (BOS preview): Karalis's pick for the player who determines Boston's ceiling.
+    'His offense last year really did dip. There's no sugar coating that. His shooting percentages were
+    horrible.' The named mechanism for the rebound is a shot-diet change, not effort: 'He plays better
+    next to Jason Tatum. Statistically over the years, he has played better next to Tatum'; 'maybe a
+    little bit more catch and shoot opportunities next to Jason who's a little bit more of a willing
+    passer than Jaylen was'; 'with Paul George there... there's still at least some of that pressure
+    taken off of Derrick White and at least in those scenarios, he will have more catch and shoot
+    opportunities'; 'He's definitely a confidence shooter.' Josh: 'every year without fail, every impact
+    stat says this is a top 20 player in the NBA.'"
+  sizing:
+    base_fpts: 33.45
+    base_mpg: 31.7
+    target_mpg: 31.7      # UNCHANGED — no minutes leg. BBM states no minutes number for White in either
+                          # direction, and the contract forbids back-solving one from a delta already
+                          # chosen (the Tatum failure mode). The BOS 240 budget independently agrees to
+                          # leave him alone: 32.0 vs 31.7 = +0.3, inside the 1.5 floor.
+    target_fpm: 1.1183    # 3PT .327 -> .370 on 7.72 attempts at model minutes = +0.332 makes/g x 6 = +1.99
+    target_fpts: 35.45
+    healthy_fpm: 1.1369   # his 2023-24 best; the target lands BELOW it
+  triangulation: "Model base 31.7 mpg / 33.45 fpts (rank 51). USAGE, computed: 18.6 -> 19.8 -> 22.0 over
+    three seasons, a real climb as he absorbed the Tatum-less year; BBM's 'his usage ramped up and he had
+    to do a different role' matches, and he expects it to come back down with Tatum and George present.
+    No forward usage NUMBER is stated, so this is sized off the shooting component only.
+    DECOMPOSITION. (1) Component, mechanically reversible: 3PT .327 last season against .384 (2024-25) and
+    .396 (2023-24), on 8.31 attempts per game at 34.1 mpg. (2) Price it: recovery to .370 — NOT to his
+    .384-.396 norm, because he turns 32 and part of the dip may be real; that is the hedge, applied ONCE
+    inside the component per the no-second-trim rule. His attempt rate of 0.2437 3PA/min gives 7.72
+    attempts at the model's 31.7 mpg; +0.043 x 7.72 = +0.332 extra makes, and a made three is worth +6
+    (3PM 1 + FGM 2 + PTS 3, from a -1 miss) = +1.99 fpts/g. (3) SUBTRACT WHAT THE MODEL ALREADY PRICES —
+    and it has priced NONE of this: already_priced = (1.0552 - 1.0914) x 31.7 = -1.15, i.e. the model
+    projects him BELOW last season's rate, an aging fade. This entry does not undo that fade — nothing in
+    the episode speaks to his age — it adds only the unpriced shooting remainder on top of it. (4) The
+    line: 31.7 x 1.1183 = 35.45, which sits inside his own three-season fpm range (1.0914 / 1.0821 /
+    1.1369) and below his best. This is the CONVERSE-RULE case the contract added on 2026-07-25: an
+    efficiency belief at stable minutes belongs in a bare fpts_delta, and that is the correct verb here,
+    not a fallback."
+  status: approved
+
+- name: Luka Garza
+  date: 2026-07-31
+  category: role
+  action: {target_mpg: 5.0}
+  preview: "rank 336 · 15.4 mpg · 15.80 fpts/g -> 5.0 mpg · 5.13 (-10.67)"
+  rationale: "BBM 2026-07-31 (BOS preview): 'They'll have some five out because Luka Garza is still going
+    to be your third string center, and there are going to be some matchups where that's just what you
+    need.' Third behind a center split the same episode numbers at 'mid 20 minutes for one guy, mid 20
+    minutes for the other guy'."
+  sizing:
+    base_fpts: 15.80
+    base_mpg: 15.4
+    target_mpg: 5.0       # BUDGET-DERIVED, not stated. Robinson 24 + Queta 24 (both stated) consume all 48
+                          # center minutes; a small residual survives via Mazzulla's matchup five-out
+                          # looks, which the same sentence explicitly preserves.
+    target_fpm: 1.026     # held
+    target_fpts: 5.13
+  triangulation: "Model base 15.4 mpg / 15.80 fpts (rank 336). The largest cut in the batch and the most
+    mechanical: his 16.2 mpg last season is fully explained by Boston fielding what this episode calls a
+    center rotation that 'on paper look like maybe one of the worst in the NBA', and the model carried
+    that forward at 15.4 as though the Mitchell Robinson signing had not happened. It did happen, on
+    2026-07-06, and the preview then hands the whole 48 to Robinson and Queta by name. Every minute of
+    this -10.4 mpg has a named counterparty in this same batch, which is the check a topic episode cannot
+    offer. SIZE ACKNOWLEDGED: -10.67 fpts/g is large because the displacement is total, not because
+    mechanisms were stacked — there is one component and no rate leg. Immaterial to a 10-team board (rank
+    336); it is here because the 240 has to balance. Budget-derived numbers carry less conviction than a
+    quoted figure and this is among the first the mid-Oct pass should re-open — the honest counter-case is
+    that Robinson misses games, and on those nights Garza's per-game-played minutes are higher than 5."
+  status: approved
+
+- name: Jordan Walsh
+  date: 2026-07-31
+  category: role
+  action: {target_mpg: 8.0}
+  preview: "rank 308 · 18.9 mpg · 15.79 fpts/g -> 8.0 mpg · 6.68 (-9.11)"
+  rationale: "BBM 2026-07-31 (BOS preview): given the faintest praise of the three young wings — 'Jordan
+    Walsh took, you know, at least a decent step forward', against Scheierman's 'took a big step
+    forward'. He is not in the projected starting five, is not named anywhere in the bench ball-handler
+    order ('Pritchard ball handler, Scheierman secondary ball handler or Hugo secondary ball handler'),
+    and appears only inside the speculative clause 'if Scheierman and Hugo, or Jordan Walsh, if two of
+    those guys can have double digit seasons'."
+  sizing:
+    base_fpts: 15.79
+    base_mpg: 18.9
+    target_mpg: 8.0       # budget-derived, not stated
+    target_fpm: 0.8354    # held
+    target_fpts: 6.68
+  triangulation: "Model base 18.9 mpg / 15.79 fpts (rank 308) — the model has him level with Mike Conley
+    and ABOVE Mitchell Robinson, on a roster where the preview names him ninth or tenth. His 17.8 mpg last
+    season came in a Tatum-less year; Tatum (34.5) and Paul George (28.8) now re-enter the same 240 while
+    Jaylen Brown's ~34 leaves, so roughly 28 mpg must come out of exactly this group. Budget 8.0 leaves
+    him a real if modest role. No rate leg — the 'double digit' line is hope, not a component. Immaterial
+    to a 10-team board; written as the counterparty that makes the 240 real. Budget-derived, so first in
+    line for the mid-Oct re-open."
+  status: approved
+
+- name: Mike Conley
+  date: 2026-07-31
+  category: role
+  action: {target_mpg: 9.0}
+  preview: "rank 339 · 18.9 mpg · 15.94 fpts/g -> 9.0 mpg · 7.59 (-8.35)"
+  rationale: "BBM 2026-07-31 (BOS preview): signed as 'veteran point guard help', but the episode's one
+    substantive remark about him is a demotion. The entire reason Pritchard must come off the bench is
+    'those are your two ball handlers and I'm not going to put too much on Mike Conley. So yeah, you need
+    one ball handler to start, one to come off the bench.' He is emergency insurance behind Derrick White
+    and Payton Pritchard, not the backup point guard."
+  sizing:
+    base_fpts: 15.94
+    base_mpg: 18.9
+    target_mpg: 9.0       # budget-derived, not stated
+    target_fpm: 0.8434    # held — the model's own rate, which is if anything generous (see triangulation)
+    target_fpts: 7.59
+  triangulation: "Model base 18.9 mpg / 15.94 fpts (rank 339). THE CLEAREST MODEL MISS ON THE ROSTER, and
+    it is two errors compounding. (1) Minutes: he is 39 and the model applies essentially NO aging fade,
+    18.4 actual -> 18.9 projected, after 28.9 -> 24.7 -> 18.4 over three seasons. (2) Rate: it projects
+    his per-minute value UP, 0.7667 -> 0.8434, after two straight declines (1.0550 -> 0.9386 -> 0.7667).
+    I have moved only the minutes leg, because that is what BBM speaks to and the contract prices one
+    mechanism once; the rate optimism is left standing and is a reason to treat 9.0 as generous rather
+    than harsh. Signed 2026-07-06 as the fourth guard behind White, Pritchard and a Tatum/George wing
+    group that handles. Immaterial to a 10-team board. Budget-derived, not stated."
+  status: approved
+
+- name: Hugo González
+  date: 2026-07-31
+  category: role
+  action: {target_mpg: 10.0}
+  preview: "rank 327 · 18.1 mpg · 14.20 fpts/g -> 10.0 mpg · 7.85 (-6.35)"
+  rationale: "BBM 2026-07-31 (BOS preview): a bench wing and the ALTERNATE secondary ball-handler, named
+    third in that order — 'off the bench I just like the Pritchard ball handler, Scheierman secondary ball
+    handler or Hugo secondary ball handler.' Cited as a player who now has 'a little bit more definition
+    to their games and roles' after a season in which 'we didn't know what Hugo Gonzalez was', and
+    grouped in the speculative 'if two of those guys can have double digit seasons' line."
+  sizing:
+    base_fpts: 14.20
+    base_mpg: 18.1
+    target_mpg: 10.0      # budget-derived, not stated
+    target_fpm: 0.7845    # held
+    target_fpts: 7.85
+  triangulation: "Model base 18.1 mpg / 14.20 fpts (rank 327). Same shape as Scheierman and slightly worse:
+    the model projects him UP from 14.6 to 18.1 mpg off a season whose minutes existed because Tatum did
+    not play — he was one of the wings Boston 'rotated in' for those starts. That opening closes. With
+    Brown's ~34 mpg out and Tatum + George's ~63 in, the bench group he sits in is where the ~28 mpg of
+    compression lands. Budget 10.0 still leaves him a genuine role, consistent with his being named in the
+    rotation at all. No rate leg. Immaterial to a 10-team board; budget-derived, so first in line for the
+    mid-Oct re-open."
+  status: approved
+
+- name: Baylor Scheierman
+  date: 2026-07-31
+  category: role
+  action: {target_mpg: 15.0}
+  preview: "rank 259 · 21.7 mpg · 15.66 fpts/g -> 15.0 mpg · 10.83 (-4.83)"
+  rationale: "BBM 2026-07-31 (BOS preview): a BENCH secondary ball-handler behind Payton Pritchard —
+    'off the bench I just like the Pritchard ball handler, Scheierman secondary ball handler.' Karalis
+    considered and rejected him for the starting job in favour of Sam Hauser ('I went with Hauser because
+    he's a little bit more established'). Credited with real development — 'Baylor Scheierman took a big
+    step forward' — but Josh notes his 2025-26 starts existed only because Tatum was out: 'when Tatum came
+    back, he was on the bench and they rotated in Gonzalez, they rotated in Scheierman started big chunks
+    of those games.'"
+  sizing:
+    base_fpts: 15.66
+    base_mpg: 21.7
+    target_mpg: 15.0      # budget-derived, not stated — the most generous of the four bench cuts,
+                          # because he is the one the preview credits with a 'big' step and names first
+                          # in the bench ball-handler order.
+    target_fpm: 0.7217    # held
+    target_fpts: 10.83
+  triangulation: "Model base 21.7 mpg / 15.66 fpts (rank 259). The model projects him UP from 18.6 to 21.7
+    mpg; the preview has him as the second-unit secondary handler on a team that just re-added Jayson
+    Tatum and imported Paul George. Direction of the model's move is the error: his minutes rose last
+    season BECAUSE Tatum was absent, and the preview says so in as many words. Sized more gently than
+    Gonzalez / Walsh / Conley because the development credit is real and specific. No rate leg — the
+    'double digit seasons' remark is conditional hope. Budget-derived, not stated; the mid-Oct pass
+    should re-open it, and the honest counter-case is that a genuine sophomore leap plus Paul George
+    missing 'maybe half the season' both push his minutes back up."
+  status: approved
+
+# ============ Batch 13 — ORL (2026-08-02) + DEN (2026-07-31) + SAC (2026-08-01) team previews ============
+# Sources: 2026-08-02-magic-season-preview.md   (Philip Rossman-Reich, Locked On Magic)
+#          2026-07-31-nuggets-season-preview.md (Matt Moore, Locked On Nuggets)
+#          2026-08-01-kings-season-preview.md   (James Ham, Locked On Kings)
+# Ledgers: data/manual/bbm_team_previews/2026-08-02-magic.yaml   (18 rows; budget sums to exactly 240)
+#          data/manual/bbm_team_previews/2026-07-31-nuggets.yaml (16 rows; budget DELIBERATELY unallocated)
+#          data/manual/bbm_team_previews/2026-08-01-kings.yaml   (17 rows; budget DELIBERATELY unallocated)
+# Notes: 33 rows appended to data/manual/bbm_notes.csv (11 DEN, 11 SAC, 11 ORL).
+# Step 0 transactions refresh RAN before sizing: no new rows past 2026-07-25 (the source has not posted
+# any). Roster assignments for all three teams verified against the refreshed cache.
+#
+# THE HEADLINE, AND IT IS THE LARGEST SINGLE FINDING THE LAYER HAS PRODUCED:
+#
+#   NIKOLA VUCEVIC IS RANK 33 ON OUR BOARD AT 28.5 MPG, AND ORLANDO SIGNED HIM TO BACK UP WENDELL CARTER.
+#
+# Rossman-Reich: "I suspect Nikola Vucevic will be the backup center and he'll get 15 to 20 minutes a
+# game... But I don't see him pushing for starters minutes." And in the same passage he pins the starter:
+# "Wendell Carter played only like 24, 25, 26 minutes a game... he's going to play below 30 minutes most
+# likely and Vucevic gets the others." The model is not wrong about the PLAYER — it is carrying forward the
+# starting role he actually had last season (28.4 mpg) into a team where the job is taken. That is the
+# depth-chart redistribution the model cannot derive from box scores, which is the entire reason
+# team-preview mode exists, and it is worth -11.97 fpts/g on a top-40 player.
+# The same passage is also the best VERIFICATION in the batch: Carter's stated ~25 lands within 0.1 of our
+# 25.1, so the sentence that produces the biggest cut also confirms the number next to it.
+#
+# THREE PREVIEWS, ONE PASSES THE GATE. Batch 12 established that step 1 of the 2026-07-27 amendment is a
+# real gate; this batch is the same test run three more times.
+#
+#   ORL PASSES. Starting five stated emphatically from both sides ("there is no real debate to me with
+#   this" / "I think that's the starting five"), sixth man named (Anthony Black), backup center named WITH
+#   a figure, and — uniquely so far — a STABLE, FINAL roster: Vucevic in, Moritz Wagner and Jett Howard
+#   out, one second-round rookie. No unsigned starter, no expected trade. -> 5 entries below.
+#   Recorded caveat: a NEW HEAD COACH (Mosley out, Sean Sweeney in), and the guest says outright "we don't
+#   know what Sean Sweeney wants this team to do or how he's going to deploy all these pieces". The four
+#   budget-derived ORL entries are softer than the Vucevic one for that reason.
+#
+#   DEN FAILS, harder than DAL did — the unresolved player is IN THE STARTING FIVE. Peyton Watson is an
+#   unsigned RFA ("clutch is likely asking for between 25 and 30 million... they'll eventually settle
+#   between 20 and 25", resolution expected "the first week in September"); Cam Johnson (29.6 model mpg) is
+#   expected to be traded as the base case; and "there will be at least two starters from last year's team,
+#   including Cam Johnson, that will be gone by the deadline". Josh: "this is all table setting stuff. This
+#   is an amuse bouche." -> NO budget. But ONE entry still comes out, because a QUOTED figure never needed
+#   the budget: Julian Strawther, below.
+#
+#   SAC FAILS, and it is the most arguable call in either batch — the reasoning is written out in full at
+#   the top of its ledger so it can be overruled on one page. It HAS a starting five as firm as ORL's
+#   (Acuff / LaVine / Hunter / Keegan Murray / Sabonis, "I don't think so" to any debate). It LACKS a
+#   rotation size, any bench order beyond "Monk is the backup point guard", and a final roster (13 players
+#   under contract, "they have to do at least one thing", live Sabonis and LaVine trade talk). Its one
+#   forward-looking rotation claim is a conditional with no counterparty: "somewhere along the way these
+#   guys are going to lose some minutes to a guy like Emanuel Sharp, to a guy like Nique Clifford" — which
+#   guys, how many minutes, in what proportion, all unstated. A starting five is not a depth chart.
+#   Steven: if you want SAC allocated anyway, say so. My read is that the tail there (Isaiah Stevens 17.3
+#   mpg off a THREE-game sample, DaQuan Jeffries 15.5 off three, Dario Saric 12.1 off five) is a
+#   MODEL-INTERNAL problem better fixed at the October pass than laundered through a preview that never
+#   mentions any of them.
+#
+# THE THREE BIGGEST `none` VERDICTS, because they are where the discipline shows:
+#   * Domantas Sabonis (SAC) — the most tempting entry in the batch. The mechanism is real and well
+#     argued (the three ball-dominant guards who displaced him are all gone; "the first part of the
+#     downfall of the Kings last season was going away from Sabonis when he was healthy") and the guest
+#     then refuses to forecast it, twice: "I don't know if they're going to be able to do that again" and
+#     "I kept waiting for it last year and it never happened even when he was healthy." A mechanism the
+#     source will not predict is conviction, not a component.
+#   * Christian Braun (DEN) — a named, mechanically real finishing rebound off a torn-ankle-ligament
+#     season, and the guest predicts it. The model has ALREADY taken +2.3 fpts/g of it (fpm 0.7826 ->
+#     0.8597). What he actually demands on top is DEFENCE ("1.5 to two times the defender"), which a
+#     points league barely pays unless it lands in stl/blk — and no such claim is made.
+#   * Paolo Banchero (ORL) — a long chapter whose one hard claim (usage down five shots per 75, assist
+#     rate a career high) our cache CONFIRMS (33.6 -> 27.6 USG%) and the base already contains, while the
+#     model separately prices +3.1 fpts/g of rate recovery toward his 2024-25 form.
+#
+# COVERAGE — ORL (18 ledger rows, 5 movers):
+#   Paolo Banchero | none     Desmond Bane | none        Franz Wagner | none
+#   Jalen Suggs | -2.07       Wendell Carter Jr. | none  Anthony Black | none
+#   Tristan da Silva | -3.70  Nikola Vucevic | -11.97    Jase Richardson | -7.86
+#   Goga Bitadze | -16.75     Isaiah Nelson | defer(rookie)
+#   Noah Penda / Jonathan Isaac / Jevon Carter / Jamal Cain / Orlando Robinson / Colin Castleton /
+#     Alex Morales | note-only (104.2 mpg of board overhang the stated rotation has no room for)
+# COVERAGE — DEN (16 ledger rows, 1 mover):
+#   Julian Strawther | -2.43 (entry below)
+#   Jokic / Jamal Murray / Christian Braun / Aaron Gordon / Peyton Watson / Marvin Bagley III | none
+#   Cam Johnson / Tyus Jones / DaRon Holmes II / Zeke Nnaji / KJ Simpson / Hunter Tyson | note-only
+#   Alpha Diallo / Trayvon Brazile / Bryce Hopkins | defer(rookie)
+# COVERAGE — SAC (17 ledger rows, 0 movers):
+#   Sabonis / LaVine / Keegan Murray / DeAndre Hunter / Malik Monk / Maxime Raynaud / Nique Clifford | none
+#   Achiuwa / Plowden / Cardwell / Stevens / Mogbo / Jeffries / Saric | note-only
+#   Darius Acuff Jr. / Emanuel Sharp / Alex Toohey | defer(rookie)
+#
+# ITEMS ROUTED TO STEVEN (none is analyst-layer material):
+# 1. AVAILABILITY, config/overrides.yaml candidates:
+#    * JALEN SUGGS (ORL) — "you just kind of have to plan for him to miss 20 games. And that's a lot to
+#      plan to miss for someone who's really important." He played 57 last season, which the guest calls
+#      both "the second most he's played in his career" and still an injury-filled year. Our gp base is 68,
+#      which looks materially too high. NOTE this is SEPARATE from his -2.07 minutes entry below, which is
+#      a per-game-played claim and does not touch gp — they do not double-count.
+#    * AARON GORDON (DEN) — 36 gp last season against a 51-gp model base, on "recurrent calf, hamstring,
+#      soft tissue, lower body, old man injuries". The guest's prescription is explicitly games-off, not a
+#      minutes cap: "these are the dates that you're absolutely not playing." He declined Josh's floated
+#      "27 minutes a night", and the model already sits at exactly 27.0 — so there is nothing to price here
+#      as minutes, and the whole item is yours.
+#    * A POSITIVE one, for symmetry: SAC's four returning starters "missed like 194 combined games. You're
+#      getting those back." Our gp bases already assume large recoveries, so it may be priced — flagged only.
+# 2. THE SEPTEMBER RE-OPENS, now three deep. DAL (Batch 12), DEN and SAC all promise a per-player fantasy
+#    pass in September once rosters resolve. DEN's is the most load-bearing: Peyton Watson's contract, Cam
+#    Johnson's destination, and whether Jamal Murray or Aaron Gordon is the second starter moved.
+# 3. STANDING, from Batch 12 and unchanged: the learned board has NOT been regenerated after the
+#    2026-08-02 roster-map carry-forward fix, so Kyrie Irving, Haliburton, Lillard and Malik Beasley still
+#    carry no-team projections. Doing it would move every number on the board and invalidate the sizing
+#    blocks in all 12 pending proposals.
+
+- name: Nikola Vučević
+  date: 2026-08-02
+  category: role
+  action: {target_mpg: 18.0}
+  preview: "rank 33 · 28.5 mpg · 32.49 fpts/g -> 18.0 mpg · 20.52 (-11.97)"
+  rationale: "BBM 2026-08-02 (ORL preview): 'Nikola Vucevic comes in to be a backup center and basically to
+    retire in Orlando.' Rossman-Reich: 'I suspect Nikola Vucevic will be the backup center and he'll get 15
+    to 20 minutes a game. Wendell Carter played only like 24, 25, 26 minutes a game. So Vuc I think will get
+    a healthy amount of time on the court. But I don't see him pushing for starters minutes. Nicola Vucevic
+    is just not, and probably has never been, a starting center on a championship level team.' On the value
+    that remains: 'coming off the bench, you can get 12 14 points per game out of him' — he is signed to
+    replace the departed Moritz Wagner on a bench that fell to 27th-28th in the league in scoring. Hedge,
+    from the same passage: 'there'll definitely be nights where Vuc plays more because Carter's in foul
+    trouble or Carter's hurt.'"
+  sizing:
+    base_fpts: 32.49
+    base_mpg: 28.5
+    target_mpg: 18.0      # STATED range 15-20, taken at the TOP of it. The hedge is real (Carter foul
+                          # trouble / injury nights) and the board's mpg is conditional on games played,
+                          # so the high end is the honest read. Priced ONCE, inside the minutes component.
+    target_fpm: 1.140     # HELD at the model's own rate — no rate leg. '12-14 points per game off the
+                          # bench' is consistent with his per-minute value, not above it.
+    target_fpts: 20.52
+    healthy_fpm: 1.3045   # his 2024-25 rate; the target is far below, so no advisory
+  triangulation: "Model base 28.5 mpg / 32.49 fpts, RANK 33 — the highest-ranked player this layer has ever
+    moved, and the gap is -10.5 mpg against a stated figure, five times the ~2 mpg presumptive-action
+    threshold. The model is not misreading the player: he played 28.4 mpg last season as a STARTING center
+    (Chicago, then Boston at the deadline — he is the 'Vucevic who was the trade deadline acquisition'
+    the 07-31 Celtics preview lists among Boston's departures). It is misreading the JOB. Orlando signed
+    him to back up Wendell Carter Jr., and the same sentence that demotes him CONFIRMS Carter at ~25
+    against our 25.1 — so the testimony that produces this cut is verified against our own board 0.1 mpg
+    away. Between them the two stated figures close the position: 18 + 25 = 43 of 48 center minutes, with
+    the remainder to Goga Bitadze, whose -16.75 entry is in this same batch and is the nameable
+    counterparty for every minute taken here. Rate deliberately untouched: the model already fades him
+    1.1831 -> 1.1400 fpm and nothing in the episode argues about his per-minute game. Availability
+    untouched too — his 69-gp base is the highest on the ORL board and the preview raises no concern about
+    it. SIZE ACKNOWLEDGED: -11.97 fpts/g is the second-largest delta in the batch and it will move him out
+    of the draftable range entirely. It is large because the displacement is total and stated, not because
+    two mechanisms were stacked — there is one component and no rate leg."
+  status: approved
+
+- name: Goga Bitadze
+  date: 2026-08-02
+  category: role
+  action: {target_mpg: 8.0}
+  preview: "rank 134 · 21.6 mpg · 26.60 fpts/g -> 8.0 mpg · 9.85 (-16.75)"
+  rationale: "BBM 2026-08-02 (ORL preview): squeezed out of the rotation by the Vucevic signing. Both of his
+    mentions are historical and unflattering — 'Jamal Mosley tended to favor playing Mo Vagner over Goga
+    Bitadze because they need the offense', and 'Bitadze went in the starting lineup when Wendell Carter
+    got hurt.' The same episode fixes the two men in front of him with figures: Carter 'played only like
+    24, 25, 26 minutes a game' and Vucevic 'will get 15 to 20 minutes a game', with Jason Tatum-style
+    small-ball five minutes going to nobody here ('it's mostly going to be a big somewhere in the dunker
+    spot')."
+  sizing:
+    base_fpts: 26.60
+    base_mpg: 21.6
+    target_mpg: 8.0       # budget-derived, NOT stated: 48 center minutes minus Carter's stated ~25 and
+                          # Vucevic's stated 18 leaves ~5, and I have written 8 rather than 5 because a
+                          # third center behind Carter's and Vucevic's injury histories has a real
+                          # injury-contingent path to minutes. Hedged once, inside the number.
+    target_fpm: 1.2315    # held
+    target_fpts: 9.85
+  triangulation: "Model base 21.6 mpg / 26.60 fpts (rank 134). The model projects him UP from 15.2 actual
+    mpg to 21.6 — reading a season in which he backed up a frequently-injured Carter as growth, on a roster
+    that has since added a former All-Star center. This is the cleanest displacement in the batch because
+    both players ahead of him carry STATED figures rather than our arithmetic; only his own residual is
+    derived. SIZE ACKNOWLEDGED: -16.75 fpts/g is the largest single delta this layer has produced. It is
+    large for an arithmetic reason rather than a rhetorical one — his per-minute rate is genuinely high
+    (1.2315, third on the ORL board behind only Jokic-tier company) so every minute removed costs a lot.
+    One component, no rate leg, no second trim. Budget-derived and therefore lower-conviction than the
+    Vucevic entry above: the mid-Oct pass should re-open it first, and the honest counter-case is that
+    Carter and Vucevic have missed a combined lot of basketball in their careers and a new coach has not
+    yet shown what he does at the five."
+  status: approved
+
+- name: Jase Richardson
+  date: 2026-08-02
+  category: role
+  action: {target_mpg: 11.0}
+  preview: "rank 247 · 20.9 mpg · 16.60 fpts/g -> 11.0 mpg · 8.74 (-7.86)"
+  rationale: "BBM 2026-08-02 (ORL preview): not mentioned. The episode states a full, healthy guard/wing
+    rotation ahead of him — Suggs and Bane starting, Anthony Black as 'your sixth man... the main creator
+    of their bench groups' — and frames the whole roster as settled: 'the Magic sticking with the same
+    starting lineup is a show of faith.'"
+  sizing:
+    base_fpts: 16.60
+    base_mpg: 20.9
+    target_mpg: 11.0      # budget-derived, not stated
+    target_fpm: 0.7943    # held
+    target_fpts: 8.74
+  triangulation: "Model base 20.9 mpg / 16.60 fpts (rank 247). The model nearly DOUBLES his rookie role,
+    10.9 -> 20.9 mpg, on a team whose guard rotation the preview describes as full and stated. Budget 11.0
+    keeps him at roughly the minutes he actually played. Explicitly flagged as lower-conviction: he is
+    never mentioned in the episode, so this is our arithmetic applied to his silence, and at rank 247 it is
+    immaterial to a 10-team board either way. It is written because a doubling is a large claim to leave
+    standing unexamined and because the 240 has to balance."
+  status: approved
+
+- name: Tristan da Silva
+  date: 2026-08-02
+  category: role
+  action: {target_mpg: 21.0}
+  preview: "rank 188 · 25.6 mpg · 20.59 fpts/g -> 21.0 mpg · 16.89 (-3.70)"
+  rationale: "BBM 2026-08-02 (ORL preview): not mentioned, but the episode is explicit that his 2025-26
+    minutes existed because the team in front of him was hurt — Franz Wagner 'missed 47 to 51 games in the
+    middle of the season', Jalen Suggs 'played 57 games', Paolo Banchero missed time with a groin strain
+    — and that the starting five is now settled and expected healthy: 'there's no real debate to me with
+    this' / 'I think that's the starting five.'"
+  sizing:
+    base_fpts: 20.59
+    base_mpg: 25.6
+    target_mpg: 21.0      # budget-derived, not stated — a MODERATE cut precisely because the preview is
+                          # silent on him; the severe cuts in this ledger all have stated counterparties.
+    target_fpm: 0.8043    # held
+    target_fpts: 16.89
+  triangulation: "Model base 25.6 mpg / 20.59 fpts (rank 188). He played 24.7 mpg on a team missing its
+    starting forward for most of the season, and the model projects him UP from there to 25.6. With the
+    stated five healthy and Anthony Black locked in at sixth man, the backup forward minutes compress.
+    Sized at 21.0 rather than lower BECAUSE he is unmentioned — the contract's asymmetry warning cuts both
+    ways, and silence is weaker evidence than testimony. This is the entry in the ORL batch I would drop
+    first if Steven wants the ledger lightened."
+  status: approved
+
+- name: Jalen Suggs
+  date: 2026-08-02
+  category: role
+  action: {target_mpg: 30.0}
+  preview: "rank 21 · 31.7 mpg · 38.55 fpts/g -> 30.0 mpg · 36.48 (-2.07)"
+  rationale: "BBM 2026-08-02 (ORL preview): 'you just kind of have to plan for him to miss 20 games. And
+    that's a lot to plan to miss for someone who's really important.' He played 57 games last season,
+    which the guest calls 'the second most he's played in his career' while still describing it as an
+    injury-filled year, at 27.6 mpg. The guest raises an Alex-Caruso-style minutes cap — 'you can't play
+    more than 22 minutes' — and then explicitly WITHDRAWS it: 'I'm not saying that they're going to do
+    that with Suggs now.'"
+  sizing:
+    base_fpts: 38.55
+    base_mpg: 31.7
+    target_mpg: 30.0      # budget-derived and deliberately CONSERVATIVE: still above both of his last two
+                          # seasons (27.6 and 28.6). The withdrawn 22-minute Caruso plan is NOT priced —
+                          # a hypothesis the source retracts is not testimony.
+    target_fpm: 1.2161    # held
+    target_fpts: 36.48
+  triangulation: "Model base 31.7 mpg / 38.55 fpts (rank 21). The gap is that the model projects +4.1 mpg
+    over last season for a player who has played 27.6 and 28.6 in his last two years and whom the preview
+    describes as a candidate to have his minutes REDUCED. Budget 30.0 concedes most of the model's
+    optimism and still lands above his recent norm — a -1.7 mpg move, barely over the 1.5 materiality
+    floor, which is the right size for a claim this soft on a rank-21 player. THE AVAILABILITY CLAIM IS
+    DELIBERATELY NOT PRICED HERE: 'plan for him to miss 20 games' is a games-played belief, it is routed
+    to Steven for config/overrides.yaml, and this entry is a per-game-played minutes claim that does not
+    touch gp — so the two do not double-count. Rate untouched; his fpm is stable (1.2240 last season vs
+    the model's 1.2161) and the shooting criticism in the episode is specifically about PLAYOFF shooting,
+    which our board does not project."
+  status: approved
+
+- name: Julian Strawther
+  date: 2026-07-31
+  category: role
+  action: {target_mpg: 18.0}
+  preview: "rank 290 · 21.1 mpg · 16.53 fpts/g -> 18.0 mpg · 14.10 (-2.43)"
+  rationale: "BBM 2026-07-31 (DEN preview): the ONLY stated minutes figure in the episode. Josh: 'he
+    averaged seven points a game... he played 15 minutes a night. Is he just going to have to be like a 25
+    minute a night player now?' Matt Moore: 'I think he'll probably start at 15. I think the goal is to
+    get him to 20. He's going to have to play more. Absolutely.' He is named as the player who determines
+    Denver's ceiling because Tim Hardaway Jr. and Bruce Brown left ('spacing is going to be a problem for
+    them'). But the ceiling is stated just as plainly: 'there's no chance that Julian Strawther starts on
+    a fully healthy team with Christian Braun and Peyton Watson or Cam Johnson', and 'I'm not going to
+    predict a breakout because I don't know if he's going to have the opportunity.'"
+  sizing:
+    base_fpts: 16.53
+    base_mpg: 21.1
+    target_mpg: 18.0      # STATED as a progression, 'start at 15' -> 'goal is to get him to 20'. Written
+                          # at 18 rather than 20 because 20 is the aspiration and 15 the starting point;
+                          # a season average sits between. Hedged once, toward the optimistic end, because
+                          # 64.1 mpg of wing minutes genuinely left the roster.
+    target_fpm: 0.7834    # held
+    target_fpts: 14.10
+  triangulation: "Model base 21.1 mpg / 16.53 fpts (rank 290). NOTE THE DIRECTION, which is the whole point
+    of this entry: every word of the framing is that he must play MORE, and yet BOTH numbers BBM attaches
+    sit BELOW our model. The model got to 21.1 from a 15.1-mpg season by pricing the very vacancy the guest
+    is describing (Hardaway and Bruce Brown gone), and it overshot the guest's own stated ceiling of 20.
+    This is the minutes-priority rule doing its job in the awkward direction — the gap is -3.1 mpg against
+    the stated goal and -6.1 against the stated starting point, so even the generous read clears the ~2 mpg
+    threshold. THE BUDGET IS NOT NEEDED FOR THIS: a quoted figure stands on its own, exactly as Mitchell
+    Robinson's did in Batch 12, which is why this entry survives a preview whose 240 is explicitly NOT
+    allocatable (unsigned RFA in the starting five, a starter expected to be traded). Rate untouched — the
+    only rate content is a positive on his floater game and a negative on his physicality, unnumbered both
+    ways. Immaterial to a 10-team board at rank 290; written because it is testimony."
+  status: approved
