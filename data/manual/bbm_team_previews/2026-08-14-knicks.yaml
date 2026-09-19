@@ -1,0 +1,12 @@
+team: NYK
+team_full: New York Knicks
+preview_date: 2026-08-14
+source_file: 2026-08-14-knicks-season-preview.md
+budget_min: 240
+budget_gate: failed — only the starting five is asserted; no rotation depth or minutes figures.
+rows:
+  - {player: Jalen Brunson, model_mpg: 33.8, bbm_mpg: "", budget_mpg: null, verdict: none}
+  - {player: Mikal Bridges, model_mpg: 31.8, bbm_mpg: "", budget_mpg: null, verdict: none}
+  - {player: Josh Hart, model_mpg: 30.1, bbm_mpg: "", budget_mpg: null, verdict: note-only}
+  - {player: OG Anunoby, model_mpg: 34.1, bbm_mpg: "", budget_mpg: null, verdict: none}
+  - {player: Karl-Anthony Towns, model_mpg: 31.0, bbm_mpg: "", budget_mpg: null, verdict: none}

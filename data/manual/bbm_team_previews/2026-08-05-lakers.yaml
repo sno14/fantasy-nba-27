@@ -1,0 +1,12 @@
+team: LAL
+team_full: Los Angeles Lakers
+preview_date: 2026-08-05
+source_file: 2026-08-05-lakers-season-preview.md
+budget_min: 240
+budget_gate: failed — source says two starting spots are open; no derived allocation.
+rows:
+  - {player: Luka Doncic, model_mpg: 35.7, bbm_mpg: "", budget_mpg: null, verdict: none}
+  - {player: Austin Reaves, model_mpg: 33.5, bbm_mpg: "", budget_mpg: null, verdict: none}
+  - {player: Walker Kessler, model_mpg: 21.3, bbm_mpg: "", budget_mpg: null, verdict: note-only}
+  - {player: Quentin Grimes, model_mpg: 29.5, bbm_mpg: "", budget_mpg: null, verdict: note-only}
+  - {player: Jake LaRavia, model_mpg: 28.6, bbm_mpg: "", budget_mpg: null, verdict: none}

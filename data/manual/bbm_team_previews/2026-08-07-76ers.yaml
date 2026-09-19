@@ -1,0 +1,13 @@
+team: PHI
+team_full: Philadelphia 76ers
+preview_date: 2026-08-07
+source_file: 2026-08-07-76ers-season-preview.md
+budget_min: 240
+availability_note: "Embiid 40-50 games and LeBron ~65 games are candidates for Steven; never analyst overrides."
+budget_gate: failed — no closed rotation or minutes figures.
+rows:
+  - {player: Tyrese Maxey, model_mpg: 37.8, bbm_mpg: "", budget_mpg: null, verdict: none}
+  - {player: VJ Edgecombe, model_mpg: 34.1, bbm_mpg: "", budget_mpg: null, verdict: note-only}
+  - {player: Jaylen Brown, model_mpg: 33.7, bbm_mpg: "", budget_mpg: null, verdict: none}
+  - {player: LeBron James, model_mpg: 33.6, bbm_mpg: "", budget_mpg: null, verdict: note-only}
+  - {player: Joel Embiid, model_mpg: 30.0, bbm_mpg: "", budget_mpg: null, verdict: note-only}

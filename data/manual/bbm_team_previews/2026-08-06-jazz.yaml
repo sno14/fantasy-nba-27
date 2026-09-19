@@ -1,0 +1,13 @@
+team: UTA
+team_full: Utah Jazz
+preview_date: 2026-08-06
+source_file: 2026-08-06-jazz-season-preview.md
+budget_min: 240
+budget_gate: failed — stagger/closing units are stated but no rotation depth or figures support a 240 allocation.
+rows:
+  - {player: Keyonte George, model_mpg: 31.7, bbm_mpg: "", budget_mpg: null, verdict: none}
+  - {player: Lauri Markkanen, model_mpg: 31.0, bbm_mpg: "", budget_mpg: null, verdict: none}
+  - {player: Jaren Jackson Jr., model_mpg: 28.7, bbm_mpg: "", budget_mpg: null, verdict: none}
+  - {player: Jusuf Nurkic, model_mpg: 20.2, bbm_mpg: "", budget_mpg: null, verdict: note-only}
+  - {player: Kyle Filipowski, model_mpg: 27.4, bbm_mpg: "", budget_mpg: null, verdict: note-only}
+  - {player: Ace Bailey, model_mpg: 29.7, bbm_mpg: "", budget_mpg: null, verdict: note-only}

@@ -1,0 +1,12 @@
+team: DET
+team_full: Detroit Pistons
+preview_date: 2026-08-13
+source_file: 2026-08-13-pistons-season-preview.md
+budget_min: 240
+budget_gate: failed — starter names are stated but bench allocation and minutes are not.
+rows:
+  - {player: Cade Cunningham, model_mpg: 34.9, bbm_mpg: "", budget_mpg: null, verdict: none}
+  - {player: Ausar Thompson, model_mpg: 27.1, bbm_mpg: "", budget_mpg: null, verdict: note-only}
+  - {player: John Collins, model_mpg: 26.6, bbm_mpg: "", budget_mpg: null, verdict: none}
+  - {player: Jalen Duren, model_mpg: 30.6, bbm_mpg: "", budget_mpg: null, verdict: note-only}
+  - {player: Duncan Robinson, model_mpg: 21.8, bbm_mpg: "", budget_mpg: null, verdict: note-only}

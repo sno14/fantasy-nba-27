@@ -3813,3 +3813,38 @@
     only rate content is a positive on his floater game and a negative on his physicality, unnumbered both
     ways. Immaterial to a 10-team board at rank 290; written because it is testimony."
   status: approved
+# ============ Batch 15 — BBM 2026-08-04 through 2026-08-19 team previews (proposed 2026-09-19) ============
+# Full-preview evidence is appended to bbm_notes.csv. The transaction refresh completed before this pass.
+# Most previews offered only qualitative, unsized role claims or had unsettled rotations; their facts remain
+# in the ledgers/notes rather than being converted into invented target minutes. Availability claims are
+# routed to Steven below and never enter this layer.
+
+- name: Ivica Zubac
+  date: 2026-09-19
+  category: role
+  action: {target_mpg: 30.0}
+  preview: "rank 101 · 27.4 mpg · 29.45 fpts/g -> 30.0 mpg · 32.24 fpts/g"
+  rationale: "BBM 2026-08-11: 'I think they'll go like 30 minutes of Zubats' in the Pacers' starting five, with Jay Huff and small-ball alternatives covering the rest of the center minutes."
+  sizing:
+    base_fpts: 29.45
+    base_mpg: 27.4
+    target_mpg: 30.0
+    target_fpm: 1.0748
+    target_fpts: 32.24
+  status: proposed
+  triangulation: "Model: 27.4 mpg / 29.45 fpts (rank 101). BBM: explicit 30-minute starting-center number, a +2.6 mpg gap that clears the minutes-action threshold; the named Huff/small-ball split keeps it within the 48-minute position budget. Judgment: hold the model's own rate and price only the stated minutes; no rate residual."
+
+- name: Jaylen Wells
+  date: 2026-09-19
+  category: role
+  action: {target_mpg: 22.5}
+  preview: "rank 178 · 25.6 mpg · 20.75 fpts/g -> 22.5 mpg · 18.24 fpts/g"
+  rationale: "BBM 2026-08-19: 'I think Jaylen Wells is a reserve' — 'a sixth man' who 'gets 20 to 25 minutes off the bench', behind the projected Jerome/Coward/Grant/Boozer/Edey five."
+  sizing:
+    base_fpts: 20.75
+    base_mpg: 25.6
+    target_mpg: 22.5
+    target_fpm: 0.8105
+    target_fpts: 18.24
+  status: proposed
+  triangulation: "Model: 25.6 mpg / 20.75 fpts (rank 178). BBM: stated 20-25 mpg reserve role; midpoint 22.5 is -3.1 mpg and clears the action threshold. Judgment: the named first-unit alternatives and explicit sixth-man designation support the middle of the stated range; retain model rate and add no rate residual. This is a minutes-only belief, not a judgment about Wells's per-minute ability."
