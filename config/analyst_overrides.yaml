@@ -1495,3 +1495,19 @@
     ''there''s no chance that Julian Strawther starts on a fully healthy team with
     Christian Braun and Peyton Watson or Cam Johnson'', and ''I''m not going to predict
     a breakout because I don''t know if he''s going to have the opportunity.'''
+- name: Ivica Zubac
+  date: 2026-09-19
+  category: role
+  action:
+    target_mpg: 30.0
+  rationale: 'BBM 2026-08-11: ''I think they''ll go like 30 minutes of Zubats'' in
+    the Pacers'' starting five, with Jay Huff and small-ball alternatives covering
+    the rest of the center minutes.'
+- name: Jaylen Wells
+  date: 2026-09-19
+  category: role
+  action:
+    target_mpg: 22.5
+  rationale: 'BBM 2026-08-19: ''I think Jaylen Wells is a reserve'' — ''a sixth man''
+    who ''gets 20 to 25 minutes off the bench'', behind the projected Jerome/Coward/Grant/Boozer/Edey
+    five.'

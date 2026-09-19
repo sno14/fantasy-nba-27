@@ -3831,7 +3831,7 @@
     target_mpg: 30.0
     target_fpm: 1.0748
     target_fpts: 32.24
-  status: proposed
+  status: approved
   triangulation: "Model: 27.4 mpg / 29.45 fpts (rank 101). BBM: explicit 30-minute starting-center number, a +2.6 mpg gap that clears the minutes-action threshold; the named Huff/small-ball split keeps it within the 48-minute position budget. Judgment: hold the model's own rate and price only the stated minutes; no rate residual."
 
 - name: Jaylen Wells
@@ -3846,5 +3846,5 @@
     target_mpg: 22.5
     target_fpm: 0.8105
     target_fpts: 18.24
-  status: proposed
+  status: approved
   triangulation: "Model: 25.6 mpg / 20.75 fpts (rank 178). BBM: stated 20-25 mpg reserve role; midpoint 22.5 is -3.1 mpg and clears the action threshold. Judgment: the named first-unit alternatives and explicit sixth-man designation support the middle of the stated range; retain model rate and add no rate residual. This is a minutes-only belief, not a judgment about Wells's per-minute ability."
