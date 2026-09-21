@@ -259,17 +259,23 @@ Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season 
 
 The full app is a local FastAPI process and owns live draft state, ESPN access, and analyst
 review. A separate, read-only board lives in `static/` so it can be published to GitHub Pages
-without exposing credentials or a writable API. Refresh its committed Board-B snapshot after a
-projection or analyst-layer update:
+without exposing credentials or a writable API. Analyst proposal promotion now refreshes the
+committed Board-B snapshot automatically; a manual refresh remains available after other model
+or projection changes:
 
 ```bash
-python scripts/export_static.py
+python scripts/apply_proposals.py --promote  # promotes approvals + refreshes Board-B JSON
+python scripts/export_static.py              # manual refresh without a promotion
 # or after an in-season run:
 python scripts/update_daily.py --static-export
 ```
 
-Commit and push `static/data/board.json`; `.github/workflows/pages.yml` deploys `static/` on
-every push to `main`. In the repository settings, set Pages **Source** to **GitHub Actions**.
+Commit and push `static/data/board.json`; `.github/workflows/pages.yml` validates and deploys
+`static/` on every push to `main`. Git only pushes committed files, so the generated JSON must be
+included in the commit (`git add static/data/board.json`, or `git commit -am` when all intended files
+are already tracked). The private BBM notes, analyst histories, and parquet caches remain intentionally ignored;
+only their redacted public snapshot is published. In the repository settings, set Pages **Source**
+to **GitHub Actions**.
 The static site is deliberately limited to published ranks, FP/G, minutes, GP, ranges, and
 analyst badges. It is not a replacement for the local live app.
 

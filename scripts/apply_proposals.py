@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -35,7 +36,7 @@ if hasattr(sys.stdout, "reconfigure"):
 import pandas as pd
 import yaml
 
-from fantasy_nba.config import CONFIG_DIR, PROCESSED_DIR
+from fantasy_nba.config import CONFIG_DIR, PROCESSED_DIR, ROOT
 from fantasy_nba.models.analyst import apply_overrides, name_key, parse_overrides
 
 PROPOSAL_ONLY_FIELDS = ("status", "triangulation", "preview", "sizing")
@@ -256,6 +257,25 @@ def promote(proposals: list[dict], overrides_path: Path) -> None:
           + (f"; skipped {len(skipped)} already present" if skipped else ""))
     for e in promoted:
         print(f"  + {e['name']:<20} {_action_str(e['action'])}")
+
+    # The analyst histories and parquet caches are intentionally private/gitignored.
+    # GitHub Pages only receives the committed, redacted JSON snapshot, so refresh it
+    # after every promotion (including an idempotent retry after an export failure).
+    # Alternate override paths are test/scratch inputs and must not publish the real board.
+    if overrides_path.resolve() == (CONFIG_DIR / "analyst_overrides.yaml").resolve():
+        exporter = Path(__file__).with_name("export_static.py")
+        result = subprocess.run(
+            [sys.executable, str(exporter)], cwd=ROOT, text=True,
+            capture_output=True, encoding="utf-8", errors="replace",
+        )
+        if result.returncode:
+            detail = (result.stderr or result.stdout).strip()
+            raise SystemExit(
+                "proposals were promoted, but the public Pages snapshot failed to refresh; "
+                "fix the export and rerun --promote (promotion is idempotent):\n" + detail
+            )
+        if result.stdout.strip():
+            print(result.stdout.strip())
 
 
 def main() -> None:

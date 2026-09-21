@@ -3,9 +3,6 @@ name: Deploy static board
 on:
   push:
     branches: [main]
-    paths:
-      - 'static/**'
-      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -25,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Validate published board snapshot
+        run: python -c "import json,pathlib; p=pathlib.Path('static/data/board.json'); d=json.loads(p.read_text(encoding='utf-8')); assert d.get('analyst_layer') is True; assert d.get('rows'); print('Publishing', len(d['rows']), 'Board-B rows from', d['generated_at'])"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
