@@ -279,9 +279,13 @@ to **GitHub Actions**.
 The public `rank` is a deterministic ordinal rank by projected **FP/G**. The internal safe/
 season-value rank is deliberately not used as the page's rank; it remains in the snapshot as
 `source_rank` (with pure-model rank in `model_source_rank`) for auditing. The Pages workflow checks
-that ranks are sequential and FP/G-descending before deployment. The static site is deliberately
-limited to published ranks, FP/G, minutes, GP, ranges, and analyst badges. It is not a replacement
-for the local live app.
+that ranks are sequential and FP/G-descending before deployment. Public tiers are likewise derived
+from unusually large adjacent FP/G gaps; the internal season-value tier remains `source_tier`.
+The static site is a richer
+read-only projection companion: sortable/filterable draft board, player drill-down with projected
+stat lines, side-by-side compare (persisted in the browser), projection tiers, and team summaries.
+It deliberately excludes ESPN state, live draft/roster/waiver/matchup tools, raw data, private BBM
+notes and rationales, and analyst proposal editing. Those remain in the local app.
 
 `python scripts/serve.py` serves the app at http://127.0.0.1:8787 — a FastAPI backend
 (`src/fantasy_nba/api/`) wrapping the same model code the CLI uses, plus a React frontend

@@ -3,30 +3,100 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Read-only Fantasy NBA 2026-27 projection board." />
-    <title>Fantasy NBA Board</title>
-    <link rel="stylesheet" href="style.css" />
+    <meta name="description" content="Read-only Fantasy NBA 2026-27 projections, tiers, comparisons, and team summaries." />
+    <meta name="theme-color" content="#0b1118" />
+    <title>Fantasy NBA 2026–27</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🏀%3C/text%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="style.css?v=4" />
   </head>
   <body>
-    <main>
-      <header>
-        <p class="eyebrow">READ-ONLY · BOARD B</p>
-        <h1>Fantasy NBA 2026–27</h1>
-        <p id="stamp">Loading latest published projections…</p>
-      </header>
-      <section class="controls" aria-label="Board filters">
-        <input id="search" type="search" placeholder="Search player or team" autocomplete="off" />
-        <label>Show <select id="limit"><option value="100">Top 100</option><option value="200">Top 200</option><option value="9999">All players</option></select></label>
-      </section>
-      <p id="status" role="status"></p>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>FP/G Rank</th><th>Player</th><th>Team</th><th>FP/G</th><th>MPG</th><th>GP</th><th>Floor</th><th>Median</th><th>Ceiling</th><th>Analyst</th></tr></thead>
-          <tbody id="rows"></tbody>
-        </table>
-      </div>
-      <p class="note">This is a published snapshot, not the live draft tool. The full app retains live ESPN, draft-room, and analyst-review features.</p>
-    </main>
-    <script src="app.js?v=3"></script>
+    <div class="shell">
+      <aside class="sidebar">
+        <a class="brand" href="#board" aria-label="Fantasy NBA home">
+          <span class="brand-mark">FN</span>
+          <span><strong>Fantasy NBA</strong><small>2026–27 · Board B</small></span>
+        </a>
+        <nav aria-label="Main navigation">
+          <button class="nav-item active" data-view="board"><span>▤</span> Draft board</button>
+          <button class="nav-item" data-view="tiers"><span>≡</span> Tiers</button>
+          <button class="nav-item" data-view="teams"><span>◫</span> Teams</button>
+          <button class="nav-item" data-view="compare"><span>⇄</span> Compare <b id="compare-count"></b></button>
+          <button class="nav-item" data-view="method"><span>i</span> Methodology</button>
+        </nav>
+        <div class="sidebar-note">
+          <span class="live-dot"></span> Published snapshot
+          <small id="sidebar-stamp">Loading…</small>
+        </div>
+      </aside>
+
+      <main>
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">READ-ONLY PROJECTION HUB</p>
+            <h1 id="view-title">Draft Board</h1>
+            <p id="view-subtitle">Projected fantasy points per game with analyst layer applied.</p>
+          </div>
+          <div class="topbar-actions">
+            <button id="mobile-nav" class="button subtle" aria-label="Open navigation">Menu</button>
+            <button class="button" data-go="compare">Compare <span id="top-compare-count">0</span></button>
+          </div>
+        </header>
+
+        <div id="loading" class="loading-card">Loading the published board…</div>
+        <div id="error" class="error-card" hidden></div>
+
+        <section id="view-board" class="view" hidden>
+          <div id="summary-cards" class="summary-grid"></div>
+          <div class="panel controls-panel">
+            <div class="filters">
+              <label class="search-field"><span>⌕</span><input id="search" type="search" placeholder="Search player…" autocomplete="off" /></label>
+              <label><span>Team</span><select id="team-filter"><option value="All">All teams</option></select></label>
+              <label><span>Tier</span><select id="tier-filter"><option value="All">All tiers</option></select></label>
+              <label><span>Show</span><select id="limit"><option value="50">Top 50</option><option value="100" selected>Top 100</option><option value="200">Top 200</option><option value="9999">All players</option></select></label>
+              <label class="check-label"><input id="adjusted-only" type="checkbox" /> Analyst adjusted</label>
+            </div>
+            <p id="status" class="status" role="status"></p>
+          </div>
+          <div class="table-wrap panel">
+            <table class="board-table">
+              <thead><tr>
+                <th class="compare-cell"></th>
+                <th><button data-sort="rank">FP/G Rank</button></th>
+                <th class="player-col"><button data-sort="PLAYER_NAME">Player</button></th>
+                <th><button data-sort="TEAM_ABBREVIATION">Team</button></th>
+                <th class="optional"><button data-sort="tier">Tier</button></th>
+                <th class="optional"><button data-sort="target_age">Age</button></th>
+                <th><button data-sort="fpts_pg">FP/G</button></th>
+                <th class="optional"><button data-sort="vor">VOR</button></th>
+                <th class="optional"><button data-sort="adp">ADP</button></th>
+                <th class="optional"><button data-sort="mpg">MPG</button></th>
+                <th><button data-sort="gp">GP</button></th>
+                <th class="range-col">Season range</th>
+                <th class="optional"><button data-sort="risk">Risk</button></th>
+                <th>Analyst</th>
+              </tr></thead>
+              <tbody id="rows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="view-tiers" class="view" hidden><div id="tier-grid" class="tier-grid"></div></section>
+        <section id="view-teams" class="view" hidden><div id="team-grid" class="team-grid"></div></section>
+        <section id="view-compare" class="view" hidden><div id="compare-view"></div></section>
+        <section id="view-method" class="view" hidden>
+          <div class="method-grid">
+            <article class="panel prose"><p class="eyebrow">WHAT THIS IS</p><h2>A public projection companion</h2><p>This site is generated from the current learned-model Board B. It carries the approved analyst layer and simulated season ranges, then works entirely in your browser.</p><p>The displayed rank is ordinal projected FP/G. The internal safe season-value rank is retained as audit metadata and shown in player details, but it does not drive this public board.</p></article>
+            <article class="panel prose"><p class="eyebrow">WHAT STAYS LOCAL</p><h2>Live and private workflows</h2><p>ESPN league state, the live draft room, roster ownership, waiver and matchup tools, raw caches, private BBM notes, analyst rationales, and proposal editing remain in the local app.</p><p>Those features require a backend or contain review material that should not be embedded in a public static site.</p></article>
+            <article class="panel prose"><p class="eyebrow">FIELDS</p><h2>How to read the board</h2><dl><dt>VOR</dt><dd>Projected FP/G above league replacement.</dd><dt>ADP</dt><dd>Market draft position; availability, not projected value.</dd><dt>Season range</dt><dd>Simulated p10, median, and p90 season totals.</dd><dt>Risk</dt><dd>Relative width of that season-total range; lower is more stable.</dd></dl></article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="player-dialog">
+      <button class="dialog-close" aria-label="Close player details">×</button>
+      <div id="player-detail"></div>
+    </dialog>
+    <script src="app.js?v=4"></script>
   </body>
 </html>

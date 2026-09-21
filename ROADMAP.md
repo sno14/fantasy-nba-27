@@ -201,11 +201,13 @@ special-case handling.
       12-night fixture archive with engineered movers, and a fixture market pull).
       **V3b (live ESPN rosters — `EspnPollFeed.league_rosters()` / `mRoster`, in-season
       ownership that overrides the draft picks for V2–V5) shipped 2026-07-17.**
-      **Public delivery added 2026-09-21:** `static/` is the redacted, read-only GitHub
-      Pages board, refreshed automatically when analyst proposals are promoted and deployed
-      on every push to `main`. Its displayed rank is ordinal projected FP/G; the local app's
+      **Public delivery added and expanded 2026-09-21:** `static/` is the redacted, read-only
+      GitHub Pages projection hub, refreshed automatically when analyst proposals are promoted
+      and deployed on every push to `main`. It includes the board, player drill-down/compare,
+      tiers, and team summaries. Its displayed rank is ordinal projected FP/G; the local app's
       safe/season-value rank remains a separate decision view and is retained only as public
-      snapshot audit metadata.
+      snapshot audit metadata. Public tiers use FP/G gaps for the same semantic consistency;
+      the source tier is audit-only. Live ESPN and private analyst workflows remain local.
 
 **Next frontiers (post-ship, in rough return order):** **the minutes economy (Phase 5) is
 COMPLETE 2026-07-11** — Step 16 / EXP-030 OUT-redistribution adopted-tentative (nightly

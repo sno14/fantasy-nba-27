@@ -23,6 +23,14 @@ from fantasy_nba.config import ROOT
 
 OUT = ROOT / "static" / "data" / "board.json"
 
+PUBLIC_COLUMNS = (
+    "rank", "source_rank", "model_source_rank", "tier", "source_tier", "PLAYER_ID", "PLAYER_NAME",
+    "TEAM_ABBREVIATION", "target_age", "gp", "mpg", "fpts_pg", "fpts_total",
+    "draft_value", "vor", "vor_rank", "adp", "pts", "reb", "ast", "stl", "blk",
+    "fg3m", "tov", "fpts_p10", "fpts_median", "fpts_p90", "risk", "market_priced",
+    "seed_class", "analyst_action", "analyst_category", "analyst_date",
+)
+
 
 def _clean(value):
     if pd.isna(value):
@@ -33,7 +41,7 @@ def _clean(value):
 
 
 def _rank_public_board(board: pd.DataFrame) -> pd.DataFrame:
-    """Return a deterministic FP/G-ranked copy while preserving source ranks."""
+    """Return a deterministic FP/G-ranked copy with FP/G tiers and source audit fields."""
     if "fpts_pg" not in board.columns:
         raise ValueError("Board must contain fpts_pg to produce the public rank")
 
@@ -42,6 +50,8 @@ def _rank_public_board(board: pd.DataFrame) -> pd.DataFrame:
         out["source_rank"] = out["rank"]
     if "model_rank" in out.columns:
         out["model_source_rank"] = out["model_rank"]
+    if "tier" in out.columns:
+        out["source_tier"] = out["tier"]
 
     sort_columns = ["fpts_pg"]
     ascending = [False]
@@ -52,6 +62,19 @@ def _rank_public_board(board: pd.DataFrame) -> pd.DataFrame:
     out = out.sort_values(sort_columns, ascending=ascending, na_position="last", kind="mergesort")
     out = out.reset_index(drop=True)
     out["rank"] = range(1, len(out) + 1)
+
+    # The local board tiers are gaps in risk-adjusted season draft value. The public board
+    # is explicitly an FP/G view, so derive its tiers from unusually large adjacent FP/G
+    # gaps instead of mixing two rank semantics. Preserve the local tier above for audit.
+    out["tier"] = float("nan")
+    depth = min(160, len(out))
+    if depth >= 3:
+        gaps = out.loc[:depth - 1, "fpts_pg"].diff(-1).iloc[:-1]
+        threshold = max(0.4, float(gaps.quantile(0.93)))
+        tiers = [1]
+        for gap in gaps:
+            tiers.append(tiers[-1] + (1 if gap >= threshold else 0))
+        out.loc[:depth - 1, "tier"] = tiers
     return out
 
 
@@ -79,10 +102,7 @@ def main(argv: list[str] | None = None) -> None:
         title = "Fantasy NBA 2026-27 — Board B"
     board = _rank_public_board(board)
 
-    columns = [c for c in ("rank", "source_rank", "model_source_rank", "PLAYER_ID", "PLAYER_NAME", "TEAM_ABBREVIATION",
-                            "gp", "mpg", "fpts_pg", "fpts_total", "fpts_p10", "fpts_median",
-                            "fpts_p90", "risk", "analyst_action", "analyst_category", "analyst_date")
-               if c in board.columns]
+    columns = [c for c in PUBLIC_COLUMNS if c in board.columns]
     rows = [{c: _clean(row[c]) for c in columns} for _, row in board[columns].iterrows()]
     payload = {
         "title": title,
@@ -90,6 +110,7 @@ def main(argv: list[str] | None = None) -> None:
         "source_board": source_board,
         "analyst_layer": True,
         "ranked_by": "fpts_pg",
+        "capabilities": ["board", "player_detail", "compare", "tiers", "teams"],
         "rows": rows,
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
