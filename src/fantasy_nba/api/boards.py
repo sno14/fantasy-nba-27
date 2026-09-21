@@ -23,6 +23,9 @@ from ..models.analyst import apply_overrides, load_overrides
 from ..models.backtest import _actual
 from ..models.baseline import project_baseline
 from ..models.durability import build_gp_age_curve
+from ..models.external_projection import latest_mtime as external_projection_mtime
+from ..models.external_projection import load_latest as load_external_projection
+from ..models.external_projection import overlay_external_projection
 from ..models.learned import load_returning_vet_ids, project_learned
 from ..models.minutes import build_minutes_age_curve
 from ..models.projection import project_v2
@@ -55,8 +58,10 @@ TIER_MIN_GAP = 40.0
 TIER_GAP_Q = 0.93
 
 
-def overrides_mtime() -> float:
-    return ANALYST_PATH.stat().st_mtime if ANALYST_PATH.exists() else 0.0
+def overrides_mtime() -> tuple[float, float]:
+    """Cache key for both mutable inputs layered onto the computed board."""
+    analyst = ANALYST_PATH.stat().st_mtime if ANALYST_PATH.exists() else 0.0
+    return analyst, external_projection_mtime()
 
 
 @lru_cache(maxsize=4)
@@ -90,7 +95,8 @@ def _injury_profile(_mtime_key: float):
 
 
 @lru_cache(maxsize=8)
-def compute_board(target: str, model: str, apply_analyst: bool, ovr_mtime: float) -> pd.DataFrame:
+def compute_board(target: str, model: str, apply_analyst: bool,
+                  ovr_mtime: tuple[float, float]) -> pd.DataFrame:
     """No-leakage board for ``target`` + risk ranges (+ actuals for past seasons).
 
     ``ovr_mtime`` is a cache key only: editing config/analyst_overrides.yaml (or promoting
@@ -184,6 +190,13 @@ def compute_board(target: str, model: str, apply_analyst: bool, ovr_mtime: float
             proj["TEAM_ABBREVIATION"] = (
                 proj["PLAYER_ID"].map(dict(zip(tmap["PLAYER_ID"], tmap["team"])))
                 .fillna(proj["TEAM_ABBREVIATION"]))
+
+        # The trusted dated snapshot is the final display-team authority and supplies
+        # clearly flagged projections for players absent from the learned board.  It does
+        # not alter roster allocation inputs or replace model values for matched players.
+        external = load_external_projection()
+        if not external.empty:
+            proj = overlay_external_projection(proj, external, ss)
 
     if ty <= max_year:  # season already played — join actual outcomes
         act = _actual(ss, target, cfg, 0.0).copy()
