@@ -312,6 +312,9 @@ def main() -> None:
                         help="Step 18.2 (OFF by default pending its validation gate): taper "
                              "role/hype fpts_deltas by games played so far — full through "
                              "~10 games, gone by ~30, when the EWMA has learned the role.")
+    parser.add_argument("--static-export", action="store_true",
+                        help="Also refresh static/data/board.json for the read-only GitHub Pages board. "
+                             "Publishing still requires committing and pushing that snapshot.")
     args = parser.parse_args()
 
     T = pd.Timestamp(args.asof or dt.date.today().isoformat())
@@ -386,6 +389,9 @@ def main() -> None:
             if c in board.columns]
     with pd.option_context("display.width", 200):
         print(board[show].head(args.top).to_string(index=False))
+
+    if args.static_export:
+        _load_script("export_static").main(["--board", str(out_path)])
 
 
 if __name__ == "__main__":

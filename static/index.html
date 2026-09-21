@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Read-only Fantasy NBA 2026-27 projection board." />
+    <title>Fantasy NBA Board</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">READ-ONLY · BOARD B</p>
+        <h1>Fantasy NBA 2026–27</h1>
+        <p id="stamp">Loading latest published projections…</p>
+      </header>
+      <section class="controls" aria-label="Board filters">
+        <input id="search" type="search" placeholder="Search player or team" autocomplete="off" />
+        <label>Show <select id="limit"><option value="100">Top 100</option><option value="200">Top 200</option><option value="9999">All players</option></select></label>
+      </section>
+      <p id="status" role="status"></p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Rank</th><th>Player</th><th>Team</th><th>FP/G</th><th>MPG</th><th>GP</th><th>Floor</th><th>Median</th><th>Ceiling</th><th>Analyst</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <p class="note">This is a published snapshot, not the live draft tool. The full app retains live ESPN, draft-room, and analyst-review features.</p>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>

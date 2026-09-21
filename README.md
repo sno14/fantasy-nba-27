@@ -255,6 +255,24 @@ Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season 
 
 ## Web app
 
+### Read-only static board (GitHub Pages)
+
+The full app is a local FastAPI process and owns live draft state, ESPN access, and analyst
+review. A separate, read-only board lives in `static/` so it can be published to GitHub Pages
+without exposing credentials or a writable API. Refresh its committed Board-B snapshot after a
+projection or analyst-layer update:
+
+```bash
+python scripts/export_static.py
+# or after an in-season run:
+python scripts/update_daily.py --static-export
+```
+
+Commit and push `static/data/board.json`; `.github/workflows/pages.yml` deploys `static/` on
+every push to `main`. In the repository settings, set Pages **Source** to **GitHub Actions**.
+The static site is deliberately limited to published ranks, FP/G, minutes, GP, ranges, and
+analyst badges. It is not a replacement for the local live app.
+
 `python scripts/serve.py` serves the app at http://127.0.0.1:8787 — a FastAPI backend
 (`src/fantasy_nba/api/`) wrapping the same model code the CLI uses, plus a React frontend
 (`frontend/`; light/dark, one-time `cd frontend && npm install && npm run build`). Views:
