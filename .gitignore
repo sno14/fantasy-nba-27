@@ -7,6 +7,15 @@ data/processed/
 # Manual-data exception (Step 9c): tiny, static, hand-curated — the repo's source of truth.
 !data/manual/*.csv
 
+# Private analyst research. These remain local inputs to the full FastAPI app but are
+# intentionally absent from the public repository and the GitHub Pages artefact.
+data/manual/bbm_notes.csv
+data/manual/bbm_transcripts/
+data/manual/bbm_team_previews/
+config/analyst_proposals.yaml
+config/analyst_overrides.yaml
+config/overrides.yaml
+
 # Secrets (Step 19 / the ESPN draft feed). NOTE: config/ is COMMITTED — never put
 # credentials there. espn_s2 + SWID are live session cookies for a personal ESPN/Disney
 # account: they authenticate as the user, so they are read from the environment or this

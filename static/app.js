@@ -13,7 +13,9 @@ document.querySelector("#search").addEventListener("input", e => { state.query =
 document.querySelector("#limit").addEventListener("change", e => { state.limit = Number(e.target.value); draw(); });
 
 fetch("data/board.json", { cache: "no-store" }).then(r => r.ok ? r.json() : Promise.reject(r.status)).then(data => {
-  state.rows = data.rows;
+  // Static-board rank is deliberately FP/G-first: safe rank is still available in the
+  // live app, but this public view is the quick points-league value board.
+  state.rows = data.rows.sort((a, b) => (b.fpts_pg ?? -Infinity) - (a.fpts_pg ?? -Infinity));
   document.querySelector("#stamp").textContent = `Published ${new Date(data.generated_at).toLocaleString()} · analyst layer applied`;
   draw();
 }).catch(() => { document.querySelector("#stamp").textContent = "No published board snapshot yet. Run scripts/export_static.py."; });
