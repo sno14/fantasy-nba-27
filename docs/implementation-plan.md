@@ -1533,6 +1533,11 @@ floor-adjusted on movers, updating nightly, benchmarked against the market — t
 > ~Apr 2027) and the calendar halves of D1/D2 stay open by design — the standing calendar
 > in the 2026-07-10 status note is the remaining work, none of it buildable today.
 
+> **Delivery addendum (2026-09-21).** The redacted `static/` snapshot is now deployed to
+> GitHub Pages on every push to `main`; analyst promotion refreshes it automatically. Public
+> `rank` means ordinal projected FP/G. The local safe/season-value ranking remains available
+> in the full app and is exported only as audit metadata (`source_rank` / `model_source_rank`).
+
 ---
 
 # PHASE 5 — the minutes economy (Steps 16–17, added 2026-07-10 post-ship)

@@ -276,8 +276,12 @@ included in the commit (`git add static/data/board.json`, or `git commit -am` wh
 are already tracked). The private BBM notes, analyst histories, and parquet caches remain intentionally ignored;
 only their redacted public snapshot is published. In the repository settings, set Pages **Source**
 to **GitHub Actions**.
-The static site is deliberately limited to published ranks, FP/G, minutes, GP, ranges, and
-analyst badges. It is not a replacement for the local live app.
+The public `rank` is a deterministic ordinal rank by projected **FP/G**. The internal safe/
+season-value rank is deliberately not used as the page's rank; it remains in the snapshot as
+`source_rank` (with pure-model rank in `model_source_rank`) for auditing. The Pages workflow checks
+that ranks are sequential and FP/G-descending before deployment. The static site is deliberately
+limited to published ranks, FP/G, minutes, GP, ranges, and analyst badges. It is not a replacement
+for the local live app.
 
 `python scripts/serve.py` serves the app at http://127.0.0.1:8787 — a FastAPI backend
 (`src/fantasy_nba/api/`) wrapping the same model code the CLI uses, plus a React frontend

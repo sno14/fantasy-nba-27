@@ -2,7 +2,8 @@
 
 The output intentionally contains no credentials, ESPN state, raw caches, or proposal
 editing surface.  Commit ``static/data/board.json`` after running this script; the Pages
-workflow deploys the static site whenever that commit reaches ``main``.
+workflow deploys the static site whenever that commit reaches ``main``. Public ``rank`` is
+always the ordinal FP/G rank; the board's original ranks remain as audit-only metadata.
 """
 
 from __future__ import annotations
@@ -31,6 +32,29 @@ def _clean(value):
     return value.item() if hasattr(value, "item") else value
 
 
+def _rank_public_board(board: pd.DataFrame) -> pd.DataFrame:
+    """Return a deterministic FP/G-ranked copy while preserving source ranks."""
+    if "fpts_pg" not in board.columns:
+        raise ValueError("Board must contain fpts_pg to produce the public rank")
+
+    out = board.copy()
+    if "rank" in out.columns:
+        out["source_rank"] = out["rank"]
+    if "model_rank" in out.columns:
+        out["model_source_rank"] = out["model_rank"]
+
+    sort_columns = ["fpts_pg"]
+    ascending = [False]
+    for column in ("source_rank", "PLAYER_ID", "PLAYER_NAME"):
+        if column in out.columns:
+            sort_columns.append(column)
+            ascending.append(True)
+    out = out.sort_values(sort_columns, ascending=ascending, na_position="last", kind="mergesort")
+    out = out.reset_index(drop=True)
+    out["rank"] = range(1, len(out) + 1)
+    return out
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Export read-only Board B for GitHub Pages.")
     parser.add_argument("--board", default=None,
@@ -53,11 +77,9 @@ def main(argv: list[str] | None = None) -> None:
         board = boards.ranked_board("2026-27", "learned", "safe", apply_analyst=True)
         source_board = "live API Board B (2026-27 learned/safe)"
         title = "Fantasy NBA 2026-27 — Board B"
-    # Persist the public snapshot FP/G-first as well as sorting in the browser. This
-    # keeps the intended order intact for stale cached JavaScript and raw JSON readers.
-    board = board.sort_values(["fpts_pg", "rank"], ascending=[False, True]).reset_index(drop=True)
+    board = _rank_public_board(board)
 
-    columns = [c for c in ("rank", "model_rank", "PLAYER_ID", "PLAYER_NAME", "TEAM_ABBREVIATION",
+    columns = [c for c in ("rank", "source_rank", "model_source_rank", "PLAYER_ID", "PLAYER_NAME", "TEAM_ABBREVIATION",
                             "gp", "mpg", "fpts_pg", "fpts_total", "fpts_p10", "fpts_median",
                             "fpts_p90", "risk", "analyst_action", "analyst_category", "analyst_date")
                if c in board.columns]
@@ -67,6 +89,7 @@ def main(argv: list[str] | None = None) -> None:
         "generated_at": datetime.now(UTC).replace(microsecond=0).isoformat(),
         "source_board": source_board,
         "analyst_layer": True,
+        "ranked_by": "fpts_pg",
         "rows": rows,
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
