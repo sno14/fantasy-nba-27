@@ -53,7 +53,9 @@ def main(argv: list[str] | None = None) -> None:
         board = boards.ranked_board("2026-27", "learned", "safe", apply_analyst=True)
         source_board = "live API Board B (2026-27 learned/safe)"
         title = "Fantasy NBA 2026-27 — Board B"
-    board = board.sort_values("rank").reset_index(drop=True)
+    # Persist the public snapshot FP/G-first as well as sorting in the browser. This
+    # keeps the intended order intact for stale cached JavaScript and raw JSON readers.
+    board = board.sort_values(["fpts_pg", "rank"], ascending=[False, True]).reset_index(drop=True)
 
     columns = [c for c in ("rank", "model_rank", "PLAYER_ID", "PLAYER_NAME", "TEAM_ABBREVIATION",
                             "gp", "mpg", "fpts_pg", "fpts_total", "fpts_p10", "fpts_median",
