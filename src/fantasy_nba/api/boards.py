@@ -80,6 +80,24 @@ def data_ready() -> bool:
     return not _raw("player_season_stats").empty
 
 
+def attach_previous_fpts(board: pd.DataFrame, season_stats: pd.DataFrame,
+                         target: str, cfg) -> pd.DataFrame:
+    """Attach prior-season actual FP/G and the projected year-over-year change.
+
+    The actual is re-scored from the cached stat line with the active league scoring
+    config, so it is directly comparable with the projection. Players who did not play
+    in the immediately preceding season remain null rather than borrowing an older year.
+    """
+    ty = _season_start(target)
+    prior_season = f"{ty - 1}-{str(ty)[-2:]}"
+    prior = _actual(season_stats, prior_season, cfg, 0.0)[
+        ["PLAYER_ID", "act_fpts_pg"]
+    ].rename(columns={"act_fpts_pg": "previous_fpts_pg"})
+    out = board.merge(prior, on="PLAYER_ID", how="left")
+    out["fpts_pg_change"] = (out["fpts_pg"] - out["previous_fpts_pg"]).round(2)
+    return out
+
+
 @lru_cache(maxsize=1)
 def _injury_profile(_mtime_key: float):
     """(spells, chronic_flag_table) for the (age x chronic) GP pools; (None, None) when
@@ -197,6 +215,8 @@ def compute_board(target: str, model: str, apply_analyst: bool,
         external = load_external_projection()
         if not external.empty:
             proj = overlay_external_projection(proj, external, ss)
+
+    proj = attach_previous_fpts(proj, ss, target, cfg)
 
     if ty <= max_year:  # season already played — join actual outcomes
         act = _actual(ss, target, cfg, 0.0).copy()

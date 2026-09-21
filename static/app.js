@@ -2,6 +2,7 @@ const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const fmt = (value, digits = 1) => value == null || !Number.isFinite(Number(value)) ? "—" : Number(value).toFixed(digits);
 const integer = (value) => fmt(value, 0);
+const signed = (value, digits = 1) => value == null || !Number.isFinite(Number(value)) ? "—" : `${Number(value) > 0 ? "+" : ""}${Number(value).toFixed(digits)}`;
 const esc = (value) => String(value ?? "").replace(/[&<>'"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]);
 
 const state = {
@@ -45,6 +46,12 @@ function riskMarkup(value) {
   if (value == null) return "—";
   const tone = value < .85 ? "low" : value < 1 ? "mid" : "high";
   return `<span class="risk ${tone}">${fmt(value, 2)}</span>`;
+}
+
+function changeMarkup(value) {
+  if (value == null) return "—";
+  const tone = value > 0 ? "positive" : value < 0 ? "negative" : "neutral";
+  return `<span class="change ${tone}">${signed(value)}</span>`;
 }
 
 function saveCompare() {
@@ -111,6 +118,8 @@ function drawBoard() {
     <td class="optional tnum">${row.tier == null ? "—" : row.tier}</td>
     <td class="optional tnum">${integer(row.target_age)}</td>
     <td class="fpg tnum">${fmt(row.fpts_pg)}</td>
+    <td class="optional tnum">${fmt(row.previous_fpts_pg)}</td>
+    <td class="tnum">${changeMarkup(row.fpts_pg_change)}</td>
     <td class="optional tnum">${fmt(row.vor)}</td>
     <td class="optional tnum">${integer(row.adp)}</td>
     <td class="optional tnum">${fmt(row.mpg)}</td>
@@ -161,7 +170,8 @@ function drawCompare() {
   }
   const metrics = [
     ["FP/G rank", "rank", value => `#${integer(value)}`, "min"],
-    ["FP / game", "fpts_pg", fmt, "max"], ["VOR", "vor", fmt, "max"],
+    ["FP / game", "fpts_pg", fmt, "max"], ["2025-26 FP/G", "previous_fpts_pg", fmt, "max"],
+    ["Projected change", "fpts_pg_change", signed, "max"], ["VOR", "vor", fmt, "max"],
     ["Median total", "fpts_median", integer, "max"], ["Floor (p10)", "fpts_p10", integer, "max"],
     ["Ceiling (p90)", "fpts_p90", integer, "max"], ["Risk", "risk", value => fmt(value, 2), "min"],
     ["Projected GP", "gp", integer, "max"], ["Projected MPG", "mpg", fmt, "max"],
@@ -184,7 +194,7 @@ function openPlayer(id) {
   const valueText = valueGap == null ? "No ADP available" : valueGap >= 12 ? `Market discount: ${integer(valueGap)} picks` : valueGap <= -12 ? `Market is ${integer(-valueGap)} picks higher` : "Close to market price";
   $("#player-detail").innerHTML = `<header class="player-hero"><p class="eyebrow">${esc(row.TEAM_ABBREVIATION || "FREE AGENT")} · TIER ${row.tier ?? "—"}</p><h2>${esc(row.PLAYER_NAME)}</h2><p>FP/G rank #${row.rank} · safe source rank #${row.source_rank ?? "—"} · model source rank #${row.model_source_rank ?? "—"}</p></header>
     <div class="detail-body">
-      <div class="detail-stats"><div class="detail-stat"><small>FP / game</small><strong>${fmt(row.fpts_pg)}</strong></div><div class="detail-stat"><small>VOR</small><strong>${fmt(row.vor)}</strong></div><div class="detail-stat"><small>Projected GP</small><strong>${integer(row.gp)}</strong></div><div class="detail-stat"><small>Projected MPG</small><strong>${fmt(row.mpg)}</strong></div><div class="detail-stat"><small>Age</small><strong>${integer(row.target_age)}</strong></div><div class="detail-stat"><small>ADP</small><strong>${integer(row.adp)}</strong></div><div class="detail-stat"><small>Risk</small><strong>${fmt(row.risk, 2)}</strong></div><div class="detail-stat"><small>Market read</small><strong>${esc(valueText)}</strong></div></div>
+      <div class="detail-stats"><div class="detail-stat"><small>FP / game</small><strong>${fmt(row.fpts_pg)}</strong></div><div class="detail-stat"><small>2025-26 FP/G</small><strong>${fmt(row.previous_fpts_pg)}</strong></div><div class="detail-stat"><small>Projected change</small><strong>${changeMarkup(row.fpts_pg_change)}</strong></div><div class="detail-stat"><small>VOR</small><strong>${fmt(row.vor)}</strong></div><div class="detail-stat"><small>Projected GP</small><strong>${integer(row.gp)}</strong></div><div class="detail-stat"><small>Projected MPG</small><strong>${fmt(row.mpg)}</strong></div><div class="detail-stat"><small>Age</small><strong>${integer(row.target_age)}</strong></div><div class="detail-stat"><small>ADP</small><strong>${integer(row.adp)}</strong></div><div class="detail-stat"><small>Risk</small><strong>${fmt(row.risk, 2)}</strong></div><div class="detail-stat"><small>Market read</small><strong>${esc(valueText)}</strong></div></div>
       <section class="detail-section"><h3>Projected per-game line</h3><div class="projection-line">${[["PTS",row.pts],["REB",row.reb],["AST",row.ast],["STL",row.stl],["BLK",row.blk],["3PM",row.fg3m],["TOV",row.tov]].map(([label,value]) => `<div><small>${label}</small><strong>${fmt(value)}</strong></div>`).join("")}</div></section>
       <section class="detail-section"><h3>Simulated season totals</h3><div class="season-band"><div><small>Floor · p10</small><strong>${integer(row.fpts_p10)}</strong></div><div><small>Median</small><strong>${integer(row.fpts_median)}</strong></div><div><small>Ceiling · p90</small><strong>${integer(row.fpts_p90)}</strong></div></div></section>
       ${isAdjusted(row) ? `<section class="detail-section"><h3>Analyst layer</h3><div class="analyst-note">${analystChip(row)} &nbsp; ${esc(row.analyst_category || "")} · ${esc(row.analyst_date || "")}. Detailed rationale remains in the private review workflow.</div></section>` : ""}

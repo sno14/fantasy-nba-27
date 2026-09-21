@@ -86,6 +86,10 @@ tbody tr:hover { background: rgba(116,168,255,.045); }
 .tnum { font-variant-numeric: tabular-nums; }
 .rank { color: var(--muted); font-weight: 750; }
 .fpg { color: #fff; font-size: .82rem; font-weight: 800; }
+.change { font-weight: 750; }
+.change.positive { color: var(--accent); }
+.change.negative { color: var(--red); }
+.change.neutral { color: var(--muted); }
 .chip { display: inline-flex; align-items: center; padding: 3px 6px; border-radius: 5px; background: var(--panel-2); color: var(--muted); font-size: .62rem; font-weight: 750; }
 .chip.up { color: var(--accent); background: var(--accent-soft); }
 .chip.down { color: var(--red); background: rgba(240,127,130,.1); }

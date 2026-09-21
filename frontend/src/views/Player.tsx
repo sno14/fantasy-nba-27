@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useCompare } from "../App";
 import { PlayerDetail, useApi } from "../lib/api";
-import { f0, f1, parseAction } from "../lib/format";
+import { f0, f1, parseAction, signed } from "../lib/format";
 import { BarChart, LineChart, RangeStrip } from "../components/charts";
 import { Card, Chip, ErrorNote, SearchInput, Spinner } from "../components/ui";
 
@@ -110,12 +110,14 @@ export default function Player() {
         </button>
       </header>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
         <StatCard label="Proj rank" value={`#${f0(p.rank as number)}`} sub={action ? `model #${f0(p.model_rank as number)}` : undefined} />
         <StatCard label="Age" value={f0(p.target_age as number)} />
         <StatCard label="Proj GP" value={f0(p.gp as number)} />
         <StatCard label="Proj MPG" value={f1(p.mpg as number)} />
         <StatCard label="FP / game" value={f1(p.fpts_pg as number)} />
+        <StatCard label="2025-26 FP/G" value={f1(p.previous_fpts_pg)} />
+        <StatCard label="Projected change" value={p.fpts_pg_change == null ? "—" : signed(p.fpts_pg_change)} />
         <StatCard label="Median total" value={f0(p.fpts_median as number)} sub={`risk ${(p.risk as number).toFixed(2)}`} />
       </div>
 

@@ -1499,3 +1499,28 @@ def test_update_daily_staleness_end_to_end(tmp_path, monkeypatch, capsys):
     assert row["fpts_pg"] == pytest.approx(24.5 + 1.0)
     text = capsys.readouterr().out
     assert "consider retiring" in text and "Bridge Guy" in text
+
+
+def test_board_attaches_previous_season_fpts_and_projection_change():
+    from fantasy_nba.api.boards import attach_previous_fpts
+    from fantasy_nba.scoring import load_scoring
+
+    stat_row = {source: 0.0 for source in COUNTING.values()}
+    stat_row.update({
+        "SEASON": "2025-26", "PLAYER_ID": 1, "PLAYER_NAME": "Played Last Year",
+        "GP": 10, "MIN": 100.0, "PTS": 100.0,
+    })
+    board = pd.DataFrame({
+        "PLAYER_ID": [1, 2],
+        "PLAYER_NAME": ["Played Last Year", "Incoming Rookie"],
+        "fpts_pg": [12.0, 20.0],
+    })
+
+    got = attach_previous_fpts(
+        board, pd.DataFrame([stat_row]), "2026-27", load_scoring()
+    ).set_index("PLAYER_ID")
+
+    assert got.loc[1, "previous_fpts_pg"] == pytest.approx(10.0)
+    assert got.loc[1, "fpts_pg_change"] == pytest.approx(2.0)
+    assert pd.isna(got.loc[2, "previous_fpts_pg"])
+    assert pd.isna(got.loc[2, "fpts_pg_change"])

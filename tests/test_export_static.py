@@ -44,7 +44,7 @@ def test_public_board_rejects_missing_fpts() -> None:
 def test_public_snapshot_has_rich_read_only_projection_fields() -> None:
     expected = {
         "tier", "target_age", "draft_value", "vor", "adp", "pts", "reb", "ast",
-        "stl", "blk", "fg3m", "tov",
+        "stl", "blk", "fg3m", "tov", "previous_fpts_pg", "fpts_pg_change",
     }
 
     assert expected <= set(EXPORT_STATIC.PUBLIC_COLUMNS)

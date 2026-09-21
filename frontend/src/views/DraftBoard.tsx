@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCompare, useMeta } from "../App";
 import { BoardResponse, BoardRow, useApi } from "../lib/api";
-import { f0, f1, parseAction } from "../lib/format";
+import { f0, f1, parseAction, signed } from "../lib/format";
 import { Column, DataTable } from "../components/DataTable";
 import { RangePlot, RangeStrip, RiskMeter } from "../components/charts";
 import { Card, Chip, EmptyNote, ErrorNote, Field, SearchInput, Segmented, Select, Spinner, Toggle } from "../components/ui";
@@ -44,6 +44,8 @@ export default function DraftBoard() {
 
   const url = `/api/board?target=${target}&model=${model}&stance=${stance}&analyst=${analyst}`;
   const { data, error, loading } = useApi<BoardResponse>(url);
+  const targetStart = Number(target.slice(0, 4));
+  const previousSeason = `${targetStart - 1}-${String(targetStart).slice(-2)}`;
 
   const filtered = useMemo(() => {
     if (!data) return [];
@@ -106,6 +108,22 @@ export default function DraftBoard() {
         key: "fpts_pg", label: "FP/G", align: "right", title: "Projected fantasy points per game",
         sortValue: (r) => r.fpts_pg,
         render: (r) => <span className="font-semibold">{f1(r.fpts_pg)}</span>,
+      },
+      {
+        key: "previous_fpts_pg", label: `${previousSeason} FP/G`, align: "right",
+        title: `Actual ${previousSeason} fantasy points per game under the current scoring settings`,
+        sortValue: (r) => r.previous_fpts_pg ?? null,
+        render: (r) => f1(r.previous_fpts_pg), hideBelow: "md",
+      },
+      {
+        key: "fpts_pg_change", label: "Proj Δ", align: "right",
+        title: `Projected FP/G minus actual ${previousSeason} FP/G`,
+        sortValue: (r) => r.fpts_pg_change ?? null,
+        render: (r) => r.fpts_pg_change == null ? "—" : (
+          <span className={r.fpts_pg_change > 0 ? "text-up" : r.fpts_pg_change < 0 ? "text-down" : "text-ink-3"}>
+            {signed(r.fpts_pg_change)}
+          </span>
+        ),
       },
       {
         key: "analyst", label: "Analyst", title: "Analyst layer (board B) adjustment — blank = pure model",
@@ -179,7 +197,7 @@ export default function DraftBoard() {
       );
     }
     return base;
-  }, [data, filtered, rMin, rMax, compare]);
+  }, [data, filtered, rMin, rMax, compare, previousSeason]);
 
   if (!meta) return <Spinner label="Loading…" />;
 

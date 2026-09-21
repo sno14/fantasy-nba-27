@@ -116,7 +116,8 @@ def board(
     b = boards.ranked_board(target, model, stance, analyst)
     cols = [c for c in (
         "rank", "tier", "PLAYER_ID", "PLAYER_NAME", "TEAM_ABBREVIATION", "target_age",
-        "gp", "mpg", "fpts_pg", "fpts_total", "draft_value", "fpts_p10", "fpts_median",
+        "gp", "mpg", "fpts_pg", "previous_fpts_pg", "fpts_pg_change", "fpts_total",
+        "draft_value", "fpts_p10", "fpts_median",
         "fpts_p90", "risk", "analyst_action", "analyst_category", "analyst_date",
         "analyst_rationale",
         "model_rank", "vor", "vor_rank", "adp", "market_priced", "seed_class",
@@ -354,7 +355,8 @@ def player(player_id: int) -> dict:
 
     proj_cols = [c for c in (
         "rank", "tier", "PLAYER_NAME", "TEAM_ABBREVIATION", "target_age", "gp", "mpg",
-        "fpts_pg", "fpts_total", "fpts_p10", "fpts_median", "fpts_p90", "risk",
+        "fpts_pg", "previous_fpts_pg", "fpts_pg_change", "fpts_total", "fpts_p10",
+        "fpts_median", "fpts_p90", "risk",
         "analyst_action", "analyst_category", "analyst_date", "model_rank",
         "vor", "vor_rank", "adp",
         "pts", "reb", "ast", "stl", "blk", "fg3m", "tov", "fgm", "fga", "ftm", "fta",

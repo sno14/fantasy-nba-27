@@ -26,6 +26,7 @@ OUT = ROOT / "static" / "data" / "board.json"
 PUBLIC_COLUMNS = (
     "rank", "source_rank", "model_source_rank", "tier", "source_tier", "PLAYER_ID", "PLAYER_NAME",
     "TEAM_ABBREVIATION", "target_age", "gp", "mpg", "fpts_pg", "fpts_total",
+    "previous_fpts_pg", "fpts_pg_change",
     "draft_value", "vor", "vor_rank", "adp", "pts", "reb", "ast", "stl", "blk",
     "fg3m", "tov", "fpts_p10", "fpts_median", "fpts_p90", "risk", "market_priced",
     "seed_class", "analyst_action", "analyst_category", "analyst_date",

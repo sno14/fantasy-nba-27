@@ -27,6 +27,8 @@ export interface BoardRow {
   gp: number | null;
   mpg: number | null;
   fpts_pg: number;
+  previous_fpts_pg?: number | null;
+  fpts_pg_change?: number | null;
   fpts_total?: number;
   draft_value: number;
   fpts_p10: number | null;

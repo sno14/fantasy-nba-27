@@ -67,6 +67,8 @@
                 <th class="optional"><button data-sort="tier">Tier</button></th>
                 <th class="optional"><button data-sort="target_age">Age</button></th>
                 <th><button data-sort="fpts_pg">FP/G</button></th>
+                <th class="optional"><button data-sort="previous_fpts_pg">25–26 FP/G</button></th>
+                <th><button data-sort="fpts_pg_change">Proj Δ</button></th>
                 <th class="optional"><button data-sort="vor">VOR</button></th>
                 <th class="optional"><button data-sort="adp">ADP</button></th>
                 <th class="optional"><button data-sort="mpg">MPG</button></th>
@@ -87,7 +89,7 @@
           <div class="method-grid">
             <article class="panel prose"><p class="eyebrow">WHAT THIS IS</p><h2>A public projection companion</h2><p>This site is generated from the current learned-model Board B. It carries the approved analyst layer and simulated season ranges, then works entirely in your browser.</p><p>The displayed rank is ordinal projected FP/G. The internal safe season-value rank is retained as audit metadata and shown in player details, but it does not drive this public board.</p></article>
             <article class="panel prose"><p class="eyebrow">WHAT STAYS LOCAL</p><h2>Live and private workflows</h2><p>ESPN league state, the live draft room, roster ownership, waiver and matchup tools, raw caches, private BBM notes, analyst rationales, and proposal editing remain in the local app.</p><p>Those features require a backend or contain review material that should not be embedded in a public static site.</p></article>
-            <article class="panel prose"><p class="eyebrow">FIELDS</p><h2>How to read the board</h2><dl><dt>VOR</dt><dd>Projected FP/G above league replacement.</dd><dt>ADP</dt><dd>Market draft position; availability, not projected value.</dd><dt>Season range</dt><dd>Simulated p10, median, and p90 season totals.</dd><dt>Risk</dt><dd>Relative width of that season-total range; lower is more stable.</dd></dl></article>
+            <article class="panel prose"><p class="eyebrow">FIELDS</p><h2>How to read the board</h2><dl><dt>25–26 FP/G</dt><dd>Last season's actual production under the same scoring settings.</dd><dt>Proj Δ</dt><dd>Projected FP/G minus last season's FP/G.</dd><dt>VOR</dt><dd>Projected FP/G above league replacement.</dd><dt>ADP</dt><dd>Market draft position; availability, not projected value.</dd><dt>Season range</dt><dd>Simulated p10, median, and p90 season totals.</dd><dt>Risk</dt><dd>Relative width of that season-total range; lower is more stable.</dd></dl></article>
           </div>
         </section>
       </main>
@@ -97,6 +99,6 @@
       <button class="dialog-close" aria-label="Close player details">×</button>
       <div id="player-detail"></div>
     </dialog>
-    <script src="app.js?v=4"></script>
+    <script src="app.js?v=5"></script>
   </body>
 </html>
