@@ -68,3 +68,25 @@ def test_parse_projection_export_rejects_rank_gaps(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="contiguous"):
         IMPORTER.parse_projection_export(source)
+
+
+def test_parse_projection_export_with_full_stat_line(tmp_path: Path) -> None:
+    source = tmp_path / "manual-projections"
+    source.write_text(
+        "R#\tPLAYER\tAVG\tPOS\tTEAM\tGP\tMPG\tFGM\tFGA\tFTM\tFTA\t3PM\tPTS\tTREB\tAST\tSTL\tBLK\tTO\n"
+        "1\tAlperen Seng\ufffdn\t43.6\t\n"
+        "PF\nC\n"
+        "HOU\t72\t33.3\t8.1\t15.9\t3.9\t5.6\t0.4\t20.5\t10.0\t5.7\t1.2\t1.0\t3.0\n",
+        encoding="utf-8",
+    )
+
+    got = IMPORTER.parse_projection_export(source)
+
+    assert got.loc[0, "player"] == "Alperen Sengün"
+    assert got.loc[0, "pos"] == "PF/C"
+    assert pd.isna(got.loc[0, "adp"])
+    assert got.loc[0, "fg3m"] == 0.4
+    assert got.loc[0, "reb"] == 10.0
+    assert got.loc[0, "tov"] == 3.0
+    assert got.loc[0, "scored_fpts_pg"] == pytest.approx(43.7)
+    assert got.loc[0, "source_fpts_rounding_gap"] == pytest.approx(-0.1)

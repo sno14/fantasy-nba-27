@@ -27,24 +27,55 @@ from fantasy_nba.models.analyst import name_key
 
 ARCHIVE_DIR = RAW_DIR / "market"
 
+LEGACY_HEADER = ["R#", "ADP", "PLAYER", "AVG", "POS", "TEAM", "GP", "MPG"]
+STAT_HEADER = [
+    "R#", "PLAYER", "AVG", "POS", "TEAM", "GP", "MPG", "FGM", "FGA", "FTM",
+    "FTA", "3PM", "PTS", "TREB", "AST", "STL", "BLK", "TO",
+]
+STAT_RENAMES = {
+    "FGM": "fgm", "FGA": "fga", "FTM": "ftm", "FTA": "fta", "3PM": "fg3m",
+    "PTS": "pts", "TREB": "reb", "AST": "ast", "STL": "stl", "BLK": "blk",
+    "TO": "tov",
+}
+
+# Some browser copies replace non-ASCII letters with U+FFFD before the file reaches us.
+# These are source-text repairs, not player aliases: the canonical spelling is retained in
+# the normalized archive while name_key still owns cross-source matching.
+TEXT_REPAIRS = {
+    "Alperen Seng\ufffdn": "Alperen Sengün",
+    "Moussa Diabat\ufffd": "Moussa Diabaté",
+    "Dennis Schr\ufffdder": "Dennis Schröder",
+}
+
 
 def parse_projection_export(path: str | Path) -> pd.DataFrame:
     """Repair multiline position cells and return the canonical projection columns."""
     source_path = Path(path)
     lines = source_path.read_text(encoding="utf-8-sig").splitlines()
-    expected = ["R#", "ADP", "PLAYER", "AVG", "POS", "TEAM", "GP", "MPG"]
-    if not lines or lines[0].split("\t") != expected:
+    header = lines[0].split("\t") if lines else []
+    if header not in (LEGACY_HEADER, STAT_HEADER):
         got = lines[0].split("\t") if lines else []
-        raise ValueError(f"Unexpected external projection header: {got}; expected {expected}")
+        raise ValueError(
+            f"Unexpected external projection header: {got}; expected {LEGACY_HEADER} "
+            f"or {STAT_HEADER}"
+        )
+
+    has_adp = header == LEGACY_HEADER
+    tail_columns = header[header.index("TEAM"):]
+    lead_width = header.index("TEAM")
 
     records: list[dict] = []
     i = 1
     while i < len(lines):
         lead = lines[i].split("\t")
         line_no = i + 1
-        if len(lead) != 5 or not lead[0].strip().isdigit():
+        if len(lead) != lead_width or not lead[0].strip().isdigit():
             raise ValueError(f"Malformed player lead line {line_no}: {lines[i]!r}")
-        rank, adp, player, avg, blank_pos = lead
+        if has_adp:
+            rank, adp, player, avg, blank_pos = lead
+        else:
+            rank, player, avg, blank_pos = lead
+            adp = None
         if blank_pos.strip():
             raise ValueError(f"Expected split POS cell on line {line_no}: {lines[i]!r}")
         i += 1
@@ -52,8 +83,7 @@ def parse_projection_export(path: str | Path) -> pd.DataFrame:
         positions: list[str] = []
         while i < len(lines):
             tail = lines[i].split("\t")
-            if len(tail) == 3:
-                team, gp, mpg = tail
+            if len(tail) == len(tail_columns):
                 i += 1
                 break
             if len(tail) != 1 or not tail[0].strip():
@@ -65,16 +95,21 @@ def parse_projection_export(path: str | Path) -> pd.DataFrame:
 
         if not positions:
             raise ValueError(f"Missing position for rank {rank} ({player})")
-        records.append({
+        tail_values = dict(zip(tail_columns, tail))
+        record = {
             "external_rank": int(rank),
-            "player": player.strip(),
-            "team": team.strip(),
+            "player": TEXT_REPAIRS.get(player.strip(), player.strip()),
+            "team": tail_values["TEAM"].strip(),
             "pos": "/".join(positions),
             "external_fpts_pg": pd.to_numeric(avg, errors="raise"),
             "adp": pd.to_numeric(adp, errors="coerce"),
-            "gp": int(gp),
-            "mpg": pd.to_numeric(mpg, errors="raise"),
-        })
+            "gp": int(tail_values["GP"]),
+            "mpg": pd.to_numeric(tail_values["MPG"], errors="raise"),
+        }
+        for source_name, canonical in STAT_RENAMES.items():
+            if source_name in tail_values:
+                record[canonical] = pd.to_numeric(tail_values[source_name], errors="raise")
+        records.append(record)
 
     df = pd.DataFrame(records)
     if df["external_rank"].tolist() != list(range(1, len(df) + 1)):
@@ -84,6 +119,20 @@ def parse_projection_export(path: str | Path) -> pd.DataFrame:
         raise ValueError(f"Duplicate players in external projection export: {dupes}")
     if not df["gp"].between(0, 82).all() or not df["mpg"].between(0, 48).all():
         raise ValueError("External GP/MPG values fall outside basketball bounds")
+    if set(STAT_RENAMES.values()).issubset(df.columns):
+        # ESPN default scoring, deliberately expanded rather than calling score_line row by
+        # row so the import check stays vectorized and reports the source's rounded-line drift.
+        scored = (
+            df["pts"] + df["fg3m"] + 2 * df["fgm"] - df["fga"] + df["ftm"]
+            - df["fta"] + df["reb"] + 2 * df["ast"] + 4 * df["stl"]
+            + 4 * df["blk"] - 2 * df["tov"]
+        )
+        df["scored_fpts_pg"] = scored.round(2)
+        df["source_fpts_rounding_gap"] = (df["external_fpts_pg"] - scored).round(2)
+        if df["source_fpts_rounding_gap"].abs().max() > 0.65:
+            bad = df.loc[df["source_fpts_rounding_gap"].abs() > 0.65,
+                         ["player", "external_fpts_pg", "scored_fpts_pg"]]
+            raise ValueError(f"External AVG does not reconcile with the stat line:\n{bad}")
     return df
 
 
@@ -110,14 +159,22 @@ def archive_projection_export(path: str | Path, pulled: str | None = None) -> pd
         print(f"[external projection] top-150 unmatched (rookies expected): {misses[:12]}")
 
     ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
-    destination = ARCHIVE_DIR / f"external_projection_{stamp}.parquet"
-    if destination.exists():
+    stem = ARCHIVE_DIR / f"external_projection_{stamp}"
+    destination = stem.with_suffix(".parquet")
+    normalized_csv = ARCHIVE_DIR / f"{stem.name}.normalized.csv"
+    source_copy = ARCHIVE_DIR / f"{stem.name}.source.tsv"
+    if destination.exists() or normalized_csv.exists() or source_copy.exists():
+        if not destination.exists() or not normalized_csv.exists():
+            raise FileExistsError(f"Incomplete dated archive exists for {stamp}; refusing to overwrite")
         existing = pd.read_parquet(destination)
         if existing.equals(df):
             print(f"[external projection] identical archive already exists -> {destination}")
             return df
         raise FileExistsError(f"Refusing to overwrite existing dated archive: {destination}")
+    source_copy.write_bytes(Path(path).read_bytes())
+    df.to_csv(normalized_csv, index=False, float_format="%.2f", encoding="utf-8")
     df.to_parquet(destination, index=False)
+    print(f"[external projection] normalized CSV -> {normalized_csv}")
     print(f"[external projection] saved -> {destination}")
     return df
 

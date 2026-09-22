@@ -140,9 +140,15 @@ scripts/
                    archived-market comparison; draft_history dataset feeds it
   pull_market.py   market boards, date-stamped: Hashtag points-league consensus (value) +
                    FantasyPros ADP (availability); --wayback replays archived snapshots
-  import_external_projection.py  normalize a copied private league projection export;
+  import_external_projection.py  normalize a copied private league projection export
+                   (compact or full-stat format) into dated source/CSV/Parquet archives;
                    the current board uses its dated team map and clearly flagged values
                    for source players missing from the learned projection
+  reconcile_external_projection.py  top-200 full-stat comparison vs pure model A + current
+                   analyst Board B; writes the >1.5 FP/G review/proposal artifacts and can
+                   append unapproved entries to the normal proposal queue; after review,
+                   --sync-decisions finalizes the preserved snapshot from queue decisions
+                   without recomputing it against the newly updated Board B
   market_report.py board vs consensus: sleepers/fades (rank_gap + risk) + ADP availability column
   pull_schedule.py season schedule (D1.3): regular-season filter + per-week/B2B/playoff-week
                    derivations; 2026-27 publishes ~mid-Aug (vintage warning until then)
