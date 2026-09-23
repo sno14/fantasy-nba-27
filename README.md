@@ -264,11 +264,14 @@ Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season 
 
 ## Web app
 
-### Read-only static board (GitHub Pages)
+### Static board + manual mock draft (GitHub Pages)
 
-The full app is a local FastAPI process and owns live draft state, ESPN access, and analyst
-review. A separate, read-only board lives in `static/` so it can be published to GitHub Pages
-without exposing credentials or a writable API. Analyst proposal promotion now refreshes the
+The full app is a local FastAPI process and owns live ESPN draft state and analyst review. A
+separate static companion lives in `static/` so it can be published to GitHub Pages without
+exposing credentials or a writable API. Its manual mock draft stores picks only in that browser's
+`localStorage`: choose the team for each pick (the selector follows a 10-team snake by default),
+draft from the remaining board, undo/reset, and review every roster's projected strength and
+unfilled ESPN lineup slots. Analyst proposal promotion refreshes the
 committed Board-B snapshot automatically; a manual refresh remains available after other model
 or projection changes:
 
@@ -290,10 +293,10 @@ season-value rank is deliberately not used as the page's rank; it remains in the
 `source_rank` (with pure-model rank in `model_source_rank`) for auditing. The Pages workflow checks
 that ranks are sequential and FP/G-descending before deployment. Public tiers are likewise derived
 from unusually large adjacent FP/G gaps; the internal season-value tier remains `source_tier`.
-The static site is a richer
-read-only projection companion: sortable/filterable draft board, player drill-down with projected
-stat lines, side-by-side compare (persisted in the browser), projection tiers, and team summaries.
-It deliberately excludes ESPN state, live draft/roster/waiver/matchup tools, raw data, private BBM
+The static site is a richer projection companion: sortable/filterable draft board, player
+drill-down with projected stat lines, side-by-side compare, projection tiers, NBA team summaries,
+and the browser-local manual mock room. It deliberately excludes live ESPN state, in-season
+roster/waiver/matchup tools, raw data, private BBM
 notes and rationales, and analyst proposal editing. Those remain in the local app.
 
 `python scripts/serve.py` serves the app at http://127.0.0.1:8787 — a FastAPI backend

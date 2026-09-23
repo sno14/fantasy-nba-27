@@ -1,4 +1,4 @@
-"""Export the current Board B as the read-only GitHub Pages snapshot.
+"""Export Board B and public draft metadata for the static GitHub Pages companion.
 
 The output intentionally contains no credentials, ESPN state, raw caches, or proposal
 editing surface.  Commit ``static/data/board.json`` after running this script; the Pages
@@ -18,7 +18,8 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from fantasy_nba.config import ROOT
+from fantasy_nba.config import PROCESSED_DIR, ROOT
+from fantasy_nba.models.value import load_league
 
 
 OUT = ROOT / "static" / "data" / "board.json"
@@ -29,8 +30,23 @@ PUBLIC_COLUMNS = (
     "previous_fpts_pg", "fpts_pg_change",
     "draft_value", "vor", "vor_rank", "adp", "pts", "reb", "ast", "stl", "blk",
     "fg3m", "tov", "fpts_p10", "fpts_median", "fpts_p90", "risk", "market_priced",
-    "seed_class", "analyst_action", "analyst_category", "analyst_date",
+    "seed_class", "positions", "analyst_action", "analyst_category", "analyst_date",
 )
+
+
+def _add_public_positions(board: pd.DataFrame, pmap: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Join ESPN position labels without publishing ESPN ids or private league state."""
+    out = board.copy()
+    path = PROCESSED_DIR / "espn_player_map.parquet"
+    if "PLAYER_ID" not in out.columns or (pmap is None and not path.exists()):
+        out["positions"] = None
+        return out
+    if pmap is None:
+        pmap = pd.read_parquet(path, columns=["PLAYER_ID", "eligible"])
+    eligible = (pmap.dropna(subset=["PLAYER_ID"]).drop_duplicates("PLAYER_ID")
+                .set_index("PLAYER_ID")["eligible"])
+    out["positions"] = out["PLAYER_ID"].map(eligible)
+    return out
 
 
 def _clean(value):
@@ -39,6 +55,14 @@ def _clean(value):
     if isinstance(value, float):
         return round(value, 2)
     return value.item() if hasattr(value, "item") else value
+
+
+def _latest_adp_vintage() -> tuple[str | None, str | None]:
+    files = sorted((ROOT / "data" / "raw" / "market").glob("fantasypros_*.parquet"))
+    if not files:
+        return None, None
+    path = files[-1]
+    return path.stem.removeprefix("fantasypros_"), str(path.relative_to(ROOT)).replace("\\", "/")
 
 
 def _rank_public_board(board: pd.DataFrame) -> pd.DataFrame:
@@ -80,7 +104,7 @@ def _rank_public_board(board: pd.DataFrame) -> pd.DataFrame:
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(description="Export read-only Board B for GitHub Pages.")
+    parser = argparse.ArgumentParser(description="Export Board B for the static GitHub Pages companion.")
     parser.add_argument("--board", default=None,
                         help="Board A parquet (default: data/processed/learned_2026-27.parquet).")
     args = parser.parse_args(argv)
@@ -101,17 +125,28 @@ def main(argv: list[str] | None = None) -> None:
         board = boards.ranked_board("2026-27", "learned", "safe", apply_analyst=True)
         source_board = "live API Board B (2026-27 learned/safe)"
         title = "Fantasy NBA 2026-27 — Board B"
-    board = _rank_public_board(board)
+    board = _add_public_positions(_rank_public_board(board))
+
+    league = load_league()
+    public_roster = {str(slot).upper(): int(count)
+                     for slot, count in league.get("roster", {}).items()}
 
     columns = [c for c in PUBLIC_COLUMNS if c in board.columns]
     rows = [{c: _clean(row[c]) for c in columns} for _, row in board[columns].iterrows()]
+    market_date, market_source = _latest_adp_vintage()
     payload = {
         "title": title,
         "generated_at": datetime.now(UTC).replace(microsecond=0).isoformat(),
         "source_board": source_board,
         "analyst_layer": True,
         "ranked_by": "fpts_pg",
-        "capabilities": ["board", "player_detail", "compare", "tiers", "teams"],
+        "market_date": market_date,
+        "market_source": market_source,
+        "capabilities": ["board", "player_detail", "compare", "tiers", "teams", "mock_draft"],
+        "draft_config": {
+            "teams": int(league.get("teams", 10)),
+            "roster": public_roster,
+        },
         "rows": rows,
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)

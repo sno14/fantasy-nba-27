@@ -3,11 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Read-only Fantasy NBA 2026-27 projections, tiers, comparisons, and team summaries." />
+    <meta name="description" content="Fantasy NBA 2026-27 projections, comparisons, tiers, and a browser-local manual mock draft." />
     <meta name="theme-color" content="#0b1118" />
     <title>Fantasy NBA 2026–27</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🏀%3C/text%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="style.css?v=4" />
+    <link rel="stylesheet" href="style.css?v=5" />
   </head>
   <body>
     <div class="shell">
@@ -18,6 +18,7 @@
         </a>
         <nav aria-label="Main navigation">
           <button class="nav-item active" data-view="board"><span>▤</span> Draft board</button>
+          <button class="nav-item" data-view="mock"><span>◎</span> Mock draft <b id="mock-count"></b></button>
           <button class="nav-item" data-view="tiers"><span>≡</span> Tiers</button>
           <button class="nav-item" data-view="teams"><span>◫</span> Teams</button>
           <button class="nav-item" data-view="compare"><span>⇄</span> Compare <b id="compare-count"></b></button>
@@ -82,13 +83,48 @@
           </div>
         </section>
 
+        <section id="view-mock" class="view" hidden>
+          <div class="mock-toolbar panel">
+            <div class="mock-clock">
+              <small>ON THE CLOCK</small>
+              <strong id="mock-clock-team">Team 1</strong>
+              <span id="mock-clock-detail">Pick 1 · Round 1</span>
+            </div>
+            <label><span>Assign next pick to</span><select id="mock-team"></select></label>
+            <label><span>My team</span><select id="mock-my-team"></select></label>
+            <button id="mock-undo" class="button subtle-action">Undo last</button>
+            <button id="mock-reset" class="button danger-action">Reset mock</button>
+          </div>
+          <div id="mock-summary" class="summary-grid"></div>
+          <div class="mock-layout">
+            <div class="panel mock-board-panel">
+              <div class="mock-search-row">
+                <label class="search-field"><span>⌕</span><input id="mock-search" type="search" placeholder="Search available player…" autocomplete="off" /></label>
+                <select id="mock-limit"><option value="30">Top 30 available</option><option value="60" selected>Top 60 available</option><option value="200">Top 200 available</option></select>
+              </div>
+              <div class="table-wrap mock-table-wrap">
+                <table class="board-table mock-table">
+                  <thead><tr><th>Rank</th><th class="player-col">Available player</th><th>Pos</th><th>FP/G</th><th>ADP</th><th></th></tr></thead>
+                  <tbody id="mock-rows"></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="mock-side">
+              <div class="panel mock-picks-panel"><header><h2>Recent picks</h2><span id="mock-pick-total"></span></header><div id="mock-picks"></div></div>
+              <div class="panel mock-help"><strong>Stored on this device</strong><p>Your mock persists in this browser. It is separate from the local FastAPI draft room and never sends roster data anywhere.</p></div>
+            </div>
+          </div>
+          <div class="mock-team-heading"><div><p class="eyebrow">LEAGUE COMPOSITION</p><h2>Team rosters</h2></div><p>Starters use ESPN eligibility where the cached map has a match. Unknown positions can fill UTIL only.</p></div>
+          <div id="mock-teams" class="mock-team-grid"></div>
+        </section>
+
         <section id="view-tiers" class="view" hidden><div id="tier-grid" class="tier-grid"></div></section>
         <section id="view-teams" class="view" hidden><div id="team-grid" class="team-grid"></div></section>
         <section id="view-compare" class="view" hidden><div id="compare-view"></div></section>
         <section id="view-method" class="view" hidden>
           <div class="method-grid">
             <article class="panel prose"><p class="eyebrow">WHAT THIS IS</p><h2>A public projection companion</h2><p>This site is generated from the current learned-model Board B. It carries the approved analyst layer and simulated season ranges, then works entirely in your browser.</p><p>The displayed rank is ordinal projected FP/G. The internal safe season-value rank is retained as audit metadata and shown in player details, but it does not drive this public board.</p></article>
-            <article class="panel prose"><p class="eyebrow">WHAT STAYS LOCAL</p><h2>Live and private workflows</h2><p>ESPN league state, the live draft room, roster ownership, waiver and matchup tools, raw caches, private BBM notes, analyst rationales, and proposal editing remain in the local app.</p><p>Those features require a backend or contain review material that should not be embedded in a public static site.</p></article>
+            <article class="panel prose"><p class="eyebrow">WHAT STAYS LOCAL</p><h2>Live and private workflows</h2><p>The public Mock Draft is manual and stored only in your browser. Live ESPN polling, in-season roster ownership, waiver and matchup tools, raw caches, private BBM notes, analyst rationales, and proposal editing remain in the local app.</p><p>Those features require a backend or contain review material that should not be embedded in a public static site.</p></article>
             <article class="panel prose"><p class="eyebrow">FIELDS</p><h2>How to read the board</h2><dl><dt>25–26 FP/G</dt><dd>Last season's actual production under the same scoring settings.</dd><dt>Proj Δ</dt><dd>Projected FP/G minus last season's FP/G.</dd><dt>VOR</dt><dd>Projected FP/G above league replacement.</dd><dt>ADP</dt><dd>Market draft position; availability, not projected value.</dd><dt>Season range</dt><dd>Simulated p10, median, and p90 season totals.</dd><dt>Risk</dt><dd>Relative width of that season-total range; lower is more stable.</dd></dl></article>
           </div>
         </section>
@@ -99,6 +135,6 @@
       <button class="dialog-close" aria-label="Close player details">×</button>
       <div id="player-detail"></div>
     </dialog>
-    <script src="app.js?v=5"></script>
+    <script src="app.js?v=6"></script>
   </body>
 </html>

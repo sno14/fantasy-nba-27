@@ -1533,13 +1533,16 @@ floor-adjusted on movers, updating nightly, benchmarked against the market — t
 > ~Apr 2027) and the calendar halves of D1/D2 stay open by design — the standing calendar
 > in the 2026-07-10 status note is the remaining work, none of it buildable today.
 
-> **Delivery addendum (2026-09-21).** The redacted `static/` snapshot is now deployed to
+> **Delivery addendum (2026-09-21; expanded 2026-09-23).** The redacted `static/` snapshot is now deployed to
 > GitHub Pages on every push to `main`; analyst promotion refreshes it automatically. The public
-> projection hub includes board filtering/sorting, player drill-down and comparison, tiers, and
-> team summaries without needing a backend. Public `rank` means ordinal projected FP/G. The local
+> projection hub includes board filtering/sorting, player drill-down and comparison, tiers, team
+> summaries, and a browser-local manual mock draft without needing a backend. The mock room follows
+> a 10-team snake by default, permits explicit team assignment, removes drafted players, persists
+> picks in `localStorage`, and reports roster strength plus slot fit from a redacted positions-only
+> export of the cached ESPN map. Live polling remains local. Public `rank` means ordinal projected FP/G. The local
 > safe/season-value ranking remains available in the full app and is exported only as audit metadata
 > (`source_rank` / `model_source_rank`); public tiers are FP/G-gap tiers and retain the local tier as
-> `source_tier`. ESPN state, private analyst material, and writable workflows remain local-only.
+> `source_tier`. Live ESPN state, private analyst material, and writable workflows remain local-only.
 
 ---
 

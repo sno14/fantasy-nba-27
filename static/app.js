@@ -9,15 +9,139 @@ const state = {
   rows: [], meta: null, view: "board", query: "", team: "All", tier: "All",
   adjustedOnly: false, limit: 100, sort: "rank", direction: 1,
   compare: new Set(JSON.parse(localStorage.getItem("fantasy-nba-compare") || "[]")),
+  mock: { picks: [], myTeam: 1, query: "", limit: 60 },
 };
 
 const viewCopy = {
   board: ["Draft Board", "Projected fantasy points per game with analyst layer applied."],
+  mock: ["Manual Mock Draft", "Assign every pick yourself; the draft and roster summaries stay in this browser."],
   tiers: ["Projection Tiers", "Value bands from unusually large adjacent FP/G gaps."],
   teams: ["Team Overview", "Projected leaders and top-five strength for every NBA team."],
   compare: ["Player Compare", "Put up to four projections side by side."],
   method: ["Methodology", "What this public snapshot includes—and what remains local."],
 };
+
+function loadMock() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("fantasy-nba-mock") || "{}");
+    state.mock.picks = Array.isArray(saved.picks) ? saved.picks : [];
+    state.mock.myTeam = Number(saved.myTeam) || 1;
+  } catch (_) {
+    state.mock.picks = [];
+  }
+}
+
+function saveMock() {
+  localStorage.setItem("fantasy-nba-mock", JSON.stringify({ picks: state.mock.picks, myTeam: state.mock.myTeam }));
+  $("#mock-count").textContent = state.mock.picks.length || "";
+}
+
+function mockConfig() {
+  return state.meta?.draft_config || { teams: 10, roster: { PG: 1, SG: 1, SF: 1, PF: 1, C: 1, G: 1, F: 1, UTIL: 3, BENCH: 3, IR: 1 } };
+}
+
+function teamForPick(pickIndex) {
+  const n = mockConfig().teams;
+  const round = Math.floor(pickIndex / n);
+  const inRound = pickIndex % n;
+  return round % 2 === 0 ? inRound + 1 : n - inRound;
+}
+
+function playerPositions(row) {
+  return String(row?.positions || "").split("|").filter(Boolean);
+}
+
+function fillsSlot(slot, positions) {
+  if (slot === "UTIL") return true;
+  if (slot === "G") return positions.includes("PG") || positions.includes("SG");
+  if (slot === "F") return positions.includes("SF") || positions.includes("PF");
+  return positions.includes(slot);
+}
+
+function rosterFit(players) {
+  const roster = mockConfig().roster || {};
+  const priority = ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"];
+  const open = Object.fromEntries(priority.filter(slot => roster[slot]).map(slot => [slot, Number(roster[slot])]));
+  let starterFpg = 0;
+  players.forEach(player => {
+    const positions = playerPositions(player);
+    const slot = priority.find(name => open[name] > 0 && fillsSlot(name, positions));
+    if (slot) {
+      open[slot] -= 1;
+      starterFpg += Number(player.fpts_pg) || 0;
+    }
+  });
+  return { open, starterFpg };
+}
+
+function draftPlayer(playerId) {
+  const team = Number($("#mock-team").value) || teamForPick(state.mock.picks.length);
+  if (state.mock.picks.some(pick => pick.playerId === playerId)) return;
+  state.mock.picks.push({ playerId, team });
+  saveMock();
+  drawMock();
+}
+
+function drawMock() {
+  if (!state.rows.length) return;
+  const config = mockConfig();
+  const draftedIds = new Set(state.mock.picks.map(pick => pick.playerId));
+  const playerById = new Map(state.rows.map(row => [row.PLAYER_ID, row]));
+  const pickIndex = state.mock.picks.length;
+  const onClock = teamForPick(pickIndex);
+  const round = Math.floor(pickIndex / config.teams) + 1;
+  $("#mock-clock-team").textContent = `Team ${onClock}${onClock === state.mock.myTeam ? " · yours" : ""}`;
+  $("#mock-clock-detail").textContent = `Pick ${pickIndex + 1} · Round ${round}`;
+  $("#mock-team").value = String(onClock);
+  $("#mock-my-team").value = String(state.mock.myTeam);
+  $("#mock-undo").disabled = !pickIndex;
+  $("#mock-reset").disabled = !pickIndex;
+
+  const query = state.mock.query.trim().toLowerCase();
+  const available = state.rows.filter(row => !draftedIds.has(row.PLAYER_ID) && (!query || `${row.PLAYER_NAME} ${row.TEAM_ABBREVIATION || ""} ${row.positions || ""}`.toLowerCase().includes(query)));
+  $("#mock-rows").innerHTML = available.slice(0, state.mock.limit).map(row => `<tr>
+    <td class="rank tnum">${row.rank}</td>
+    <td class="player-col"><button class="player-button" data-player="${row.PLAYER_ID}">${esc(row.PLAYER_NAME)}</button><small>${esc(row.TEAM_ABBREVIATION || "—")}</small></td>
+    <td class="muted">${esc((row.positions || "—").replaceAll("|", "/"))}</td>
+    <td class="fpg tnum">${fmt(row.fpts_pg)}</td>
+    <td class="tnum">${integer(row.adp)}</td>
+    <td><button class="draft-button" data-draft-player="${row.PLAYER_ID}">Draft</button></td>
+  </tr>`).join("");
+
+  const recent = state.mock.picks.slice(-12).reverse();
+  $("#mock-pick-total").textContent = `${pickIndex} picks`;
+  $("#mock-picks").innerHTML = recent.length ? recent.map((pick, reverseIndex) => {
+    const overall = pickIndex - reverseIndex;
+    const player = playerById.get(pick.playerId);
+    return `<div class="mock-pick"><span>#${overall}</span><strong>${esc(player?.PLAYER_NAME || "Unavailable player")}</strong><b>Team ${pick.team}</b></div>`;
+  }).join("") : `<p class="mock-empty">No picks yet. Choose a player to begin.</p>`;
+
+  const teams = Array.from({ length: config.teams }, (_, index) => index + 1).map(team => {
+    const picks = state.mock.picks.filter(pick => pick.team === team);
+    const players = picks.map(pick => playerById.get(pick.playerId)).filter(Boolean);
+    const seasonFp = players.reduce((sum, row) => sum + (Number(row.fpts_total) || 0), 0);
+    const avg = players.reduce((sum, row) => sum + (Number(row.fpts_pg) || 0), 0) / Math.max(players.length, 1);
+    return { team, players, seasonFp, avg, fit: rosterFit(players) };
+  });
+  const ranked = [...teams].sort((a, b) => b.seasonFp - a.seasonFp);
+  const myRank = ranked.findIndex(team => team.team === state.mock.myTeam) + 1;
+  const topAvailable = available[0];
+  $("#mock-summary").innerHTML = [
+    ["Draft progress", `${pickIndex} picks`, `${round} of ${Object.entries(config.roster || {}).filter(([slot]) => slot !== "IR").reduce((sum, [, count]) => sum + Number(count), 0)} roster rounds`],
+    ["Best available", topAvailable ? `#${topAvailable.rank}` : "—", topAvailable?.PLAYER_NAME || "Draft complete"],
+    ["Your power rank", pickIndex ? `#${myRank}` : "—", `Team ${state.mock.myTeam} by projected season FP`],
+    ["ADP vintage", state.meta?.market_date || "Current export", `${state.rows.filter(row => row.adp != null).length} players covered`],
+  ].map(([label, value, note]) => `<article class="summary-card"><small>${label}</small><strong>${esc(value)}</strong><em>${esc(note)}</em></article>`).join("");
+
+  $("#mock-teams").innerHTML = teams.map(({ team, players, seasonFp, avg, fit }) => {
+    const unfilled = Object.entries(fit.open).filter(([, count]) => count > 0).map(([slot, count]) => `${slot}${count > 1 ? ` ×${count}` : ""}`);
+    return `<article class="mock-team-card panel ${team === state.mock.myTeam ? "mine" : ""}">
+      <header><div><h3>Team ${team}${team === state.mock.myTeam ? " · yours" : ""}</h3><span>${players.length} players · ${integer(seasonFp)} season FP</span></div><b>${fmt(avg)}<small>avg FP/G</small></b></header>
+      <div class="slot-line"><span>Open starters</span><strong>${unfilled.length ? esc(unfilled.join(" · ")) : "Complete"}</strong></div>
+      <div class="mock-roster">${players.length ? players.map((row, index) => `<div><span>${index + 1}</span><button data-player="${row.PLAYER_ID}">${esc(row.PLAYER_NAME)}</button><small>${esc((row.positions || "—").replaceAll("|", "/"))}</small><b>${fmt(row.fpts_pg)}</b></div>`).join("") : `<p>Awaiting first pick</p>`}</div>
+    </article>`;
+  }).join("");
+}
 
 function isAdjusted(row) {
   return Boolean(row.analyst_action && row.analyst_action !== "none");
@@ -228,6 +352,15 @@ function bindEvents() {
   $("#tier-filter").addEventListener("change", event => { state.tier = event.target.value; drawBoard(); });
   $("#limit").addEventListener("change", event => { state.limit = Number(event.target.value); drawBoard(); });
   $("#adjusted-only").addEventListener("change", event => { state.adjustedOnly = event.target.checked; drawBoard(); });
+  $("#mock-search").addEventListener("input", event => { state.mock.query = event.target.value; drawMock(); });
+  $("#mock-limit").addEventListener("change", event => { state.mock.limit = Number(event.target.value); drawMock(); });
+  $("#mock-my-team").addEventListener("change", event => { state.mock.myTeam = Number(event.target.value); saveMock(); drawMock(); });
+  $("#mock-undo").addEventListener("click", () => { state.mock.picks.pop(); saveMock(); drawMock(); });
+  $("#mock-reset").addEventListener("click", () => {
+    if (state.mock.picks.length && confirm("Clear every pick in this browser mock draft?")) {
+      state.mock.picks = []; saveMock(); drawMock();
+    }
+  });
   $$("[data-sort]").forEach(button => button.addEventListener("click", () => {
     if (state.sort === button.dataset.sort) state.direction *= -1;
     else { state.sort = button.dataset.sort; state.direction = ["rank", "PLAYER_NAME", "TEAM_ABBREVIATION", "tier"].includes(state.sort) ? 1 : -1; }
@@ -244,6 +377,8 @@ function bindEvents() {
     if (remove) toggleCompare(Number(remove.dataset.remove));
     const modalCompare = event.target.closest("[data-modal-compare]");
     if (modalCompare) { toggleCompare(Number(modalCompare.dataset.modalCompare)); $("#player-dialog").close(); }
+    const draft = event.target.closest("[data-draft-player]");
+    if (draft) draftPlayer(Number(draft.dataset.draftPlayer));
     const team = event.target.closest("[data-team]");
     if (team) { state.team = team.dataset.team; $("#team-filter").value = state.team; setView("board"); drawBoard(); }
     if (event.target.id === "clear-compare") { state.compare.clear(); saveCompare(); drawBoard(); drawCompare(); }
@@ -254,18 +389,25 @@ function bindEvents() {
   window.addEventListener("hashchange", () => setView(location.hash.slice(1)));
 }
 
+loadMock();
 bindEvents();
 saveCompare();
+saveMock();
 fetch("data/board.json", { cache: "no-store" })
   .then(response => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
   .then(data => {
     state.meta = data;
     state.rows = [...data.rows].sort((a, b) => a.rank - b.rank);
     state.compare = new Set([...state.compare].filter(id => state.rows.some(row => row.PLAYER_ID === id)).slice(0, 4));
+    const knownIds = new Set(state.rows.map(row => row.PLAYER_ID));
+    state.mock.picks = state.mock.picks.filter(pick => knownIds.has(pick.playerId) && pick.team >= 1 && pick.team <= mockConfig().teams);
     $("#loading").hidden = true;
     const stamp = new Date(data.generated_at);
     $("#sidebar-stamp").textContent = Number.isNaN(stamp.valueOf()) ? "Board B" : stamp.toLocaleString();
-    populateFilters(); drawSummary(); drawBoard(); drawTiers(); drawTeams(); drawCompare(); saveCompare();
+    const teamOptions = Array.from({ length: mockConfig().teams }, (_, index) => `<option value="${index + 1}">Team ${index + 1}</option>`).join("");
+    $("#mock-team").innerHTML = teamOptions;
+    $("#mock-my-team").innerHTML = teamOptions;
+    populateFilters(); drawSummary(); drawBoard(); drawMock(); drawTiers(); drawTeams(); drawCompare(); saveCompare(); saveMock();
     setView(location.hash.slice(1) || "board");
   })
   .catch(error => {

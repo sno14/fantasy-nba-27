@@ -44,8 +44,23 @@ def test_public_board_rejects_missing_fpts() -> None:
 def test_public_snapshot_has_rich_read_only_projection_fields() -> None:
     expected = {
         "tier", "target_age", "draft_value", "vor", "adp", "pts", "reb", "ast",
-        "stl", "blk", "fg3m", "tov", "previous_fpts_pg", "fpts_pg_change",
+        "stl", "blk", "fg3m", "tov", "previous_fpts_pg", "fpts_pg_change", "positions",
     }
 
     assert expected <= set(EXPORT_STATIC.PUBLIC_COLUMNS)
     assert "analyst_rationale" not in EXPORT_STATIC.PUBLIC_COLUMNS
+
+
+def test_public_positions_expose_labels_without_espn_ids() -> None:
+    pmap = pd.DataFrame([
+        {"espn_player_id": 999, "PLAYER_ID": 10, "eligible": "SG|SF"},
+    ])
+
+    joined = EXPORT_STATIC._add_public_positions(pd.DataFrame([
+        {"PLAYER_ID": 10, "PLAYER_NAME": "Wing"},
+        {"PLAYER_ID": 20, "PLAYER_NAME": "Unknown"},
+    ]), pmap=pmap)
+
+    assert joined.loc[0, "positions"] == "SG|SF"
+    assert pd.isna(joined.loc[1, "positions"])
+    assert "espn_player_id" not in joined.columns
