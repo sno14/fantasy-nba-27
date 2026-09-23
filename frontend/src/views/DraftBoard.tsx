@@ -6,6 +6,7 @@ import { f0, f1, parseAction, signed } from "../lib/format";
 import { Column, DataTable } from "../components/DataTable";
 import { RangePlot, RangeStrip, RiskMeter } from "../components/charts";
 import { Card, Chip, EmptyNote, ErrorNote, Field, SearchInput, Segmented, Select, Spinner, Toggle } from "../components/ui";
+import { radarName, radarTone, targetTitle, useDraftTargets } from "../lib/draftRadar";
 
 // ADP-vs-board value calls: our board rank vs where the market drafts the player.
 const VALUE_GAP = 12; // picks later than our rank = a discount worth flagging
@@ -32,6 +33,7 @@ export default function DraftBoard() {
   const meta = useMeta();
   const nav = useNavigate();
   const compare = useCompare();
+  const { targets, edit: editTarget } = useDraftTargets();
 
   const [target, setTarget] = useState("2026-27");
   const [model, setModel] = useState("learned");
@@ -41,6 +43,7 @@ export default function DraftBoard() {
   const [q, setQ] = useState("");
   const [topN, setTopN] = useState(100);
   const [showChart, setShowChart] = useState(false);
+  const [radarFilter, setRadarFilter] = useState("All");
 
   const url = `/api/board?target=${target}&model=${model}&stance=${stance}&analyst=${analyst}`;
   const { data, error, loading } = useApi<BoardResponse>(url);
@@ -52,8 +55,11 @@ export default function DraftBoard() {
     let rows = data.rows;
     if (q) rows = rows.filter((r) => r.PLAYER_NAME.toLowerCase().includes(q.toLowerCase()));
     if (team !== "All") rows = rows.filter((r) => r.TEAM_ABBREVIATION === team);
+    if (radarFilter === "Targets") rows = rows.filter((r) => r.radar_label?.includes("target"));
+    if (radarFilter === "Fades") rows = rows.filter((r) => r.radar_label?.includes("fade"));
+    if (radarFilter === "Watchlist") rows = rows.filter((r) => targets[String(r.PLAYER_ID)]);
     return rows.slice(0, topN);
-  }, [data, q, team, topN]);
+  }, [data, q, team, topN, radarFilter, targets]);
 
   const [rMin, rMax] = useMemo(() => {
     const head = filtered.slice(0, Math.min(filtered.length, topN));
@@ -98,6 +104,13 @@ export default function DraftBoard() {
             />
             <span className="font-medium">{r.PLAYER_NAME}</span>
             <span className="text-[11px] text-ink-3">{r.TEAM_ABBREVIATION ?? ""}</span>
+            <button
+              onClick={(e) => { e.stopPropagation(); editTarget(r); }}
+              title={targets[String(r.PLAYER_ID)] ? "Edit priority target (type REMOVE to clear)" : "Add priority target"}
+              className={targets[String(r.PLAYER_ID)] ? "text-warn" : "text-ink-3 hover:text-warn"}
+            >
+              {targets[String(r.PLAYER_ID)] ? "★" : "☆"}
+            </button>
           </span>
         ),
       },
@@ -173,11 +186,14 @@ export default function DraftBoard() {
         sortValue: (r) => r.adp ?? null, render: (r) => f0(r.adp), hideBelow: "sm",
       });
       base.push({
-        key: "value", label: "Value", title: `ADP − our rank: positive = the market lets you draft him ≥${VALUE_GAP} picks after our board would`,
-        sortValue: (r) => (r.adp != null ? r.adp - r.rank : null),
+        key: "radar", label: "Radar", title: "Explainable ADP disagreement: strong calls require a two-round gap plus a role, growth, or downside mechanism",
+        sortValue: (r) => r.radar_round_gap ?? null,
         render: (r) => {
-          const v = valueCall(r);
-          return v ? <Chip tone={v.tone} title={v.title}>{v.label}</Chip> : null;
+          const target = targets[String(r.PLAYER_ID)];
+          if (target) return <Chip tone="accent" title={targetTitle(r, target)}>★ {target.takeBy ? `by ${target.takeBy}` : "priority"}</Chip>;
+          if (r.radar_label) return <Chip tone={radarTone(r.radar_label)} title={r.radar_reasons || undefined}>{radarName(r.radar_label)}</Chip>;
+          const value = valueCall(r);
+          return value ? <Chip tone={value.tone} title={value.title}>{value.label}</Chip> : null;
         },
       });
     }
@@ -197,7 +213,7 @@ export default function DraftBoard() {
       );
     }
     return base;
-  }, [data, filtered, rMin, rMax, compare, previousSeason]);
+  }, [data, filtered, rMin, rMax, compare, previousSeason, targets, editTarget]);
 
   if (!meta) return <Spinner label="Loading…" />;
 
@@ -234,6 +250,8 @@ export default function DraftBoard() {
           options={[{ value: "All", label: "All teams" }, ...(data?.teams ?? []).map((t) => ({ value: t, label: t }))]} />
         <Select value={String(topN)} onChange={(v) => setTopN(Number(v))}
           options={[50, 100, 150, 200, 300].map((n) => ({ value: String(n), label: `Top ${n}` }))} />
+        <Select value={radarFilter} onChange={setRadarFilter}
+          options={["All", "Targets", "Fades", "Watchlist"].map((v) => ({ value: v, label: v === "All" ? "All radar" : v }))} />
         <Toggle checked={analyst} onChange={setAnalyst} label="Analyst layer (B)" />
         <div className="ml-auto flex items-center gap-3 text-xs text-ink-2">
           {data?.analyst_applied && data.n_adjusted > 0 && (

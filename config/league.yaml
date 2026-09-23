@@ -3,7 +3,7 @@
 # *structure*: it drives replacement-level (VOR), schedule/playoff-week values, streaming
 # horizons, and the ROS cutoff.
 #
-# CONFIRMED (user, 2026-07-10): **ESPN default points league, 10 teams, weekly H2H
+# CONFIRMED (user, 2026-09-23): **ESPN default points league, 12 teams, weekly H2H
 # matchups.** scoring.yaml already carries the ESPN default points weights, so every
 # ledger verdict to date was computed under the real league scoring — nothing re-runs
 # (D1.1's "verify before draft day" check: passed). ESPN-default details below that the
@@ -12,7 +12,7 @@
 
 name: my-league
 platform: espn
-teams: 10                 # confirmed 2026-07-10
+teams: 12                 # confirmed 2026-09-23
 format: h2h_points        # weekly H2H matchups, points scoring (confirmed 2026-07-10)
 lineup_frequency: daily   # ESPN default: lineups set daily within the weekly matchup
                           # => weekly game counts drive matchups; streaming drives the

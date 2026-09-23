@@ -45,6 +45,9 @@ export interface BoardRow {
   vor?: number | null;
   vor_rank?: number | null;
   adp?: number | null;
+  radar_label?: "strong_target" | "target" | "fade" | "strong_fade" | "" | null;
+  radar_round_gap?: number | null;
+  radar_reasons?: string | null;
   actual_rank?: number | null;
   act_fpts_pg?: number | null;
   act_fpts_total?: number | null;
@@ -223,6 +226,11 @@ export interface DraftBoardRow {
   fpts_p90: number;
   risk: number;
   adp?: number | null;
+  fpts_pg_change?: number | null;
+  analyst_action?: string | null;
+  radar_label?: "strong_target" | "target" | "fade" | "strong_fade" | "" | null;
+  radar_round_gap?: number | null;
+  radar_reasons?: string | null;
 }
 
 export interface RosterPlayer {

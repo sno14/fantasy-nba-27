@@ -404,7 +404,9 @@ def draft_state(top: int = Query(default=120, le=400)) -> dict:
     lb = live_board(state, board)
     cols = [c for c in ("live_rank", "rank", "tier", "PLAYER_ID", "PLAYER_NAME",
                         "TEAM_ABBREVIATION", "fpts_pg", "live_vor", "live_repl", "fpts_p10",
-                        "fpts_median", "fpts_p90", "risk", "adp", "vor") if c in lb.columns]
+                        "fpts_median", "fpts_p90", "risk", "adp", "vor", "fpts_pg_change",
+                        "analyst_action", "radar_label", "radar_round_gap", "radar_reasons")
+            if c in lb.columns]
     rows = json.loads(lb[cols].head(top).to_json(orient="records"))
     for r in rows:
         pid = r.get("PLAYER_ID")

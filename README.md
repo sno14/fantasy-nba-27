@@ -269,7 +269,7 @@ Off-season dry-run: `python scripts/update_daily.py --offline --asof <in-season 
 The full app is a local FastAPI process and owns live ESPN draft state and analyst review. A
 separate static companion lives in `static/` so it can be published to GitHub Pages without
 exposing credentials or a writable API. Its manual mock draft stores picks only in that browser's
-`localStorage`: choose the team for each pick (the selector follows a 10-team snake by default),
+`localStorage`: choose the team for each pick (the selector follows a 12-team snake by default),
 draft from the remaining board, undo/reset, and review every roster's projected strength and
 unfilled ESPN lineup slots. Analyst proposal promotion refreshes the
 committed Board-B snapshot automatically; a manual refresh remains available after other model
@@ -295,7 +295,9 @@ that ranks are sequential and FP/G-descending before deployment. Public tiers ar
 from unusually large adjacent FP/G gaps; the internal season-value tier remains `source_tier`.
 The static site is a richer projection companion: sortable/filterable draft board, player
 drill-down with projected stat lines, side-by-side compare, projection tiers, NBA team summaries,
-and the browser-local manual mock room. It deliberately excludes live ESPN state, in-season
+and the browser-local manual mock room. The Draft Radar flags explainable targets/fades from the
+12-team-round ADP gap plus named growth/role/risk support; star any player to keep a private
+take-by pick and note in that browser. It deliberately excludes live ESPN state, in-season
 roster/waiver/matchup tools, raw data, private BBM
 notes and rationales, and analyst proposal editing. Those remain in the local app.
 
@@ -311,8 +313,9 @@ notes and rationales, and analyst proposal editing. Those remain in the local ap
   season's board — the fpts_delta lands before the ranges are simulated so floor/median/
   ceiling shift with it, an Analyst column + adjusted count appear, and past-season
   backtest boards always stay pure model; the D1 decision columns (VOR, ADP) join
-  automatically when the target's draft-sheet parquet exists, with **value/reach chips**
-  (ADP vs our rank) and **tier breaks** (unusually large draft-value gaps); the sheet's
+  automatically when the target's draft-sheet parquet exists, with **Draft Radar chips**
+  (explainable target/fade calls from ADP vs our rank, scaled to 12-team rounds), private
+  priority-target take-by picks/notes, and **tier breaks** (unusually large draft-value gaps); the sheet's
   **market-priced rows** (returning vets now; rookies once the Sept market pull lists
   them + they get ids in Oct) appear on the current-season board at their ADP anchor with
   "—" for risk/ranges (a price, not a projection); the current season's **team column
@@ -370,8 +373,8 @@ notes and rationales, and analyst proposal editing. Those remain in the local ap
   preserved), **Promote** runs the `apply_proposals.py --promote` code path (idempotent).
 - **Draft Room** — the live draft (Step 19; see "Draft room" below). Manual/ESPN source
   toggle, the board minus drafted players, your roster's unfilled slots via ESPN eligibility
-  (the useful signal — orthogonal to value), all ten teams' composition with descriptive risk,
-  and a `live_vor` column that is **informational**: it re-ranks almost identically to fpts/g
+  (the useful signal — orthogonal to value), all 12 teams' composition with descriptive risk,
+  Draft Radar target/fade/watchlist filters with take-by urgency, and a `live_vor` column that is **informational**: it re-ranks almost identically to fpts/g
   until the endgame (see the layout note above).
 - **Power Rankings** — once teams draft, every roster ranked by projected **season fantasy
   points** (rate × durability), with total/avg FP/G, best-lineup **Starters** FP/G, **Star
@@ -474,6 +477,6 @@ silently "succeeds"); an undrafted league returns a **full pre-allocated pick ar
 ## Configuring scoring
 
 `config/scoring.yaml` carries the **confirmed league scoring** (2026-07-10: ESPN default
-points league — 10 teams, weekly H2H; structure in `config/league.yaml`). The projection
+points league — 12 teams, weekly H2H; structure in `config/league.yaml`). The projection
 engine outputs stat lines; the scoring module turns them into points, so if the league ever
 customizes, editing the YAML is the only change — projections never re-run.

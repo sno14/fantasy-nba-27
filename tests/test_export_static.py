@@ -45,6 +45,7 @@ def test_public_snapshot_has_rich_read_only_projection_fields() -> None:
     expected = {
         "tier", "target_age", "draft_value", "vor", "adp", "pts", "reb", "ast",
         "stl", "blk", "fg3m", "tov", "previous_fpts_pg", "fpts_pg_change", "positions",
+        "radar_label", "radar_round_gap", "radar_reasons",
     }
 
     assert expected <= set(EXPORT_STATIC.PUBLIC_COLUMNS)

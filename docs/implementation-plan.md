@@ -1537,12 +1537,18 @@ floor-adjusted on movers, updating nightly, benchmarked against the market — t
 > GitHub Pages on every push to `main`; analyst promotion refreshes it automatically. The public
 > projection hub includes board filtering/sorting, player drill-down and comparison, tiers, team
 > summaries, and a browser-local manual mock draft without needing a backend. The mock room follows
-> a 10-team snake by default, permits explicit team assignment, removes drafted players, persists
+> a 12-team snake by default, permits explicit team assignment, removes drafted players, persists
 > picks in `localStorage`, and reports roster strength plus slot fit from a redacted positions-only
 > export of the cached ESPN map. Live polling remains local. Public `rank` means ordinal projected FP/G. The local
 > safe/season-value ranking remains available in the full app and is exported only as audit metadata
 > (`source_rank` / `model_source_rank`); public tiers are FP/G-gap tiers and retain the local tier as
 > `source_tier`. Live ESPN state, private analyst material, and writable workflows remain local-only.
+>
+> **2026-09-23 addendum:** the actual league is now confirmed at 12 teams, so `league.yaml`, VOR,
+> replacement demand, manual mock clocks, and next-turn math all use 12. Draft Radar is a product
+> overlay, not a model input: one-round ADP disagreements are target/fade candidates; a strong call
+> needs a two-round gap plus an explicit projected-growth, analyst-role, or downside-risk mechanism.
+> Personal priority targets, take-by picks, and notes remain browser-local.
 
 ---
 

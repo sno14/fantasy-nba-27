@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate published board snapshot
-        run: python -c "import json,pathlib; p=pathlib.Path('static/data/board.json'); d=json.loads(p.read_text(encoding='utf-8')); rows=d.get('rows', []); assert d.get('analyst_layer') is True; assert d.get('ranked_by') == 'fpts_pg'; assert {'board','player_detail','compare','tiers','teams','mock_draft'} <= set(d.get('capabilities', [])); assert d.get('draft_config', {}).get('teams'); assert rows; assert [r['rank'] for r in rows] == list(range(1, len(rows)+1)); assert all(a['fpts_pg'] >= b['fpts_pg'] for a,b in zip(rows, rows[1:])); assert {'tier','vor','pts','reb','ast','positions'} <= set(rows[0]); print('Publishing', len(rows), 'rich FP/G-ranked Board-B rows from', d['generated_at'])"
+        run: python -c "import json,pathlib; p=pathlib.Path('static/data/board.json'); d=json.loads(p.read_text(encoding='utf-8')); rows=d.get('rows', []); assert d.get('analyst_layer') is True; assert d.get('ranked_by') == 'fpts_pg'; assert {'board','player_detail','compare','tiers','teams','mock_draft','draft_radar'} <= set(d.get('capabilities', [])); assert d.get('draft_config', {}).get('teams') == 12; assert rows; assert [r['rank'] for r in rows] == list(range(1, len(rows)+1)); assert all(a['fpts_pg'] >= b['fpts_pg'] for a,b in zip(rows, rows[1:])); assert {'tier','vor','pts','reb','ast','positions','radar_label'} <= set(rows[0]); print('Publishing', len(rows), 'rich FP/G-ranked Board-B rows from', d['generated_at'])"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

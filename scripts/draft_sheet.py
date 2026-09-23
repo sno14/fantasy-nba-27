@@ -3,7 +3,7 @@
 Assembles the decision-ready table from a saved projection board:
 
 * **VOR** (D1.2, ``models/value.py``): fpts/g above the greedy replacement level for the
-  league in ``config/league.yaml`` (10 teams × ESPN default starting slots). Sanity report:
+  league in ``config/league.yaml`` (currently 12 teams × ESPN default starting slots). Sanity report:
   how much VOR actually reorders a points league is printed, not assumed.
 * **ADP availability** (D1.4): FantasyPros consensus ADP — "likely gone by pick" — never a
   value input (the Step-9 source hierarchy).

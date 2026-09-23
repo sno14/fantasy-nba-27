@@ -96,6 +96,9 @@ tbody tr:hover { background: rgba(116,168,255,.045); }
 .chip { display: inline-flex; align-items: center; padding: 3px 6px; border-radius: 5px; background: var(--panel-2); color: var(--muted); font-size: .62rem; font-weight: 750; }
 .chip.up { color: var(--accent); background: var(--accent-soft); }
 .chip.down { color: var(--red); background: rgba(240,127,130,.1); }
+.chip.fade { color: var(--amber); background: rgba(240,184,92,.12); }
+.chip.watch { color: var(--blue); background: rgba(116,168,255,.12); }
+.chip.watch-due { color: var(--amber); background: rgba(240,184,92,.16); }
 .chip.info { color: var(--blue); background: rgba(116,168,255,.1); }
 .range { display: grid; grid-template-columns: 31px 68px 31px; gap: 5px; align-items: center; color: var(--muted); font-size: .61rem; }
 .range-track { position: relative; height: 4px; border-radius: 4px; background: #29384a; overflow: visible; }
@@ -129,6 +132,8 @@ tbody tr:hover { background: rgba(116,168,255,.045); }
 .team-list { display: grid; gap: 6px; }
 .team-list div { display: flex; justify-content: space-between; color: var(--muted); font-size: .69rem; }
 .team-list b { color: #dce5ee; }
+.target-star { margin-left: 7px; border: 0; background: none; color: var(--muted-2); cursor: pointer; font-size: .85rem; }
+.target-star:hover, .target-star.active { color: var(--amber); }
 
 .mock-toolbar { display: flex; align-items: end; gap: 12px; padding: 13px 15px; margin-bottom: 12px; }
 .mock-toolbar label > span { display: block; color: var(--muted-2); font-size: .61rem; font-weight: 750; text-transform: uppercase; letter-spacing: .08em; margin: 0 0 4px 2px; }
@@ -218,6 +223,13 @@ dialog::backdrop { background: rgba(4,8,12,.76); backdrop-filter: blur(3px); }
 .season-band small { color: var(--muted-2); font-size: .59rem; text-transform: uppercase; }
 .season-band strong { margin-top: 5px; }
 .analyst-note { color: var(--muted); font-size: .74rem; padding: 11px 12px; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 7px 7px 0; }
+.detail-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.target-form { display: grid; gap: 15px; padding: 25px; }
+.target-form h2 { margin: -8px 0 2px; }
+.target-form label > span { display: block; margin-bottom: 5px; color: var(--muted); font-size: .68rem; font-weight: 700; }
+.target-form input, .target-form textarea { box-sizing: border-box; width: 100%; }
+.target-form textarea { resize: vertical; border: 1px solid #334255; background: #0e1721; color: inherit; border-radius: 7px; padding: 9px 10px; font: inherit; outline: none; }
+.target-actions { display: flex; justify-content: space-between; gap: 10px; }
 
 @media (max-width: 1050px) {
   .shell { grid-template-columns: 1fr; }

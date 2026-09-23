@@ -7,10 +7,55 @@ const esc = (value) => String(value ?? "").replace(/[&<>'"]/g, char => ({ "&": "
 
 const state = {
   rows: [], meta: null, view: "board", query: "", team: "All", tier: "All",
-  adjustedOnly: false, limit: 100, sort: "rank", direction: 1,
+  radar: "All", adjustedOnly: false, limit: 100, sort: "rank", direction: 1,
   compare: new Set(JSON.parse(localStorage.getItem("fantasy-nba-compare") || "[]")),
-  mock: { picks: [], myTeam: 1, query: "", limit: 60 },
+  targets: {},
+  mock: { picks: [], myTeam: 1, query: "", radar: "All", limit: 60 },
 };
+
+const TARGETS_KEY = "fantasy-nba-draft-targets-v1";
+
+function loadTargets() {
+  try { state.targets = JSON.parse(localStorage.getItem(TARGETS_KEY) || "{}"); }
+  catch (_) { state.targets = {}; }
+}
+
+function saveTargets() {
+  localStorage.setItem(TARGETS_KEY, JSON.stringify(state.targets));
+}
+
+function isTarget(row) { return Boolean(state.targets[String(row.PLAYER_ID)]); }
+function radarName(label) { return ({ strong_target: "Strong target", target: "Target", fade: "Fade", strong_fade: "Strong fade" })[label] || ""; }
+function radarMatches(row, filter) {
+  if (filter === "Targets") return String(row.radar_label || "").includes("target");
+  if (filter === "Fades") return String(row.radar_label || "").includes("fade");
+  if (filter === "Watchlist") return isTarget(row);
+  return true;
+}
+
+function radarMarkup(row, currentPick = null) {
+  const target = state.targets[String(row.PLAYER_ID)];
+  if (target) {
+    const due = target.takeBy != null && currentPick != null && currentPick >= target.takeBy;
+    const label = due ? "★ due" : target.takeBy ? `★ by ${target.takeBy}` : "★ priority";
+    const title = [row.radar_reasons, target.takeBy ? `Take by overall pick ${target.takeBy}` : "", target.note].filter(Boolean).join(" · ");
+    return `<span class="chip ${due ? "watch-due" : "watch"}" title="${esc(title)}">${esc(label)}</span>`;
+  }
+  if (!row.radar_label) return "";
+  const tone = String(row.radar_label).includes("target") ? "up" : row.radar_label === "strong_fade" ? "down" : "fade";
+  return `<span class="chip ${tone}" title="${esc(row.radar_reasons || "")}">${esc(radarName(row.radar_label))}</span>`;
+}
+
+function openTarget(row) {
+  const target = state.targets[String(row.PLAYER_ID)] || {};
+  $("#target-player-name").textContent = row.PLAYER_NAME;
+  $("#target-player-id").value = row.PLAYER_ID;
+  $("#target-take-by").value = target.takeBy ?? (row.adp != null ? Math.max(1, Math.round(row.adp - 12)) : "");
+  $("#target-note").value = target.note || "";
+  $("#target-remove").hidden = !isTarget(row);
+  const dialog = $("#target-dialog");
+  if (dialog.showModal) dialog.showModal(); else dialog.setAttribute("open", "");
+}
 
 const viewCopy = {
   board: ["Draft Board", "Projected fantasy points per game with analyst layer applied."],
@@ -98,13 +143,14 @@ function drawMock() {
   $("#mock-reset").disabled = !pickIndex;
 
   const query = state.mock.query.trim().toLowerCase();
-  const available = state.rows.filter(row => !draftedIds.has(row.PLAYER_ID) && (!query || `${row.PLAYER_NAME} ${row.TEAM_ABBREVIATION || ""} ${row.positions || ""}`.toLowerCase().includes(query)));
+  const available = state.rows.filter(row => !draftedIds.has(row.PLAYER_ID) && radarMatches(row, state.mock.radar) && (!query || `${row.PLAYER_NAME} ${row.TEAM_ABBREVIATION || ""} ${row.positions || ""}`.toLowerCase().includes(query)));
   $("#mock-rows").innerHTML = available.slice(0, state.mock.limit).map(row => `<tr>
     <td class="rank tnum">${row.rank}</td>
-    <td class="player-col"><button class="player-button" data-player="${row.PLAYER_ID}">${esc(row.PLAYER_NAME)}</button><small>${esc(row.TEAM_ABBREVIATION || "—")}</small></td>
+    <td class="player-col"><button class="player-button" data-player="${row.PLAYER_ID}">${esc(row.PLAYER_NAME)}</button><button class="target-star ${isTarget(row) ? "active" : ""}" data-target-player="${row.PLAYER_ID}" title="${isTarget(row) ? "Edit priority target" : "Add priority target"}">${isTarget(row) ? "★" : "☆"}</button><small>${esc(row.TEAM_ABBREVIATION || "—")}</small></td>
     <td class="muted">${esc((row.positions || "—").replaceAll("|", "/"))}</td>
     <td class="fpg tnum">${fmt(row.fpts_pg)}</td>
     <td class="tnum">${integer(row.adp)}</td>
+    <td>${radarMarkup(row, pickIndex + 1)}</td>
     <td><button class="draft-button" data-draft-player="${row.PLAYER_ID}">Draft</button></td>
   </tr>`).join("");
 
@@ -203,6 +249,7 @@ function filteredRows() {
     if (query && !`${row.PLAYER_NAME} ${row.TEAM_ABBREVIATION || ""}`.toLowerCase().includes(query)) return false;
     if (state.team !== "All" && row.TEAM_ABBREVIATION !== state.team) return false;
     if (state.tier !== "All" && String(row.tier) !== state.tier) return false;
+    if (!radarMatches(row, state.radar)) return false;
     return !state.adjustedOnly || isAdjusted(row);
   });
   const direction = state.direction;
@@ -237,7 +284,7 @@ function drawBoard() {
   $("#rows").innerHTML = rows.map(row => `<tr>
     <td class="compare-cell"><input class="row-check" type="checkbox" data-compare="${row.PLAYER_ID}" ${state.compare.has(row.PLAYER_ID) ? "checked" : ""} aria-label="Compare ${esc(row.PLAYER_NAME)}"></td>
     <td class="rank tnum">${row.rank}</td>
-    <td class="player-col"><button class="player-button" data-player="${row.PLAYER_ID}">${esc(row.PLAYER_NAME)}</button></td>
+    <td class="player-col"><button class="player-button" data-player="${row.PLAYER_ID}">${esc(row.PLAYER_NAME)}</button><button class="target-star ${isTarget(row) ? "active" : ""}" data-target-player="${row.PLAYER_ID}" title="${isTarget(row) ? "Edit priority target" : "Add priority target"}">${isTarget(row) ? "★" : "☆"}</button></td>
     <td class="muted">${esc(row.TEAM_ABBREVIATION || "—")}</td>
     <td class="optional tnum">${row.tier == null ? "—" : row.tier}</td>
     <td class="optional tnum">${integer(row.target_age)}</td>
@@ -246,6 +293,7 @@ function drawBoard() {
     <td class="tnum">${changeMarkup(row.fpts_pg_change)}</td>
     <td class="optional tnum">${fmt(row.vor)}</td>
     <td class="optional tnum">${integer(row.adp)}</td>
+    <td>${radarMarkup(row)}</td>
     <td class="optional tnum">${fmt(row.mpg)}</td>
     <td class="tnum">${integer(row.gp)}</td>
     <td class="range-col">${rangeMarkup(row)}</td>
@@ -321,8 +369,9 @@ function openPlayer(id) {
       <div class="detail-stats"><div class="detail-stat"><small>FP / game</small><strong>${fmt(row.fpts_pg)}</strong></div><div class="detail-stat"><small>2025-26 FP/G</small><strong>${fmt(row.previous_fpts_pg)}</strong></div><div class="detail-stat"><small>Projected change</small><strong>${changeMarkup(row.fpts_pg_change)}</strong></div><div class="detail-stat"><small>VOR</small><strong>${fmt(row.vor)}</strong></div><div class="detail-stat"><small>Projected GP</small><strong>${integer(row.gp)}</strong></div><div class="detail-stat"><small>Projected MPG</small><strong>${fmt(row.mpg)}</strong></div><div class="detail-stat"><small>Age</small><strong>${integer(row.target_age)}</strong></div><div class="detail-stat"><small>ADP</small><strong>${integer(row.adp)}</strong></div><div class="detail-stat"><small>Risk</small><strong>${fmt(row.risk, 2)}</strong></div><div class="detail-stat"><small>Market read</small><strong>${esc(valueText)}</strong></div></div>
       <section class="detail-section"><h3>Projected per-game line</h3><div class="projection-line">${[["PTS",row.pts],["REB",row.reb],["AST",row.ast],["STL",row.stl],["BLK",row.blk],["3PM",row.fg3m],["TOV",row.tov]].map(([label,value]) => `<div><small>${label}</small><strong>${fmt(value)}</strong></div>`).join("")}</div></section>
       <section class="detail-section"><h3>Simulated season totals</h3><div class="season-band"><div><small>Floor · p10</small><strong>${integer(row.fpts_p10)}</strong></div><div><small>Median</small><strong>${integer(row.fpts_median)}</strong></div><div><small>Ceiling · p90</small><strong>${integer(row.fpts_p90)}</strong></div></div></section>
+      ${(row.radar_label || isTarget(row)) ? `<section class="detail-section"><h3>Draft radar</h3><div class="analyst-note">${radarMarkup(row)} &nbsp; ${esc(row.radar_reasons || "Personal priority target")}</div></section>` : ""}
       ${isAdjusted(row) ? `<section class="detail-section"><h3>Analyst layer</h3><div class="analyst-note">${analystChip(row)} &nbsp; ${esc(row.analyst_category || "")} · ${esc(row.analyst_date || "")}. Detailed rationale remains in the private review workflow.</div></section>` : ""}
-      <button class="button" data-modal-compare="${row.PLAYER_ID}">${state.compare.has(row.PLAYER_ID) ? "Remove from compare" : "Add to compare"}</button>
+      <div class="detail-actions"><button class="button" data-target-player="${row.PLAYER_ID}">${isTarget(row) ? "Edit priority target" : "Add priority target"}</button><button class="button" data-modal-compare="${row.PLAYER_ID}">${state.compare.has(row.PLAYER_ID) ? "Remove from compare" : "Add to compare"}</button></div>
     </div>`;
   const dialog = $("#player-dialog");
   if (dialog.showModal) dialog.showModal(); else dialog.setAttribute("open", "");
@@ -350,9 +399,11 @@ function bindEvents() {
   $("#search").addEventListener("input", event => { state.query = event.target.value; drawBoard(); });
   $("#team-filter").addEventListener("change", event => { state.team = event.target.value; drawBoard(); });
   $("#tier-filter").addEventListener("change", event => { state.tier = event.target.value; drawBoard(); });
+  $("#radar-filter").addEventListener("change", event => { state.radar = event.target.value; drawBoard(); });
   $("#limit").addEventListener("change", event => { state.limit = Number(event.target.value); drawBoard(); });
   $("#adjusted-only").addEventListener("change", event => { state.adjustedOnly = event.target.checked; drawBoard(); });
   $("#mock-search").addEventListener("input", event => { state.mock.query = event.target.value; drawMock(); });
+  $("#mock-radar").addEventListener("change", event => { state.mock.radar = event.target.value; drawMock(); });
   $("#mock-limit").addEventListener("change", event => { state.mock.limit = Number(event.target.value); drawMock(); });
   $("#mock-my-team").addEventListener("change", event => { state.mock.myTeam = Number(event.target.value); saveMock(); drawMock(); });
   $("#mock-undo").addEventListener("click", () => { state.mock.picks.pop(); saveMock(); drawMock(); });
@@ -379,6 +430,11 @@ function bindEvents() {
     if (modalCompare) { toggleCompare(Number(modalCompare.dataset.modalCompare)); $("#player-dialog").close(); }
     const draft = event.target.closest("[data-draft-player]");
     if (draft) draftPlayer(Number(draft.dataset.draftPlayer));
+    const target = event.target.closest("[data-target-player]");
+    if (target) {
+      const row = state.rows.find(r => r.PLAYER_ID === Number(target.dataset.targetPlayer));
+      if (row) { if ($("#player-dialog").open) $("#player-dialog").close(); openTarget(row); }
+    }
     const team = event.target.closest("[data-team]");
     if (team) { state.team = team.dataset.team; $("#team-filter").value = state.team; setView("board"); drawBoard(); }
     if (event.target.id === "clear-compare") { state.compare.clear(); saveCompare(); drawBoard(); drawCompare(); }
@@ -386,9 +442,23 @@ function bindEvents() {
   $("#mobile-nav").addEventListener("click", () => $(".sidebar").classList.toggle("open"));
   $(".dialog-close").addEventListener("click", () => $("#player-dialog").close());
   $("#player-dialog").addEventListener("click", event => { if (event.target === $("#player-dialog")) $("#player-dialog").close(); });
+  $(".target-dialog-close").addEventListener("click", () => $("#target-dialog").close());
+  $("#target-dialog").addEventListener("click", event => { if (event.target === $("#target-dialog")) $("#target-dialog").close(); });
+  $("#target-form").addEventListener("submit", event => {
+    event.preventDefault();
+    const id = String($("#target-player-id").value);
+    const takeBy = $("#target-take-by").value ? Number($("#target-take-by").value) : null;
+    state.targets[id] = { takeBy, note: $("#target-note").value.trim() };
+    saveTargets(); $("#target-dialog").close(); drawBoard(); drawMock();
+  });
+  $("#target-remove").addEventListener("click", () => {
+    delete state.targets[String($("#target-player-id").value)];
+    saveTargets(); $("#target-dialog").close(); drawBoard(); drawMock();
+  });
   window.addEventListener("hashchange", () => setView(location.hash.slice(1)));
 }
 
+loadTargets();
 loadMock();
 bindEvents();
 saveCompare();

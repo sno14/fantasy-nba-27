@@ -12,11 +12,12 @@
 // week-win simulator, whose variance layer is gated and unbuilt (Step 19.4) — inventing a
 // number here would be worse than leaving it out.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { DraftBoardRow, DraftStateResponse, RosterPanel, get } from "../lib/api";
 import { Card, Chip, ErrorNote, Field, Segmented, Select, Spinner } from "../components/ui";
 import { Column, DataTable } from "../components/DataTable";
 import { f1, f2 } from "../lib/format";
+import { DraftTargets, radarName, radarTone, targetTitle, useDraftTargets } from "../lib/draftRadar";
 
 const POLL_MS = 4000;
 
@@ -33,6 +34,8 @@ export default function DraftRoom() {
   const [st, setSt] = useState<DraftStateResponse | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [radarFilter, setRadarFilter] = useState("All");
+  const { targets, edit: editTarget } = useDraftTargets();
 
   const load = useCallback(async () => {
     try {
@@ -69,6 +72,14 @@ export default function DraftRoom() {
     }
   };
 
+  const available = useMemo(() => {
+    if (!st) return [];
+    if (radarFilter === "Targets") return st.board.filter((r) => r.radar_label?.includes("target"));
+    if (radarFilter === "Fades") return st.board.filter((r) => r.radar_label?.includes("fade"));
+    if (radarFilter === "Watchlist") return st.board.filter((r) => targets[String(r.PLAYER_ID)]);
+    return st.board;
+  }, [st, radarFilter, targets]);
+
   if (err && !st) return <ErrorNote message={err} />;
   if (!st) return <Spinner label="Loading draft room…" />;
 
@@ -97,6 +108,10 @@ export default function DraftRoom() {
               ...st.team_ids.map((t) => ({ value: String(t), label: `Team ${t}` })),
             ]}
           />
+        </Field>
+        <Field label="Draft radar">
+          <Select value={radarFilter} onChange={setRadarFilter}
+            options={["All", "Targets", "Fades", "Watchlist"].map((v) => ({ value: v, label: v === "All" ? "All players" : v }))} />
         </Field>
         <button
           onClick={() => act(`/api/draft/connect?league_id=${st.league_id}&season=${st.season}`)}
@@ -192,11 +207,11 @@ export default function DraftRoom() {
             </span>
           </div>
           <DataTable<DraftBoardRow>
-            rows={st.board}
+            rows={available}
             rowKey={(r) => r.PLAYER_ID}
             defaultSort="live_rank"
             onRowClick={(r) => !busy && act(`/api/draft/pick?player_id=${r.PLAYER_ID}`)}
-            columns={boardColumns()}
+            columns={boardColumns(targets, editTarget, st.n_picks + 1)}
             maxHeight="calc(100vh - 430px)"
             dense
           />
@@ -314,16 +329,27 @@ function Stat({
   );
 }
 
-function boardColumns(): Column<DraftBoardRow>[] {
+function boardColumns(
+  targets: DraftTargets,
+  editTarget: (row: DraftBoardRow) => void,
+  currentPick: number,
+): Column<DraftBoardRow>[] {
   return [
     { key: "live_rank", label: "#", align: "right", sortValue: (r) => r.live_rank },
     {
       key: "PLAYER_NAME",
       label: "Player",
       render: (r) => (
-        <span className="font-medium">
+        <span className="flex items-center gap-1.5 font-medium">
           {r.PLAYER_NAME}
           <span className="ml-1.5 text-[11px] text-ink-3">{r.TEAM_ABBREVIATION}</span>
+          <button
+            onClick={(e) => { e.stopPropagation(); editTarget(r); }}
+            title={targets[String(r.PLAYER_ID)] ? "Edit priority target (type REMOVE to clear)" : "Add priority target"}
+            className={targets[String(r.PLAYER_ID)] ? "text-warn" : "text-ink-3 hover:text-warn"}
+          >
+            {targets[String(r.PLAYER_ID)] ? "★" : "☆"}
+          </button>
         </span>
       ),
       sortValue: (r) => r.PLAYER_NAME,
@@ -362,6 +388,23 @@ function boardColumns(): Column<DraftBoardRow>[] {
     {
       key: "adp", label: "ADP", align: "right", hideBelow: "lg",
       render: (r) => (r.adp == null ? "—" : f1(r.adp)), sortValue: (r) => r.adp ?? 9999,
+    },
+    {
+      key: "radar", label: "Radar",
+      title: "ADP disagreement with explicit role, growth, or downside support",
+      sortValue: (r) => r.radar_round_gap ?? null,
+      render: (r) => {
+        const target = targets[String(r.PLAYER_ID)];
+        if (target) {
+          const due = target.takeBy != null && currentPick >= target.takeBy;
+          return <Chip tone={due ? "warn" : "accent"} title={targetTitle(r, target)}>
+            ★ {due ? "due" : target.takeBy ? `by ${target.takeBy}` : "priority"}
+          </Chip>;
+        }
+        return r.radar_label
+          ? <Chip tone={radarTone(r.radar_label)} title={r.radar_reasons || undefined}>{radarName(r.radar_label)}</Chip>
+          : null;
+      },
     },
   ];
 }

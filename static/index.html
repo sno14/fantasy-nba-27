@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#0b1118" />
     <title>Fantasy NBA 2026–27</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🏀%3C/text%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="style.css?v=5" />
+    <link rel="stylesheet" href="style.css?v=6" />
   </head>
   <body>
     <div class="shell">
@@ -33,7 +33,7 @@
       <main>
         <header class="topbar">
           <div>
-            <p class="eyebrow">READ-ONLY PROJECTION HUB</p>
+            <p class="eyebrow">STATIC PROJECTION HUB</p>
             <h1 id="view-title">Draft Board</h1>
             <p id="view-subtitle">Projected fantasy points per game with analyst layer applied.</p>
           </div>
@@ -53,6 +53,7 @@
               <label class="search-field"><span>⌕</span><input id="search" type="search" placeholder="Search player…" autocomplete="off" /></label>
               <label><span>Team</span><select id="team-filter"><option value="All">All teams</option></select></label>
               <label><span>Tier</span><select id="tier-filter"><option value="All">All tiers</option></select></label>
+              <label><span>Radar</span><select id="radar-filter"><option>All</option><option>Targets</option><option>Fades</option><option>Watchlist</option></select></label>
               <label><span>Show</span><select id="limit"><option value="50">Top 50</option><option value="100" selected>Top 100</option><option value="200">Top 200</option><option value="9999">All players</option></select></label>
               <label class="check-label"><input id="adjusted-only" type="checkbox" /> Analyst adjusted</label>
             </div>
@@ -72,6 +73,7 @@
                 <th><button data-sort="fpts_pg_change">Proj Δ</button></th>
                 <th class="optional"><button data-sort="vor">VOR</button></th>
                 <th class="optional"><button data-sort="adp">ADP</button></th>
+                <th><button data-sort="radar_round_gap">Radar</button></th>
                 <th class="optional"><button data-sort="mpg">MPG</button></th>
                 <th><button data-sort="gp">GP</button></th>
                 <th class="range-col">Season range</th>
@@ -100,11 +102,12 @@
             <div class="panel mock-board-panel">
               <div class="mock-search-row">
                 <label class="search-field"><span>⌕</span><input id="mock-search" type="search" placeholder="Search available player…" autocomplete="off" /></label>
+                <select id="mock-radar"><option>All</option><option>Targets</option><option>Fades</option><option>Watchlist</option></select>
                 <select id="mock-limit"><option value="30">Top 30 available</option><option value="60" selected>Top 60 available</option><option value="200">Top 200 available</option></select>
               </div>
               <div class="table-wrap mock-table-wrap">
                 <table class="board-table mock-table">
-                  <thead><tr><th>Rank</th><th class="player-col">Available player</th><th>Pos</th><th>FP/G</th><th>ADP</th><th></th></tr></thead>
+                  <thead><tr><th>Rank</th><th class="player-col">Available player</th><th>Pos</th><th>FP/G</th><th>ADP</th><th>Radar</th><th></th></tr></thead>
                   <tbody id="mock-rows"></tbody>
                 </table>
               </div>
@@ -135,6 +138,17 @@
       <button class="dialog-close" aria-label="Close player details">×</button>
       <div id="player-detail"></div>
     </dialog>
-    <script src="app.js?v=6"></script>
+    <dialog id="target-dialog">
+      <button class="dialog-close target-dialog-close" aria-label="Close priority target">×</button>
+      <form id="target-form" class="target-form">
+        <p class="eyebrow">PRIVATE WATCHLIST</p>
+        <h2 id="target-player-name">Priority target</h2>
+        <input id="target-player-id" type="hidden" />
+        <label><span>Take by overall pick</span><input id="target-take-by" type="number" min="1" placeholder="Optional" /></label>
+        <label><span>Draft note</span><textarea id="target-note" rows="4" placeholder="Why you are willing to reach…"></textarea></label>
+        <div class="target-actions"><button type="button" id="target-remove" class="button danger-action">Remove target</button><button type="submit" class="button">Save target</button></div>
+      </form>
+    </dialog>
+    <script src="app.js?v=7"></script>
   </body>
 </html>

@@ -121,6 +121,7 @@ def board(
         "fpts_p90", "risk", "analyst_action", "analyst_category", "analyst_date",
         "analyst_rationale",
         "model_rank", "vor", "vor_rank", "adp", "market_priced", "seed_class",
+        "radar_label", "radar_round_gap", "radar_reasons",
         "actual_rank", "act_fpts_pg", "act_fpts_total", "act_gp",
     ) if c in b.columns]
     analyst_applied = bool(
@@ -354,11 +355,11 @@ def player(player_id: int) -> dict:
             games = _records(cur[[c for c in ("GAME_DATE", "MIN", "PTS") if c in cur.columns]])
 
     proj_cols = [c for c in (
-        "rank", "tier", "PLAYER_NAME", "TEAM_ABBREVIATION", "target_age", "gp", "mpg",
+        "rank", "tier", "PLAYER_ID", "PLAYER_NAME", "TEAM_ABBREVIATION", "target_age", "gp", "mpg",
         "fpts_pg", "previous_fpts_pg", "fpts_pg_change", "fpts_total", "fpts_p10",
         "fpts_median", "fpts_p90", "risk",
         "analyst_action", "analyst_category", "analyst_date", "model_rank",
-        "vor", "vor_rank", "adp",
+        "vor", "vor_rank", "adp", "radar_label", "radar_round_gap", "radar_reasons",
         "pts", "reb", "ast", "stl", "blk", "fg3m", "tov", "fgm", "fga", "ftm", "fta",
     ) if c in b.columns]
     return {

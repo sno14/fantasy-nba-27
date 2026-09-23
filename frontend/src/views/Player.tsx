@@ -5,6 +5,7 @@ import { PlayerDetail, useApi } from "../lib/api";
 import { f0, f1, parseAction, signed } from "../lib/format";
 import { BarChart, LineChart, RangeStrip } from "../components/charts";
 import { Card, Chip, ErrorNote, SearchInput, Spinner } from "../components/ui";
+import { radarName, radarTone, targetTitle, useDraftTargets } from "../lib/draftRadar";
 
 function StatCard({ label, value, sub, title }: { label: string; value: string; sub?: string; title?: string }) {
   return (
@@ -20,6 +21,7 @@ export default function Player() {
   const { id } = useParams();
   const nav = useNavigate();
   const compare = useCompare();
+  const { targets, edit: editTarget } = useDraftTargets();
   const [q, setQ] = useState("");
 
   const idx = useApi<{ rows: { PLAYER_ID: number; PLAYER_NAME: string; TEAM_ABBREVIATION: string | null; rank: number }[] }>("/api/players");
@@ -61,6 +63,7 @@ export default function Player() {
   const p = d.projection;
   const action = parseAction(p.analyst_action as string | null);
   const inCompare = compare.ids.includes(Number(id));
+  const priority = targets[String(p.PLAYER_ID)];
 
   const fpgSeries = [{
     name: "FP/G", color: "var(--series-1)",
@@ -96,18 +99,25 @@ export default function Player() {
                   analyst {action.value > 0 ? "▲" : "▼"} {Math.abs(action.value).toFixed(1)}
                 </Chip>
               )}
+              {p.radar_label && <Chip tone={radarTone(p.radar_label)} title={p.radar_reasons || undefined}>{radarName(p.radar_label)}</Chip>}
             </h1>
             <p className="text-[13px] text-ink-2">2026-27 projection · learned model · board B (analyst layer applied)</p>
           </div>
         </div>
-        <button
-          onClick={() => compare.toggle(Number(id), p.PLAYER_NAME)}
-          className={`h-8 rounded-lg px-3 text-[13px] font-semibold transition-colors ${
-            inCompare ? "bg-accent text-accent-ink" : "border border-bdr text-ink-2 hover:bg-surface-2"
-          }`}
-        >
-          {inCompare ? "✓ In compare" : "+ Compare"}
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => editTarget(p)} title={targetTitle(p, priority)}
+            className={`h-8 rounded-lg px-3 text-[13px] font-semibold ${priority ? "bg-warn/15 text-warn" : "border border-bdr text-ink-2 hover:bg-surface-2"}`}>
+            {priority ? `★ ${priority.takeBy ? `Take by ${priority.takeBy}` : "Priority target"}` : "☆ Add target"}
+          </button>
+          <button
+            onClick={() => compare.toggle(Number(id), p.PLAYER_NAME)}
+            className={`h-8 rounded-lg px-3 text-[13px] font-semibold transition-colors ${
+              inCompare ? "bg-accent text-accent-ink" : "border border-bdr text-ink-2 hover:bg-surface-2"
+            }`}
+          >
+            {inCompare ? "✓ In compare" : "+ Compare"}
+          </button>
+        </div>
       </header>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
@@ -136,6 +146,18 @@ export default function Player() {
           </span>
         )}
       </Card>
+
+      {(p.radar_label || priority) && (
+        <Card className="p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-[13px] font-semibold text-ink-2">Draft radar</h2>
+            {p.radar_label && <Chip tone={radarTone(p.radar_label)}>{radarName(p.radar_label)}</Chip>}
+            {priority && <Chip tone="accent">★ {priority.takeBy ? `take by ${priority.takeBy}` : "priority"}</Chip>}
+          </div>
+          <p className="mt-2 text-[13px] text-ink-2">{p.radar_reasons || "Personal priority target."}</p>
+          {priority?.note && <p className="mt-1 text-[12px] text-ink-3">Your note: {priority.note}</p>}
+        </Card>
+      )}
 
       {(d.overrides.length > 0 || d.bbm_notes.length > 0) && (
         <Card className="space-y-3 p-4">

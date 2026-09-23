@@ -10,6 +10,7 @@ import pandas as pd
 import pytest
 
 from fantasy_nba.draft import feed, ids, live
+from fantasy_nba.draft.radar import add_draft_radar
 
 
 # --------------------------------------------------------------------------------------
@@ -44,6 +45,27 @@ def _league() -> dict:
 def _board(n: int = 8) -> pd.DataFrame:
     return pd.DataFrame({"PLAYER_ID": list(range(1, n + 1)), "rank": list(range(1, n + 1)),
                          "fpts_pg": [50.0 - 3 * i for i in range(n)]})
+
+
+def test_draft_radar_requires_price_gap_and_names_support() -> None:
+    board = pd.DataFrame([
+        {"rank": 24, "model_rank": 38, "adp": 76.5, "fpts_pg_change": 8.7, "risk": .88,
+         "analyst_action": "target_mpg:33"},
+        {"rank": 50, "adp": 63, "fpts_pg_change": 0.5, "risk": .8,
+         "analyst_action": ""},
+        {"rank": 80, "adp": 45, "fpts_pg_change": -5.0, "risk": 1.1,
+         "analyst_action": "fpts_delta:-2"},
+        {"rank": 40, "adp": 45, "fpts_pg_change": 8.0, "risk": .8,
+         "analyst_action": "target_mpg:34"},
+    ])
+
+    out = add_draft_radar(board, teams=12)
+
+    assert out["radar_label"].tolist() == ["strong_target", "target", "strong_fade", ""]
+    assert out.loc[0, "radar_round_gap"] == 4.38
+    assert out.loc[0, "radar_reasons"] == (
+        "ADP 4.4 rounds later | +8.7 FP/G projection | positive role adjustment")
+    assert "wide downside range" in out.loc[2, "radar_reasons"]
 
 
 # --------------------------------------------------------------------------------------
@@ -327,7 +349,7 @@ def test_espn_settings_are_drop_in_for_league_yaml():
     (value.NON_STARTING says BENCH, and an unmapped slot name raises)."""
     from fantasy_nba.models.value import load_league
 
-    s = feed.parse_settings({"settings": {"size": 10, "rosterSettings": {
+    s = feed.parse_settings({"settings": {"size": 12, "rosterSettings": {
         "lineupSlotCounts": {"0": 1, "1": 1, "2": 1, "3": 1, "4": 1, "5": 1, "6": 1,
                              "11": 3, "12": 3, "13": 1}},
         "draftSettings": {"pickOrder": [], "type": "SNAKE", "date": None,

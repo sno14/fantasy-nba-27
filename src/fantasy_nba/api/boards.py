@@ -260,7 +260,12 @@ def add_tiers(board: pd.DataFrame) -> pd.DataFrame:
 
 def ranked_board(target: str, model: str, stance: str, apply_analyst: bool) -> pd.DataFrame:
     board = compute_board(target, model, apply_analyst, overrides_mtime())
-    return add_tiers(rank_board(board, method=stance))
+    ranked = add_tiers(rank_board(board, method=stance))
+    if target == CURRENT_TARGET:
+        from ..draft.radar import add_draft_radar
+        from ..models.value import load_league
+        ranked = add_draft_radar(ranked, teams=int(load_league().get("teams", 12)))
+    return ranked
 
 
 # ------------------------------------------------------------------------------- schedule

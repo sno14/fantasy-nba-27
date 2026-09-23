@@ -285,7 +285,7 @@ document.getElementById("adjonly").addEventListener("change", apply);
 
 document.getElementById("target").textContent = META.target;
 document.getElementById("subline").innerHTML =
-  'Board <b>__BOARD_LABEL__</b> &middot; '+META.model+'/'+META.stance+' &middot; ESPN 10-team H2H points '
+  'Board <b>__BOARD_LABEL__</b> &middot; '+META.model+'/'+META.stance+' &middot; ESPN 12-team H2H points '
   + '&middot; <b>'+META.n+'</b> players, <b>'+META.n_adjusted+'</b> analyst-adjusted &middot; generated '+META.generated;
 
 indicators();

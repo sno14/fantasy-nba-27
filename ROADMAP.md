@@ -29,7 +29,7 @@ special-case handling.
   **superseded 2026-07-10: league scoring confirmed as the ESPN default points league** —
   `scoring.yaml` already carried exactly those weights, so every ledger verdict stands and
   nothing re-ran (the D1.1 pre-draft verification: passed).
-- **League format (user, 2026-07; confirmed 2026-07-10):** **ESPN default points, 10 teams**,
+- **League format (user, 2026-07; team count updated 2026-09-23):** **ESPN default points, 12 teams**,
   weekly **H2H points** matchups with **daily lineup setting** (structure in
   `config/league.yaml`). The league **ends ~2–3 weeks before the NBA regular season** (exact gap
   TBD) to dodge late-season rest/tank noise — so ROS horizons, totals, and playoff-week logic key
@@ -212,6 +212,10 @@ special-case handling.
       the source tier is audit-only. Live ESPN and private analyst workflows remain local. The
       Sep-23 FantasyPros refresh supplies the public ADP/availability column (223 rows; 95.3%
       top-150 name match, with expected rookie misses retained as market-priced seeds).
+      The same-day Draft Radar adds explainable strong-target/target/fade calls (ADP gap in
+      12-team rounds plus a named growth/role/risk mechanism) and private browser-local priority
+      targets with take-by picks and notes; both the React app and Pages mock room consume the same
+      exported radar fields.
 
 **Next frontiers (post-ship, in rough return order):** **the minutes economy (Phase 5) is
 COMPLETE 2026-07-11** — Step 16 / EXP-030 OUT-redistribution adopted-tentative (nightly

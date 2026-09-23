@@ -19,6 +19,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from fantasy_nba.config import PROCESSED_DIR, ROOT
+from fantasy_nba.draft.radar import add_draft_radar
 from fantasy_nba.models.value import load_league
 
 
@@ -31,6 +32,7 @@ PUBLIC_COLUMNS = (
     "draft_value", "vor", "vor_rank", "adp", "pts", "reb", "ast", "stl", "blk",
     "fg3m", "tov", "fpts_p10", "fpts_median", "fpts_p90", "risk", "market_priced",
     "seed_class", "positions", "analyst_action", "analyst_category", "analyst_date",
+    "radar_label", "radar_round_gap", "radar_reasons",
 )
 
 
@@ -125,9 +127,11 @@ def main(argv: list[str] | None = None) -> None:
         board = boards.ranked_board("2026-27", "learned", "safe", apply_analyst=True)
         source_board = "live API Board B (2026-27 learned/safe)"
         title = "Fantasy NBA 2026-27 — Board B"
-    board = _add_public_positions(_rank_public_board(board))
-
     league = load_league()
+    board = _rank_public_board(board)
+    board = add_draft_radar(board, teams=int(league.get("teams", 12)), rank_column="source_rank")
+    board = _add_public_positions(board)
+
     public_roster = {str(slot).upper(): int(count)
                      for slot, count in league.get("roster", {}).items()}
 
@@ -142,7 +146,7 @@ def main(argv: list[str] | None = None) -> None:
         "ranked_by": "fpts_pg",
         "market_date": market_date,
         "market_source": market_source,
-        "capabilities": ["board", "player_detail", "compare", "tiers", "teams", "mock_draft"],
+        "capabilities": ["board", "player_detail", "compare", "tiers", "teams", "mock_draft", "draft_radar"],
         "draft_config": {
             "teams": int(league.get("teams", 10)),
             "roster": public_roster,
