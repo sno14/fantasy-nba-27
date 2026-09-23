@@ -1883,6 +1883,14 @@ schema; ours is a snake — ignore them.)
 existing is encouraging but proves nothing about refresh rate. Only an October mock draft
 answers it. `ManualFeed` remains the shipped default until it does.
 
+**2026-09-23 mock-room connection check:** a random mock draft URL's `leagueId=19350273`,
+`seasonId=2027`, and `teamId=8` connected successfully through the same `mDraftDetail` league
+endpoint (12 teams, real snake order, scheduled, 30-second clock). No room code or `memberId`
+was needed. The mock league was deleted by ESPN shortly after the room closed, so these ids are
+ephemeral; `/room` now accepts the full live URL and atomically connects, selects the user's team,
+and starts polling. This verifies discovery/connection, **not live pick latency**; the mock-draft
+latency rung remains open until picks are observed while a room is in progress.
+
 Build a narrow adapter so the unknown stays in one file:
 ```python
 # src/fantasy_nba/draft/feed.py

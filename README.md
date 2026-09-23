@@ -427,6 +427,13 @@ cached to `data/processed/espn_player_map.parquet`, after which manual mode runs
 offline. Without it there are no positions, so no positional scarcity (the UI says so rather
 than pretending).
 
+For an ESPN mock draft, paste the full URL from ESPN's draft room into the local Draft Room's
+**ESPN draft connection** panel and click **Connect & watch**. The app extracts `leagueId`,
+`seasonId`, and `teamId`, ignores the private `memberId`, switches the pick source to ESPN,
+ingests any picks already made, and then polls every four seconds while `/room` remains open.
+Mock leagues use temporary league ids, so merely joining a random mock without connecting its
+URL leaves the app watching whichever real league or prior mock was connected previously.
+
 **ESPN access.** The feed reads a private league, so it needs two browser cookies. Put them in
 `.env` at the repo root (**gitignored** — never in `config/`, which is committed):
 

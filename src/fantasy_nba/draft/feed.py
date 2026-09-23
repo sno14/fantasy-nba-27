@@ -418,8 +418,11 @@ def _get_json(url: str, params: dict, cookies: dict,
     import requests  # local import: the pure parsers above stay importable without it
 
     headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json", **(extra_headers or {})}
-    r = requests.get(url, params=params, headers=headers, cookies=cookies,
-                     timeout=REQUEST_TIMEOUT)
+    try:
+        r = requests.get(url, params=params, headers=headers, cookies=cookies,
+                         timeout=REQUEST_TIMEOUT)
+    except requests.RequestException as e:
+        raise EspnApiError(f"Could not reach ESPN: {e}") from e
     ctype = r.headers.get("content-type", "")
     if not ctype.startswith("application/json"):
         raise EspnApiError(

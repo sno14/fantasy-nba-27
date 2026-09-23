@@ -151,6 +151,48 @@ def test_session_load_tolerates_missing_and_corrupt_files(tmp_path, monkeypatch)
     assert fresh.my_team_id == 0 and not fresh.picks
 
 
+def test_connect_and_watch_configures_mock_room_atomically(tmp_path, monkeypatch):
+    """A pasted ESPN draft URL's three public ids should be enough to switch rooms, select
+    the user's team, and ingest picks immediately. memberId is intentionally not involved."""
+    from fantasy_nba.api import draft as d
+    from fantasy_nba.draft.feed import LeagueSettings, Pick
+    from fantasy_nba.draft.ids import PlayerMap
+
+    class FakeFeed:
+        def __init__(self, league_id, season):
+            assert str(league_id) == "19350273" and season == 2027
+
+        def league_settings(self):
+            return LeagueSettings(
+                size=12, pick_order=[1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 8, 12],
+                slot_counts={"PG": 1, "UTIL": 3, "BENCH": 3}, draft_type="SNAKE",
+                draft_date=1790167199000, seconds_per_pick=30,
+            )
+
+        def team_ids(self):
+            return list(range(1, 13))
+
+        def player_universe(self):
+            return []
+
+        def poll(self):
+            return [Pick(overall=1, team_id=1, espn_player_id=9001)]
+
+    monkeypatch.setattr(d, "SESSION_PATH", tmp_path / "draft_session.json")
+    monkeypatch.setattr(d, "_session", d.Session(source="manual", league_id="old", my_team_id=3))
+    monkeypatch.setattr(d, "EspnPollFeed", FakeFeed)
+    monkeypatch.setattr(d.boards, "raw", lambda _: pd.DataFrame())
+    pmap = PlayerMap(to_nba={9001: 101}, eligible_of={101: {"PG"}}, names={101: "Player"})
+    monkeypatch.setattr(d, "build_player_map", lambda *_args, **_kwargs: pmap)
+    monkeypatch.setattr(PlayerMap, "save", lambda self: tmp_path / "map.parquet")
+
+    result = d.connect(league_id="19350273", season=2027, my_team_id=8, watch=True)
+
+    assert result["source"] == "espn" and result["my_team_id"] == 8
+    assert result["n_picks"] == 1
+    assert d._session.league_id == "19350273" and d._session.settings["size"] == 12
+    assert d._session.picks[0].espn_player_id == 9001
+
 def test_v3b_live_rosters_override_picks(tmp_path, monkeypatch):
     """V3b: once live ESPN rosters are pulled they are the ownership source for the season
     views — they follow in-season adds/drops the draft picks can't. A draft-day pick that

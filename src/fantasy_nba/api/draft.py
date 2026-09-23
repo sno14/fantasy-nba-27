@@ -499,27 +499,53 @@ def simulate(rounds: int = Query(default=0, ge=0, le=30)) -> dict:
 
 
 @router.post("/connect")
-def connect(league_id: str = Query(default=""), season: int = Query(default=2027)) -> dict:
+def connect(
+    league_id: str = Query(default=""),
+    season: int = Query(default=2027, ge=2000, le=2100),
+    my_team_id: int = Query(default=0, ge=0),
+    watch: bool = Query(default=False),
+) -> dict:
     """Pull live ESPN settings + teams + the player map. Safe to re-run (it is the 19.1b
     re-verification in one call): league id / teams / slots / pick order all drift."""
     s = _session
-    s.league_id = league_id or _env("ESPN_LEAGUE_ID")
-    s.season = season
-    if not s.league_id:
+    next_league_id = (league_id or _env("ESPN_LEAGUE_ID")).strip()
+    if not next_league_id:
         raise HTTPException(422, "No league id — set ESPN_LEAGUE_ID in .env or pass league_id.")
+    if not next_league_id.isdigit():
+        raise HTTPException(422, "ESPN league id must contain digits only.")
     try:
-        feed = EspnPollFeed(league_id=s.league_id, season=s.season)
+        feed = EspnPollFeed(league_id=next_league_id, season=season)
         settings = feed.league_settings()
-        s.team_ids = feed.team_ids()
-        s.pick_order = settings.pick_order
-        s.settings = {
+        team_ids = feed.team_ids()
+        if my_team_id and my_team_id not in team_ids:
+            raise HTTPException(
+                422, f"Team {my_team_id} is not in ESPN league {next_league_id}."
+            )
+        next_settings = {
             "size": settings.size, "slot_counts": settings.slot_counts,
             "pick_order": settings.pick_order, "draft_type": settings.draft_type,
             "draft_date": settings.draft_date, "seconds_per_pick": settings.seconds_per_pick,
             "order_is_placeholder": settings.order_is_placeholder,
             "is_scheduled": settings.is_scheduled,
         }
-        s.pmap = build_player_map(feed.player_universe(), boards.raw("player_season_stats"))
+        pmap = build_player_map(feed.player_universe(), boards.raw("player_season_stats"))
+        picks = feed.poll() if watch else None
+
+        # Commit only after every remote read succeeds. A bad mock URL must not leave the
+        # session half-switched away from a working draft.
+        s.league_id = next_league_id
+        s.season = season
+        s.team_ids = team_ids
+        s.pick_order = settings.pick_order
+        s.settings = next_settings
+        s.pmap = pmap
+        if my_team_id:
+            s.my_team_id = my_team_id
+        elif s.my_team_id not in team_ids:
+            s.my_team_id = 0
+        if watch:
+            s.source = "espn"
+            s.picks = picks or []
         s.pmap.save()          # so manual mode works offline from here on
         s.espn_error = None
         _save_session()
@@ -527,6 +553,7 @@ def connect(league_id: str = Query(default=""), season: int = Query(default=2027
         s.espn_error = str(e)
         raise HTTPException(502, str(e))
     return {"ok": True, "settings": s.settings, "team_ids": s.team_ids,
+            "source": s.source, "my_team_id": s.my_team_id, "n_picks": len(s.picks),
             "match_rate": round(s.pmap.match_rate, 3), "n_unmatched": len(s.pmap.unmatched)}
 
 

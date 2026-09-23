@@ -12,7 +12,7 @@
 // week-win simulator, whose variance layer is gated and unbuilt (Step 19.4) — inventing a
 // number here would be worse than leaving it out.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DraftBoardRow, DraftStateResponse, RosterPanel, get } from "../lib/api";
 import { Card, Chip, ErrorNote, Field, Segmented, Select, Spinner } from "../components/ui";
 import { Column, DataTable } from "../components/DataTable";
@@ -20,6 +20,24 @@ import { f1, f2 } from "../lib/format";
 import { DraftTargets, radarName, radarTone, targetTitle, useDraftTargets } from "../lib/draftRadar";
 
 const POLL_MS = 4000;
+
+type EspnDraftUrl = { leagueId: string; season: string; teamId: string };
+
+function parseEspnDraftUrl(value: string): EspnDraftUrl | null {
+  try {
+    const url = new URL(value.trim().replaceAll("\\&", "&"));
+    if (!url.hostname.endsWith("espn.com")) return null;
+    const leagueId = url.searchParams.get("leagueId") ?? "";
+    const season = url.searchParams.get("seasonId") ?? "";
+    const teamId = url.searchParams.get("teamId") ?? "";
+    if (!/^\d+$/.test(leagueId) || !/^\d{4}$/.test(season) || !/^\d+$/.test(teamId)) {
+      return null;
+    }
+    return { leagueId, season, teamId };
+  } catch {
+    return null;
+  }
+}
 
 async function post(path: string) {
   const res = await fetch(path, { method: "POST" });
@@ -35,6 +53,11 @@ export default function DraftRoom() {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [radarFilter, setRadarFilter] = useState("All");
+  const [draftUrl, setDraftUrl] = useState("");
+  const [leagueId, setLeagueId] = useState("");
+  const [season, setSeason] = useState("2027");
+  const [teamId, setTeamId] = useState("");
+  const connectionSeeded = useRef(false);
   const { targets, edit: editTarget } = useDraftTargets();
 
   const load = useCallback(async () => {
@@ -50,6 +73,14 @@ export default function DraftRoom() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    if (!st || connectionSeeded.current) return;
+    setLeagueId(st.league_id);
+    setSeason(String(st.season));
+    setTeamId(st.my_team_id ? String(st.my_team_id) : "");
+    connectionSeeded.current = true;
+  }, [st]);
+
   // Poll only when ESPN is the source — manual entry needs no clock.
   useEffect(() => {
     if (st?.source !== "espn") return;
@@ -64,6 +95,37 @@ export default function DraftRoom() {
     setBusy(true);
     try {
       await post(path);
+      await load();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const updateDraftUrl = (value: string) => {
+    setDraftUrl(value);
+    const parsed = parseEspnDraftUrl(value);
+    if (!parsed) return;
+    setLeagueId(parsed.leagueId);
+    setSeason(parsed.season);
+    setTeamId(parsed.teamId);
+  };
+
+  const connectAndWatch = async () => {
+    if (!/^\d+$/.test(leagueId) || !/^\d{4}$/.test(season) || !/^\d+$/.test(teamId)) {
+      setErr("Paste a valid ESPN draft URL, or enter numeric league, season, and team IDs.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const q = new URLSearchParams({
+        league_id: leagueId,
+        season,
+        my_team_id: teamId,
+        watch: "true",
+      });
+      await post(`/api/draft/connect?${q.toString()}`);
       await load();
     } catch (e) {
       setErr((e as Error).message);
@@ -113,12 +175,6 @@ export default function DraftRoom() {
           <Select value={radarFilter} onChange={setRadarFilter}
             options={["All", "Targets", "Fades", "Watchlist"].map((v) => ({ value: v, label: v === "All" ? "All players" : v }))} />
         </Field>
-        <button
-          onClick={() => act(`/api/draft/connect?league_id=${st.league_id}&season=${st.season}`)}
-          className="h-8 rounded-lg border border-bdr px-3 text-[13px] font-medium text-ink-2 hover:bg-surface-2"
-        >
-          {st.espn_ready ? "Re-read ESPN settings" : "Connect ESPN"}
-        </button>
         <div className="ml-auto flex items-center gap-2">
           <button
             onClick={() => act("/api/draft/undo")}
@@ -135,6 +191,64 @@ export default function DraftRoom() {
           </button>
         </div>
       </div>
+
+      <Card className="p-4">
+        <div className="flex flex-col gap-3">
+          <div>
+            <h2 className="text-[13px] font-bold">ESPN draft connection</h2>
+            <p className="text-[11px] text-ink-3">
+              Paste the URL from the ESPN draft room. League, season, and team are extracted;
+              <code className="ml-1">memberId</code> is ignored and never saved.
+            </p>
+          </div>
+          <Field label="ESPN draft URL">
+            <input
+              value={draftUrl}
+              onChange={(e) => updateDraftUrl(e.target.value)}
+              placeholder="https://fantasy.espn.com/basketball/draft?leagueId=..."
+              className="h-8 w-full rounded-lg border border-bdr bg-surface px-2.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-3 hover:border-baseline focus:border-accent"
+            />
+          </Field>
+          <div className="flex flex-wrap items-end gap-3">
+            <Field label="League ID">
+              <input
+                inputMode="numeric"
+                value={leagueId}
+                onChange={(e) => setLeagueId(e.target.value.trim())}
+                className="h-8 w-36 rounded-lg border border-bdr bg-surface px-2.5 text-sm text-ink outline-none focus:border-accent"
+              />
+            </Field>
+            <Field label="Season">
+              <input
+                inputMode="numeric"
+                value={season}
+                onChange={(e) => setSeason(e.target.value.trim())}
+                className="h-8 w-24 rounded-lg border border-bdr bg-surface px-2.5 text-sm text-ink outline-none focus:border-accent"
+              />
+            </Field>
+            <Field label="My team ID">
+              <input
+                inputMode="numeric"
+                value={teamId}
+                onChange={(e) => setTeamId(e.target.value.trim())}
+                className="h-8 w-24 rounded-lg border border-bdr bg-surface px-2.5 text-sm text-ink outline-none focus:border-accent"
+              />
+            </Field>
+            <button
+              onClick={() => void connectAndWatch()}
+              disabled={busy}
+              className="h-8 rounded-lg bg-accent px-3 text-[13px] font-semibold text-white hover:opacity-90 disabled:opacity-50"
+            >
+              {busy ? "Connectingâ€¦" : "Connect & watch"}
+            </button>
+            {st.espn_ready && (
+              <span className="pb-1 text-[11px] text-ink-3">
+                Watching league {st.league_id} as Team {st.my_team_id || "â€”"}
+              </span>
+            )}
+          </div>
+        </div>
+      </Card>
 
       {/* ---------------------------------------------------------------- banners */}
       {st.espn_error && (
