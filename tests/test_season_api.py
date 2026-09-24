@@ -182,6 +182,9 @@ def test_connect_and_watch_configures_mock_room_atomically(tmp_path, monkeypatch
     monkeypatch.setattr(d, "_session", d.Session(source="manual", league_id="old", my_team_id=3))
     monkeypatch.setattr(d, "EspnPollFeed", FakeFeed)
     monkeypatch.setattr(d.boards, "raw", lambda _: pd.DataFrame())
+    monkeypatch.setattr(
+        d, "_board", lambda: pd.DataFrame(columns=["PLAYER_ID", "PLAYER_NAME"]),
+    )
     pmap = PlayerMap(to_nba={9001: 101}, eligible_of={101: {"PG"}}, names={101: "Player"})
     monkeypatch.setattr(d, "build_player_map", lambda *_args, **_kwargs: pmap)
     monkeypatch.setattr(PlayerMap, "save", lambda self: tmp_path / "map.parquet")
@@ -192,6 +195,77 @@ def test_connect_and_watch_configures_mock_room_atomically(tmp_path, monkeypatch
     assert result["n_picks"] == 1
     assert d._session.league_id == "19350273" and d._session.settings["size"] == 12
     assert d._session.picks[0].espn_player_id == 9001
+
+
+def test_browser_sync_ingests_live_pick_and_rest_poll_cannot_erase_it(tmp_path, monkeypatch):
+    """mDraftDetail stays empty during live mocks; the browser snapshot is authoritative
+    until ESPN publishes non-placeholder picks or marks the draft no longer in progress."""
+    from fantasy_nba.api import draft as d
+    from fantasy_nba.draft.feed import DraftStatus
+    from fantasy_nba.draft.ids import PlayerMap
+
+    monkeypatch.setattr(d, "SESSION_PATH", tmp_path / "draft_session.json")
+    session = d.Session(
+        source="espn", league_id="1559369172", season=2027, my_team_id=8,
+        team_ids=list(range(1, 13)), pick_order=[1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 8, 12],
+    )
+    session.pmap = PlayerMap(to_nba={9001: 101}, eligible_of={101: {"PG"}}, names={101: "A"})
+    monkeypatch.setattr(d, "_session", session)
+
+    synced = d.browser_sync({
+        "league_id": "1559369172",
+        "picks": [{"round_id": 1, "round_pick": 1, "espn_player_id": 9001}],
+    })
+    assert synced["n_picks"] == 1 and session.picks[0].overall == 1
+    assert session.picks[0].team_id == 1
+    assert session.browser_sync_asof
+
+    class StaleLiveFeed:
+        def __init__(self, league_id, season):
+            pass
+
+        def poll(self):
+            return []
+
+        def status(self):
+            return DraftStatus(drafted=False, in_progress=True, n_picks_total=156)
+
+    monkeypatch.setattr(d, "EspnPollFeed", StaleLiveFeed)
+    refreshed = d.refresh()
+    assert refreshed["browser_picks_preserved"] is True
+    assert refreshed["n_picks"] == 1 and session.picks[0].espn_player_id == 9001
+
+
+def test_browser_sync_resolves_player_missing_from_espn_universe_by_name(tmp_path, monkeypatch):
+    from fantasy_nba.api import draft as d
+    from fantasy_nba.draft.ids import PlayerMap
+
+    monkeypatch.setattr(d, "SESSION_PATH", tmp_path / "draft_session.json")
+    session = d.Session(
+        source="espn", league_id="123", season=2027, my_team_id=1,
+        team_ids=[1, 2], pick_order=[1, 2], pmap=PlayerMap(),
+    )
+    monkeypatch.setattr(d, "_session", session)
+    monkeypatch.setattr(d, "_board", lambda: pd.DataFrame([{
+        "PLAYER_ID": 1630169,
+        "PLAYER_NAME": "Tyrese Haliburton",
+        "positions": "PG|SG",
+    }]))
+    monkeypatch.setattr(PlayerMap, "save", lambda self: tmp_path / "map.parquet")
+
+    synced = d.browser_sync({
+        "league_id": "123",
+        "picks": [{
+            "overall": 1,
+            "espn_player_id": 4396993,
+            "name": "Tyrese Haliburton",
+        }],
+    })
+
+    assert synced["added_mappings"] == 1
+    assert session.pmap.to_nba[4396993] == 1630169
+    assert session.pmap.eligible_of[1630169] == {"PG", "SG"}
+
 
 def test_v3b_live_rosters_override_picks(tmp_path, monkeypatch):
     """V3b: once live ESPN rosters are pulled they are the ownership source for the season

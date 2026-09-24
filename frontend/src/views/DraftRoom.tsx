@@ -261,6 +261,19 @@ export default function DraftRoom() {
           </div>
         </div>
       )}
+      {st.source === "espn" && !st.browser_sync_asof && st.n_picks === 0 && (
+        <div className="rounded-xl border border-warn/40 bg-warn/10 px-4 py-2.5 text-[13px] text-ink-2">
+          <b>Waiting for the browser bridge.</b> ESPN's league API does not expose picks while
+          a draft is live. Load the repo's <code>browser-extension</code> folder in Chrome and
+          keep the ESPN draft tab open; its badge will confirm when picks are reaching this room.
+        </div>
+      )}
+      {st.browser_sync_asof && (
+        <div className="rounded-xl border border-up/30 bg-up/10 px-4 py-2.5 text-[13px] text-ink-2">
+          <b>Browser bridge live.</b> Pick state was captured from the ESPN draft tab at{" "}
+          {new Date(st.browser_sync_asof).toLocaleTimeString()}.
+        </div>
+      )}
       {!st.has_positions && (
         <div className="rounded-xl border border-warn/40 bg-warn/10 px-4 py-2.5 text-[13px] text-ink-2">
           <b>No position data.</b> ESPN is the only source of slot eligibility — hit{" "}

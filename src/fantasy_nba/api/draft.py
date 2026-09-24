@@ -29,7 +29,7 @@ from fastapi import APIRouter, HTTPException, Query
 from ..config import PROCESSED_DIR, ROOT
 from ..draft import build_player_map
 from ..draft.feed import EspnApiError, EspnPollFeed, ManualFeed, Pick
-from ..draft.ids import PlayerMap
+from ..draft.ids import PlayerMap, eligible_positions, normalize_name
 from ..draft.live import (
     DraftState,
     _fills,
@@ -65,6 +65,7 @@ class Session:
     settings: dict | None = None
     pmap: PlayerMap | None = None
     espn_error: str | None = None      # surfaced to the UI rather than raised — never block
+    browser_sync_asof: str | None = None
     # V3b: live in-season ESPN rosters (espn team_id -> [espn_player_id]). When present they
     # replace the pick-derived ownership for the season views, because mid-season adds/drops
     # diverge from draft night. None = use the draft picks (the pre-season / no-refresh state).
@@ -103,6 +104,7 @@ def _save_session() -> None:
             "picks": [p.__dict__ for p in s.picks],
             "team_ids": s.team_ids, "pick_order": s.pick_order,
             "settings": s.settings,
+            "browser_sync_asof": s.browser_sync_asof,
             "live_rosters": ({str(t): v for t, v in s.live_rosters.items()}
                              if s.live_rosters else None),
             "live_rosters_asof": s.live_rosters_asof,
@@ -126,6 +128,7 @@ def _load_session() -> None:
         s.team_ids = [int(t) for t in d.get("team_ids", [])]
         s.pick_order = [int(t) for t in d.get("pick_order", [])]
         s.settings = d.get("settings")
+        s.browser_sync_asof = d.get("browser_sync_asof")
         lr = d.get("live_rosters")
         s.live_rosters = ({int(t): [int(x) for x in v] for t, v in lr.items()} if lr else None)
         s.live_rosters_asof = d.get("live_rosters_asof")
@@ -421,6 +424,7 @@ def draft_state(top: int = Query(default=120, le=400)) -> dict:
         "team_ids": state.all_team_ids,
         "settings": s.settings,
         "espn_error": s.espn_error,
+        "browser_sync_asof": s.browser_sync_asof,
         "espn_ready": bool(s.pmap) and bool(s.team_ids),
         "has_positions": not state.no_positions,
         # True = team ids are 1..N stand-ins, not ESPN's (which are non-contiguous). The UI
@@ -528,7 +532,10 @@ def connect(
             "order_is_placeholder": settings.order_is_placeholder,
             "is_scheduled": settings.is_scheduled,
         }
-        pmap = build_player_map(feed.player_universe(), boards.raw("player_season_stats"))
+        # Join against the board itself, not only the latest season-stat rows. That covers
+        # returning players and rookies while retaining ESPN's live slot eligibility.
+        identity_board = _board()[["PLAYER_ID", "PLAYER_NAME"]]
+        pmap = build_player_map(feed.player_universe(), identity_board)
         picks = feed.poll() if watch else None
 
         # Commit only after every remote read succeeds. A bad mock URL must not leave the
@@ -546,6 +553,7 @@ def connect(
         if watch:
             s.source = "espn"
             s.picks = picks or []
+            s.browser_sync_asof = None
         s.pmap.save()          # so manual mode works offline from here on
         s.espn_error = None
         _save_session()
@@ -588,13 +596,142 @@ def refresh() -> dict:
     try:
         feed = EspnPollFeed(league_id=s.league_id or _env("ESPN_LEAGUE_ID"), season=s.season)
         picks = feed.poll()
-        s.picks = picks           # ESPN is authoritative for its own picks
+        status = feed.status()
+        preserve_browser = bool(status.in_progress and not picks and s.browser_sync_asof)
+        if not preserve_browser:
+            s.picks = picks
+            if picks or not status.in_progress:
+                s.browser_sync_asof = None
         s.espn_error = None
         _save_session()
-        return {"n_picks": len(picks), "status": feed.status().__dict__}
+        return {"n_picks": len(s.picks), "status": status.__dict__,
+                "browser_picks_preserved": preserve_browser}
     except EspnApiError as e:
         s.espn_error = str(e)
         return {"n_picks": len(s.picks), "espn_error": str(e)}
+
+
+@router.post("/browser-sync")
+def browser_sync(payload: dict) -> dict:
+    """Merge picks observed inside the already-open ESPN draft-room browser tab.
+
+    ESPN's league endpoint reports an active draft but leaves live picks as placeholders.
+    The local extension sends only pick ids, player names/eligibility, order, team, and league
+    id; it never sends cookies, member ids, page HTML, chat, or any other browser state.
+    """
+    s = _session
+    league_id = str(payload.get("league_id") or "").strip()
+    if league_id and s.league_id and league_id != s.league_id:
+        raise HTTPException(
+            409, f"Browser is watching league {league_id}, but Draft Room is on {s.league_id}."
+        )
+    raw_picks = payload.get("picks")
+    if not isinstance(raw_picks, list):
+        raise HTTPException(422, "picks must be a list")
+
+    order = list(s.pick_order)
+
+    # The live client sometimes exposes players omitted from kona_player_info. Resolve those
+    # by the name carried alongside the pick, against our computed board, and cache the result.
+    # Existing ID mappings always win; a browser observation can only fill a missing mapping.
+    added_mappings = 0
+    if s.pmap:
+        missing = []
+        for raw in raw_picks:
+            if not isinstance(raw, dict) or not raw.get("name"):
+                continue
+            try:
+                espn_id = int(raw.get("espn_player_id") or raw.get("espn_id")
+                              or raw.get("playerId") or 0)
+            except (TypeError, ValueError):
+                continue
+            if espn_id > 0 and espn_id not in s.pmap.to_nba:
+                missing.append((espn_id, raw))
+        if missing:
+            board = _board()
+            board_by_name = {
+                normalize_name(str(row.PLAYER_NAME)): row
+                for row in board.itertuples(index=False)
+            }
+            for espn_id, raw in missing:
+                row = board_by_name.get(normalize_name(str(raw["name"])))
+                if row is None:
+                    continue
+                nba_id = int(row.PLAYER_ID)
+                s.pmap.to_nba[espn_id] = nba_id
+                s.pmap.names[nba_id] = str(raw["name"])
+                slots = raw.get("eligible_slots") or raw.get("eligibleSlots")
+                positions = eligible_positions(slots) if isinstance(slots, list) else set()
+                if not positions:
+                    value = getattr(row, "positions", None)
+                    if isinstance(value, str):
+                        positions = set(value.split("|")) - {""}
+                    elif isinstance(value, (list, tuple, set)):
+                        positions = set(value)
+                if positions:
+                    s.pmap.eligible_of[nba_id] = positions
+                added_mappings += 1
+            if added_mappings:
+                s.pmap.save()
+    names_to_espn: dict[str, int] = {}
+    if s.pmap:
+        nba_to_espn = {nba: espn for espn, nba in s.pmap.to_nba.items()}
+        names_to_espn = {
+            normalize_name(name): nba_to_espn[nba]
+            for nba, name in s.pmap.names.items() if nba in nba_to_espn
+        }
+
+    parsed: list[Pick] = []
+    for raw in raw_picks:
+        if not isinstance(raw, dict):
+            continue
+        try:
+            overall = int(raw.get("overall") or raw.get("overallPickNumber") or 0)
+            round_id = int(raw.get("round_id") or raw.get("roundId")
+                           or raw.get("roundNumber") or raw.get("round") or 0)
+            round_pick = int(raw.get("round_pick") or raw.get("roundPickNumber")
+                             or raw.get("roundPick") or 0)
+            espn_id = int(raw.get("espn_player_id") or raw.get("espn_id")
+                          or raw.get("playerId") or 0)
+        except (TypeError, ValueError):
+            continue
+        if overall <= 0 and round_id > 0 and round_pick > 0 and order:
+            overall = (round_id - 1) * len(order) + round_pick
+        if espn_id <= 0 and raw.get("name"):
+            espn_id = names_to_espn.get(normalize_name(str(raw["name"])), 0)
+        if overall <= 0 or espn_id <= 0:
+            continue
+        try:
+            team_id = int(raw.get("team_id") or raw.get("teamId") or 0)
+        except (TypeError, ValueError):
+            team_id = 0
+        if not team_id and order:
+            round_index, pick_index = divmod(overall - 1, len(order))
+            team_id = order[pick_index if round_index % 2 == 0 else -1 - pick_index]
+        if not team_id:
+            continue
+        if not round_id and order:
+            round_id = (overall - 1) // len(order) + 1
+            round_pick = (overall - 1) % len(order) + 1
+        parsed.append(Pick(overall=overall, team_id=team_id, espn_player_id=espn_id,
+                           round_id=round_id, round_pick=round_pick))
+
+    if not parsed:
+        s.browser_sync_asof = _now_iso()
+        s.espn_error = None
+        _save_session()
+        return {"n_picks": len(s.picks), "accepted": 0,
+                "browser_sync_asof": s.browser_sync_asof}
+    merged = {p.overall: p for p in s.picks}
+    merged.update({p.overall: p for p in parsed})
+    s.picks = [merged[n] for n in sorted(merged)]
+    s.source = "espn"
+    s.browser_sync_asof = _now_iso()
+    s.espn_error = None
+    _save_session()
+    return {"n_picks": len(s.picks), "accepted": len(parsed),
+            "added_mappings": added_mappings,
+            "browser_sync_asof": s.browser_sync_asof}
 
 
 @router.post("/rosters/refresh")
@@ -670,6 +807,7 @@ def reset() -> dict:
     """Clear the picks (my_team_id and the source survive — reset is for redoing a
     draft, not for forgetting who I am)."""
     _session.picks = []
+    _session.browser_sync_asof = None
     _save_session()
     return {"n_picks": 0}
 

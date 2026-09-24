@@ -434,6 +434,21 @@ ingests any picks already made, and then polls every four seconds while `/room` 
 Mock leagues use temporary league ids, so merely joining a random mock without connecting its
 URL leaves the app watching whichever real league or prior mock was connected previously.
 
+**Live picks require the local browser bridge.** ESPN's `mDraftDetail` league feed reports that
+the draft is in progress but leaves its pick array as placeholders until later. To relay the
+picks already visible in your ESPN tab:
+
+1. Open `chrome://extensions`, enable **Developer mode**, and click **Load unpacked**.
+2. Select this repository's `browser-extension/` folder.
+3. Reload the ESPN draft tab. A bottom-right **Draft bridge connected** badge should appear.
+4. Keep the ESPN draft tab and the local `/room` page open. The extension sends only pick ids,
+   player names/eligibility, order, team id, and the league id to `127.0.0.1:8787`; it does not
+   send cookies, `memberId`, page HTML, chat, or make picks. The local room merges each snapshot
+   and updates automatically.
+
+Chrome retains an unpacked extension between mocks; after code changes, use its **Reload** button
+on `chrome://extensions`. Manual mode remains the no-extension fallback.
+
 **ESPN access.** The feed reads a private league, so it needs two browser cookies. Put them in
 `.env` at the repo root (**gitignored** — never in `config/`, which is committed):
 

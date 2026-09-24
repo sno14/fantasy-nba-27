@@ -1891,6 +1891,16 @@ ephemeral; `/room` now accepts the full live URL and atomically connects, select
 and starts polling. This verifies discovery/connection, **not live pick latency**; the mock-draft
 latency rung remains open until picks are observed while a room is in progress.
 
+**2026-09-24 live result and correction:** the rung failed for REST polling. During mock league
+`1559369172`, ESPN returned `inProgress=true` and 156 allocated pick rows, but every row remained
+`playerId=-1` while picks were visibly occurring in the draft client. Repeated four-second polls
+never advanced. Therefore `mDraftDetail` is settings/status plus completed-draft import, **not the
+live pick transport**. The local app now ships `browser-extension/`, a read-only Chrome bridge
+that observes the already-rendered draft-client state and posts only normalized pick facts to
+`/api/draft/browser-sync`; REST refreshes are prevented from erasing those browser-sourced picks.
+Manual entry remains the fallback. The remaining verification is exercising that browser bridge
+against the next active mock and pinning any ESPN client-state shape changes found there.
+
 Build a narrow adapter so the unknown stays in one file:
 ```python
 # src/fantasy_nba/draft/feed.py

@@ -195,6 +195,20 @@ def test_build_player_map_joins_and_records_unmatched():
     assert m.match_rate == pytest.approx(2 / 3)
 
 
+def test_build_player_map_resolves_returning_player_absent_from_latest_season():
+    stats = pd.DataFrame({
+        "SEASON": ["2024-25", "2025-26"],
+        "PLAYER_ID": [1630169, 203999],
+        "PLAYER_NAME": ["Tyrese Haliburton", "Nikola Jokić"],
+    })
+    espn = [{"id": 4396993, "fullName": "Tyrese Haliburton", "eligibleSlots": [0, 1, 11]}]
+
+    m = ids.build_player_map(espn, stats)
+
+    assert m.nba_id(4396993) == 1630169
+    assert m.eligible_of[1630169] == {"PG", "SG"}
+
+
 def test_unmatched_board_player_hard_fails():
     """The narrow guard: a player we'd actually draft failing to resolve is a real bug."""
     espn = [{"id": 3112335, "fullName": "Nikola Jokic", "eligibleSlots": [4]}]

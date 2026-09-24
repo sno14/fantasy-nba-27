@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Fantasy NBA Draft Bridge",
+  "version": "0.1.3",
+  "description": "Reads completed picks from an open ESPN basketball draft and sends them to the local Fantasy NBA app.",
+  "host_permissions": [
+    "http://127.0.0.1:8787/*",
+    "http://localhost:8787/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://fantasy.espn.com/basketball/draft*"],
+      "js": ["page.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://fantasy.espn.com/basketball/draft*"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "world": "ISOLATED"
+    }
+  ]
+}

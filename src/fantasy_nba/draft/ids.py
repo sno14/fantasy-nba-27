@@ -134,7 +134,9 @@ def build_player_map(
 
     ``espn_players``: raw rows from ``EspnPollFeed.player_universe()`` (need ``id``,
     ``fullName``, ``eligibleSlots``).
-    ``season``: which season's stats rows to join against; defaults to the latest present.
+    ``season``: when supplied, restrict identity matching to that season. When omitted, use
+    all historical rows so returning players who missed the latest season (for example an
+    Achilles absence) still resolve when they reappear in ESPN's draft pool.
     ``board_ids``: when given, the guard is evaluated against *these* players — i.e. the ones
     we would actually draft. This is the honest scope: a miss inside the board is a bug, a
     miss outside it is ESPN carrying a retiree.
@@ -145,8 +147,6 @@ def build_player_map(
     ss = season_stats
     if season is not None:
         ss = ss[ss["SEASON"] == season]
-    elif "SEASON" in ss.columns and len(ss):
-        ss = ss[ss["SEASON"] == ss["SEASON"].max()]
 
     ours: dict[str, int] = {}
     for row in ss[["PLAYER_ID", "PLAYER_NAME"]].drop_duplicates().itertuples(index=False):

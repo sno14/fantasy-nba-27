@@ -54,6 +54,9 @@ app = FastAPI(title="fantasy-nba-27", docs_url="/api/docs", openapi_url="/api/op
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    # Unpacked Chrome extensions receive a stable 32-character a-p id. The read-only ESPN
+    # draft bridge posts pick facts to this loopback server; no public web origin is allowed.
+    allow_origin_regex=r"^chrome-extension://[a-p]{32}$",
     allow_methods=["*"],
     allow_headers=["*"],
 )

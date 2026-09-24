@@ -275,6 +275,7 @@ export interface DraftStateResponse {
   team_ids: number[];
   settings: DraftSettings | null;
   espn_error: string | null;
+  browser_sync_asof: string | null;
   espn_ready: boolean;
   /** false = no ESPN map cached yet, so no slot eligibility and no positional scarcity. */
   has_positions: boolean;
