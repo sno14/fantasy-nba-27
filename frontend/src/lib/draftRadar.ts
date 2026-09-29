@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export type RadarLabel = "strong_target" | "target" | "fade" | "strong_fade" | "";
 
@@ -19,18 +19,42 @@ export interface DraftTarget {
 export type DraftTargets = Record<string, DraftTarget>;
 
 export const TARGETS_KEY = "fantasy-nba-draft-targets-v1";
+let sessionTargets: DraftTargets | undefined;
+let unavailable = false;
 
 function loadTargets(): DraftTargets {
+  if (sessionTargets) return sessionTargets;
   try {
     const value = JSON.parse(localStorage.getItem(TARGETS_KEY) || "{}");
-    return value && typeof value === "object" ? value as DraftTargets : {};
-  } catch {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+    return Object.fromEntries(Object.entries(value).filter(([key, target]) => {
+      const t = target as DraftTarget | null;
+      return /^\d+$/.test(key) && t && typeof t.note === "string" &&
+        (t.takeBy === null || (Number.isInteger(t.takeBy) && t.takeBy > 0));
+    })) as DraftTargets;
+  } catch (error) {
+    unavailable = !(error instanceof SyntaxError);
     return {};
   }
 }
 
 export function useDraftTargets() {
   const [targets, setTargets] = useState<DraftTargets>(loadTargets);
+  const [storageUnavailable, setStorageUnavailable] = useState(unavailable);
+  useEffect(() => {
+    const refresh = () => { setTargets(loadTargets()); setStorageUnavailable(unavailable); };
+    const external = (event: StorageEvent) => { if (event.key === TARGETS_KEY) { sessionTargets = undefined; refresh(); } };
+    window.addEventListener("watchlist-change", refresh);
+    window.addEventListener("storage", external);
+    return () => { window.removeEventListener("watchlist-change", refresh); window.removeEventListener("storage", external); };
+  }, []);
+  const save = (next: DraftTargets) => {
+    sessionTargets = next;
+    try { localStorage.setItem(TARGETS_KEY, JSON.stringify(next)); }
+    catch { unavailable = true; setStorageUnavailable(true); }
+    setTargets(next);
+    window.dispatchEvent(new Event("watchlist-change"));
+  };
 
   const edit = (row: RadarRow) => {
     const key = String(row.PLAYER_ID);
@@ -44,23 +68,22 @@ export function useDraftTargets() {
     if (raw.trim().toUpperCase() === "REMOVE") {
       const next = { ...targets };
       delete next[key];
-      localStorage.setItem(TARGETS_KEY, JSON.stringify(next));
-      setTargets(next);
+      save(next);
       return;
     }
     const parsed = raw.trim() ? Number(raw) : null;
-    if (parsed != null && (!Number.isFinite(parsed) || parsed < 1)) {
-      window.alert("Take-by pick must be a positive overall pick number.");
+    if (parsed != null && (!Number.isInteger(parsed) || parsed < 1 || parsed > 10000)) {
+      window.alert("Take-by pick must be a whole number from 1 to 10,000.");
       return;
     }
     const noteInput = window.prompt("Private draft note (optional)", existing?.note || "");
     const note = noteInput == null ? (existing?.note || "") : noteInput;
+    if (note.length > 10000) { window.alert("Keep notes under 10,000 characters."); return; }
     const next = { ...targets, [key]: { takeBy: parsed == null ? null : Math.round(parsed), note } };
-    localStorage.setItem(TARGETS_KEY, JSON.stringify(next));
-    setTargets(next);
+    save(next);
   };
 
-  return { targets, edit };
+  return { targets, save, edit, storageUnavailable };
 }
 
 export function radarName(label?: string | null): string {

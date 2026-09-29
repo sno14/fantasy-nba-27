@@ -23,6 +23,9 @@ See [ROADMAP.md](ROADMAP.md) for the build plan, current progress, and modeling 
 7. **[docs/ui-views-plan.md](docs/ui-views-plan.md)** — the web-app view build-out spec
    (V1–V6 manager views: trends, trade targets, waivers, my-team, matchup, schedule
    strength) with its own progress tracker; product work, no ledger entries.
+   **[docs/product-experience-plan.md](docs/product-experience-plan.md)** extends it with
+   board usability, draft planning/practice, change history, rotation context,
+   personal streaming, trade scenarios, Today and player scenario tools.
 8. **[data/manual/bbm_transcripts/README.md](data/manual/bbm_transcripts/README.md)** — the
    analyst-layer workflow contract: BBM transcript drop zone, the triangulation rubric that
    sizes each fpts_delta (model × BBM mechanism × judgment; target-level sizing — delta =
@@ -301,6 +304,40 @@ take-by pick and note in that browser. It deliberately excludes live ESPN state,
 roster/waiver/matchup tools, raw data, private BBM
 notes and rationales, and analyst proposal editing. Those remain in the local app.
 
+The public board offers Draft, Performance, Risk and Full detail column presets, with
+Automatic/Table/Cards layouts. Automatic uses expandable player cards on phones; the
+sort selector works in either layout. Filters, sorting and display choices persist in
+that browser, and Radar chips open their explanation in the player detail. Reset
+filters restores the default search/filter/sort settings while keeping the chosen layout.
+
+Both interfaces offer **Copy link** for board settings, players and comparisons.
+For example, the public site accepts `#board?player=203999` and
+`#compare?ids=203999,1641705`; the local app uses `/players/203999` and
+`/compare?ids=203999,1641705`. Browser back/forward and reload restore the view.
+Private target notes and take-by picks stay out of links.
+
+Use **Export watchlist / Import watchlist** on either Draft Board to move targets,
+take-by picks and Unicode notes between browsers or the two apps. Imports preview
+merge/replace choices and unknown IDs; invalid files leave your watchlist intact.
+Backups use the current target season, version 1, with a 1 MB limit. The file includes
+your private notes. Copying a board with Watchlist selected shares the All filter;
+transfer the watchlist separately. Shared format checks run from the repo root with
+`node tests/test_workspace.mjs`.
+
+To preview the public site locally, run
+`python -m http.server 8788 --bind 127.0.0.1 --directory static` from the repo root.
+The full app remains at port 8787 via `python scripts/serve.py`; rebuild its frontend
+after changes with `npm --prefix frontend run build`. Both boards have Draft,
+Performance, Risk and Full detail presets and Automatic/Table/Cards layouts. Local
+mobile navigation is available from Menu; Radar and analyst signals have a dialog
+for touch and keyboard users. Local historical boards omit current eligibility.
+
+Optional browser verification: with both previews running, real local caches and
+Python Playwright/Chromium installed, run `python scripts/check_product_portability.py`.
+It uses isolated browser contexts and writes disposable results to `.tmp/ux-review/`.
+The completed tracker and next-session handoff are in
+[docs/product-experience-plan.md](docs/product-experience-plan.md).
+
 `python scripts/serve.py` serves the app at http://127.0.0.1:8787 — a FastAPI backend
 (`src/fantasy_nba/api/`) wrapping the same model code the CLI uses, plus a React frontend
 (`frontend/`; light/dark, one-time `cd frontend && npm install && npm run build`). Views:
@@ -389,6 +426,13 @@ notes and rationales, and analyst proposal editing. Those remain in the local ap
   placeholder until `fantasy_playoff_weeks_confirmed: true` is set (mid-Aug ESPN
   calendar). Backed by `/api/schedule-strength`.
 - **Data** — browse the raw parquet caches (season stats, game logs, bio, rosters, …).
+
+The local Draft Board also offers Draft, Performance, Risk and Full detail column
+presets, saved filters/display choices, and Automatic/Table/Cards layouts. Phone
+navigation opens from Menu; Radar and analyst chips have tappable explanations.
+Local ranks and tiers use the selected season-value stance; sorting rearranges the
+displayed top-N without changing that stance. Current positions come from the cached
+ESPN player map; historical boards do not use today's eligibility.
 
 All six manager views (V1–V6) shipped 2026-07-16 per
 [docs/ui-views-plan.md](docs/ui-views-plan.md), with **V3b (live ESPN rosters) shipped

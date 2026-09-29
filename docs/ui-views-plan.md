@@ -34,6 +34,13 @@ projection edge converts to wins.
 
 ## Progress tracker  ← update in the same commit as the work
 
+Follow-up experience and new-feature work is tracked in
+[product-experience-plan.md](product-experience-plan.md) (2026-09-29). It builds on
+these shipped views; this document remains the V1–V6 implementation record.
+P1a–P1c are implemented as of 2026-09-30: public/local board usability, responsive
+navigation, shareable URLs and watchlist portability. Next is P2 My Draft Plan on
+both interfaces; resume from the product plan's latest session handoff.
+
 | View | What | Backend | Frontend | Tests | Shipped |
 |---|---|---|---|---|---|
 | A | Shared foundations: `api/season.py` router + trend/market loaders + fixture extension + nav sections | ☑ | ☑ (nav) | ☑ | ☑ 2026-07-16 |
@@ -49,6 +56,14 @@ Build order: **A → V1 → V6 → V2 → V3 → V4 → V5.** V3–V5 share the 
 which ships with A; V4/V5 reuse V3's week-games join; V5 reuses V4's per-roster totals.
 
 ## Session hand-off notes (append, dated, newest first)
+
+- **2026-09-30: product experience foundations complete (P1a–P1c).** The public
+  board has presets, mobile cards and saved settings; the local app has matching
+  board controls, accessible explanations and mobile navigation. Both support
+  player/comparison links, browser history and watchlist backup/restore with shared
+  validation. V1–V6 behaviour and projection semantics are preserved. TypeScript,
+  build, relevant API/export tests and browser checks passed. Detailed work and P2
+  handoff: [product-experience-plan.md](product-experience-plan.md).
 
 - **2026-07-17 (session 4): V3b live ESPN rosters shipped.** `EspnPollFeed.league_rosters()`
   reads the `mRoster` view → `{team_id: [espn_id]}` (pure `feed.parse_rosters()`, robust to

@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   BrowserRouter,
   Link,
@@ -25,6 +25,7 @@ import Player from "./views/Player";
 import Compare from "./views/Compare";
 import Analyst from "./views/Analyst";
 import DataBrowser from "./views/DataBrowser";
+import { parseIds } from "../../static/workspace.mjs";
 
 // --------------------------------------------------------------------------- theme
 function useTheme() {
@@ -37,7 +38,7 @@ function useTheme() {
       document.documentElement.dataset.theme = next === "dark" ? "dark" : "";
       if (next === "dark") document.documentElement.dataset.theme = "dark";
       else delete document.documentElement.dataset.theme;
-      localStorage.setItem("theme", next);
+      try { localStorage.setItem("theme", next); } catch { /* Theme still works in this session. */ }
       return next;
     });
   }, []);
@@ -50,6 +51,7 @@ interface CompareCtx {
   names: Record<number, string>;
   toggle: (id: number, name: string) => void;
   clear: () => void;
+  linkError?: string;
 }
 const CompareContext = createContext<CompareCtx>({ ids: [], names: {}, toggle: () => {}, clear: () => {} });
 export const useCompare = () => useContext(CompareContext);
@@ -57,29 +59,43 @@ export const MetaContext = createContext<Meta | null>(null);
 export const useMeta = () => useContext(MetaContext);
 
 function CompareProvider({ children }: { children: React.ReactNode }) {
+  const loc = useLocation();
+  const nav = useNavigate();
   const [sel, setSel] = useState<{ id: number; name: string }[]>(() => {
     try {
-      return JSON.parse(sessionStorage.getItem("compare") ?? "[]");
+      const saved: unknown = JSON.parse(sessionStorage.getItem("compare") ?? "[]");
+      return Array.isArray(saved) ? saved.filter((item) => item && Number.isInteger(item.id) && typeof item.name === "string").slice(0, 4) : [];
     } catch {
       return [];
     }
   });
-  useEffect(() => sessionStorage.setItem("compare", JSON.stringify(sel)), [sel]);
+  const linked = useMemo(() => {
+    const raw = new URLSearchParams(loc.search).get("ids");
+    if (loc.pathname !== "/compare" || raw === null) return null;
+    try { return { ids: parseIds(raw), error: "" }; }
+    catch (error) { return { ids: [] as number[], error: (error as Error).message }; }
+  }, [loc.pathname, loc.search]);
+  const active = useMemo(() => linked ? linked.ids.map(id => ({ id, name: sel.find(item => item.id === id)?.name || `Player ${id}` })) : sel, [linked, sel]);
+  useEffect(() => {
+    if (linked) setSel(current => linked.ids.map(id => ({ id, name: current.find(item => item.id === id)?.name || `Player ${id}` })));
+  }, [linked]);
+  useEffect(() => {
+    if (loc.pathname === "/compare" && !linked) nav(`/compare?ids=${sel.map(item => item.id).join(",")}`, { replace: true });
+  }, [loc.pathname, linked, nav, sel]);
+  useEffect(() => { try { sessionStorage.setItem("compare", JSON.stringify(sel)); } catch { /* Keep the current selection. */ } }, [sel]);
   const value = useMemo<CompareCtx>(
     () => ({
-      ids: sel.map((s) => s.id),
-      names: Object.fromEntries(sel.map((s) => [s.id, s.name])),
-      toggle: (id, name) =>
-        setSel((cur) =>
-          cur.some((s) => s.id === id)
-            ? cur.filter((s) => s.id !== id)
-            : cur.length >= 4
-              ? cur // max four side-by-side
-              : [...cur, { id, name }],
-        ),
-      clear: () => setSel([]),
+      ids: active.map((s) => s.id),
+      names: Object.fromEntries(active.map((s) => [s.id, s.name])),
+      linkError: linked?.error,
+      toggle: (id, name) => {
+        const next = active.some(item => item.id === id) ? active.filter(item => item.id !== id) : active.length >= 4 ? active : [...active, { id, name }];
+        setSel(next);
+        if (loc.pathname === "/compare") nav(`/compare?ids=${next.map(item => item.id).join(",")}`);
+      },
+      clear: () => { setSel([]); if (loc.pathname === "/compare") nav("/compare?ids="); },
     }),
-    [sel],
+    [active, linked, loc.pathname, nav],
   );
   return <CompareContext.Provider value={value}>{children}</CompareContext.Provider>;
 }
@@ -90,19 +106,21 @@ function CompareTray() {
   const loc = useLocation();
   if (ids.length === 0 || loc.pathname === "/compare") return null;
   return (
-    <div className="fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full border border-bdr bg-surface px-3 py-1.5 shadow-[var(--shadow)]">
+    <div className="fixed bottom-3 left-3 right-3 z-40 flex items-center justify-center gap-2 rounded-full border border-bdr bg-surface px-3 py-2 shadow-[var(--shadow)] md:bottom-4 md:left-1/2 md:right-auto md:max-w-[calc(100vw-32px)] md:-translate-x-1/2" aria-label="Selected players for comparison">
       <span className="text-xs font-medium text-ink-2">Compare:</span>
+      <div className="hidden min-w-0 items-center gap-1 overflow-hidden sm:flex">
       {ids.map((id) => (
         <Chip key={id} tone="accent">{names[id]}</Chip>
       ))}
+      </div>
       <button
-        onClick={() => nav("/compare")}
+        onClick={() => nav(`/compare?ids=${ids.join(",")}`)}
         disabled={ids.length < 2}
-        className="rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-ink transition-opacity disabled:opacity-40"
+        className="shrink-0 rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-ink transition-opacity disabled:opacity-40"
       >
         Compare {ids.length >= 2 ? `(${ids.length})` : ""}
       </button>
-      <button onClick={clear} className="px-1 text-xs text-ink-3 hover:text-ink-2" title="Clear">
+      <button onClick={clear} className="shrink-0 px-2 py-1 text-xs text-ink-3 hover:text-ink-2" title="Clear" aria-label="Clear comparison">
         ✕
       </button>
     </div>
@@ -129,15 +147,29 @@ const NAV = [
   { section: "Research", to: "/data", label: "Data", icon: "M4 6c0-1.5 3.6-3 8-3s8 1.5 8 3-3.6 3-8 3-8-1.5-8-3zm0 0v12c0 1.5 3.6 3 8 3s8-1.5 8-3V6M4 12c0 1.5 3.6 3 8 3s8-1.5 8-3" },
 ];
 
+function Navigation({ onNavigate }: { onNavigate?: () => void }) {
+  return <nav className="flex flex-col gap-0.5 px-2.5" aria-label="Main navigation">
+    {NAV.map((n, i) => <div key={n.to}>
+      {(i === 0 || NAV[i - 1].section !== n.section) && <div className="px-2.5 pb-0.5 pt-3 text-[10px] font-bold uppercase tracking-wider text-ink-3">{n.section}</div>}
+      <NavLink to={n.to} end={n.to === "/"} onClick={onNavigate}
+        className={({ isActive }) => `flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-colors ${isActive ? "bg-accent-soft text-accent" : "text-ink-2 hover:bg-surface-2 hover:text-ink"}`}>
+        <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={n.icon} /></svg>
+        {n.label}
+      </NavLink>
+    </div>)}
+  </nav>;
+}
+
 function Shell() {
   const { theme, toggle } = useTheme();
   const meta = useApi<Meta>("/api/meta").data;
+  const drawer = useRef<HTMLDialogElement>(null);
 
   return (
     <MetaContext.Provider value={meta ?? null}>
       <div className="flex h-full">
         {/* ------------------------------------------------------------- sidebar */}
-        <aside className="flex w-[190px] shrink-0 flex-col border-r border-bdr bg-surface">
+        <aside className="scroll-thin hidden w-[190px] shrink-0 flex-col overflow-y-auto border-r border-bdr bg-surface md:flex">
           <Link to="/" className="flex items-center gap-2.5 px-4 pb-4 pt-5">
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-accent text-[15px] font-black text-accent-ink">
               27
@@ -147,30 +179,7 @@ function Shell() {
               <span className="block text-[11px] text-ink-3">2026-27 projections</span>
             </span>
           </Link>
-          <nav className="flex flex-col gap-0.5 px-2.5">
-            {NAV.map((n, i) => [
-              i > 0 && NAV[i - 1].section !== n.section && (
-                <div key={`s-${n.section}`} className="px-2.5 pb-0.5 pt-3 text-[10px] font-bold uppercase tracking-wider text-ink-3">
-                  {n.section}
-                </div>
-              ),
-              <NavLink
-                key={n.to}
-                to={n.to}
-                end={n.to === "/"}
-                className={({ isActive }) =>
-                  `flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-colors ${
-                    isActive ? "bg-accent-soft text-accent" : "text-ink-2 hover:bg-surface-2 hover:text-ink"
-                  }`
-                }
-              >
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d={n.icon} />
-                </svg>
-                {n.label}
-              </NavLink>,
-            ])}
-          </nav>
+          <Navigation />
           <div className="mt-auto space-y-2 px-4 pb-4 text-[11px] text-ink-3">
             {meta && (
               <div className="space-y-1.5">
@@ -199,10 +208,20 @@ function Shell() {
             </button>
           </div>
         </aside>
+        <dialog ref={drawer} className="navigation-drawer" aria-labelledby="navigation-title" onClick={(event) => { if (event.target === event.currentTarget) drawer.current?.close(); }}>
+          <div className="flex items-center justify-between border-b border-bdr p-4"><strong id="navigation-title">Fantasy NBA</strong><button onClick={() => drawer.current?.close()} aria-label="Close navigation" className="rounded px-3 py-2">✕</button></div>
+          <Navigation onNavigate={() => drawer.current?.close()} />
+          <button onClick={toggle} className="m-4 rounded-lg border border-bdr px-3 py-2">{theme === "dark" ? "Dark" : "Light"} theme</button>
+          {meta?.fixture && <div className="px-4 pb-4"><Chip tone="warn">⚠ synthetic data</Chip></div>}
+        </dialog>
 
         {/* ------------------------------------------------------------- content */}
         <main className="scroll-thin min-w-0 flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-[1400px] px-6 py-5">
+          <div className="flex items-center justify-between border-b border-bdr bg-surface px-3 py-2 md:hidden">
+            <Link to="/" className="text-sm font-bold">Fantasy NBA · 2026–27</Link>
+            <button onClick={() => drawer.current?.showModal()} aria-haspopup="dialog" className="rounded-lg border border-bdr px-3 py-2 text-xs font-semibold">Menu</button>
+          </div>
+          <div className="mx-auto max-w-[1400px] px-3 py-5 pb-24 sm:px-6">
             <Routes>
               <Route path="/" element={<DraftBoard />} />
               <Route path="/room" element={<DraftRoom />} />

@@ -42,6 +42,8 @@ node_modules/
 frontend/.vite/
 
 # Tooling
+.run/
+.tmp/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/

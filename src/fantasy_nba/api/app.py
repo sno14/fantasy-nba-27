@@ -34,7 +34,7 @@ from ..models.analyst import apply_overrides, name_key, parse_overrides
 from ..models.uncertainty import rank_board
 from ..scoring import load_scoring
 from . import boards
-from .draft import router as draft_router
+from .draft import player_positions, router as draft_router
 from .season import router as season_router
 
 PROPOSALS_PATH = CONFIG_DIR / "analyst_proposals.yaml"
@@ -131,12 +131,17 @@ def board(
         analyst and target == boards.CURRENT_TARGET and "analyst_action" in b.columns)
     n_adjusted = int((~b["analyst_action"].fillna("").isin(["", "none"])).sum()) \
         if analyst_applied else 0
+    rows = _records(b[cols])
+    # Today's platform eligibility is context for today's draft, never a historical input.
+    eligibility = player_positions() if target == boards.CURRENT_TARGET else {}
+    for row in rows:
+        row["positions"] = eligibility.get(int(row["PLAYER_ID"]), [])
     return {
         "target": target, "model": model, "stance": stance,
         "analyst_applied": analyst_applied, "n_adjusted": n_adjusted,
         "has_actuals": "actual_rank" in b.columns,
         "teams": sorted(b["TEAM_ABBREVIATION"].dropna().unique().tolist()),
-        "rows": _records(b[cols]),
+        "rows": rows,
     }
 
 

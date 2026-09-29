@@ -1,6 +1,8 @@
 // Small shared UI primitives: selects, segmented controls, badges, cards, toggles.
 
-import { ReactNode } from "react";
+import { createContext, ReactNode, useContext, useId } from "react";
+
+const FieldLabelContext = createContext<string | undefined>(undefined);
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
@@ -11,11 +13,14 @@ export function Card({ children, className = "" }: { children: ReactNode; classN
 }
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
+  const labelId = useId();
   return (
+    <FieldLabelContext.Provider value={labelId}>
     <label className="flex flex-col gap-1 text-xs font-medium text-ink-2">
-      <span>{label}</span>
+      <span id={labelId}>{label}</span>
       {children}
     </label>
+    </FieldLabelContext.Provider>
   );
 }
 
@@ -30,8 +35,10 @@ export function Select({
   options: { value: string; label: string }[];
   title?: string;
 }) {
+  const labelId = useContext(FieldLabelContext);
   return (
     <select
+      aria-labelledby={labelId}
       title={title}
       value={value}
       onChange={(e) => onChange(e.target.value)}
@@ -55,12 +62,14 @@ export function Segmented({
   onChange: (v: string) => void;
   options: { value: string; label: string; title?: string }[];
 }) {
+  const labelId = useContext(FieldLabelContext);
   return (
-    <div className="flex h-8 items-stretch rounded-lg border border-bdr bg-surface-2 p-0.5">
+    <div role="group" aria-labelledby={labelId} className="flex min-h-8 max-w-full flex-wrap items-stretch rounded-lg border border-bdr bg-surface-2 p-0.5">
       {options.map((o) => (
         <button
           key={o.value}
           title={o.title}
+          aria-pressed={value === o.value}
           onClick={() => onChange(o.value)}
           className={`rounded-md px-2.5 text-[13px] font-medium transition-colors ${
             value === o.value
@@ -131,6 +140,8 @@ export function SearchInput({
         <path d="m14 14 4 4" strokeLinecap="round" />
       </svg>
       <input
+        type="search"
+        aria-label={placeholder || "Search"}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}

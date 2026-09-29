@@ -6,7 +6,8 @@
     <title>Fantasy NBA — 2026-27</title>
     <script>
       // Apply the stored theme before first paint to avoid a flash.
-      const t = localStorage.getItem("theme");
+      let t = null;
+      try { t = localStorage.getItem("theme"); } catch {}
       if (t === "dark" || (!t && matchMedia("(prefers-color-scheme: dark)").matches)) {
         document.documentElement.dataset.theme = "dark";
       }

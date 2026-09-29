@@ -1,12 +1,87 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useCompare, useMeta } from "../App";
 import { BoardResponse, BoardRow, useApi } from "../lib/api";
 import { f0, f1, parseAction, signed } from "../lib/format";
-import { Column, DataTable } from "../components/DataTable";
+import { Column, DataTable, sortTableRows, TableSort } from "../components/DataTable";
+import { BoardCards } from "../components/BoardCards";
 import { RangePlot, RangeStrip, RiskMeter } from "../components/charts";
 import { Card, Chip, EmptyNote, ErrorNote, Field, SearchInput, Segmented, Select, Spinner, Toggle } from "../components/ui";
 import { radarName, radarTone, targetTitle, useDraftTargets } from "../lib/draftRadar";
+import { useStoredPreferences } from "../lib/preferences";
+import { CopyLink, WatchlistBackup } from "../components/Portability";
+
+interface BoardPreferences {
+  target: string; model: string; stance: string; analyst: boolean;
+  team: string; q: string; topN: number; showChart: boolean; radarFilter: string;
+  preset: string; layout: string; sort: TableSort;
+}
+const DEFAULTS: BoardPreferences = {
+  target: "2026-27", model: "learned", stance: "safe", analyst: true,
+  team: "All", q: "", topN: 100, showChart: false, radarFilter: "All",
+  preset: "draft", layout: "auto", sort: { key: "rank", dir: 1 },
+};
+const PRESETS: Record<string, string[]> = {
+  draft: ["rank", "player", "positions", "fpts_pg", "adp", "radar"],
+  performance: ["rank", "player", "positions", "fpts_pg", "previous_fpts_pg", "fpts_pg_change", "mpg", "gp"],
+  risk: ["rank", "player", "fpts_pg", "gp", "range", "median", "risk"],
+};
+const SORT_KEYS = ["rank", "player", "positions", "age", "gp", "mpg", "fpts_pg", "previous_fpts_pg", "fpts_pg_change", "analyst", "median", "risk", "vor", "adp", "radar", "actual_rank", "act_fpg", "act_total"];
+
+function validatePreferences(value: unknown): BoardPreferences {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return DEFAULTS;
+  const saved = value as Record<string, unknown>;
+  const next = { ...DEFAULTS };
+  for (const key of ["target", "model", "stance", "team", "q"] as const) if (typeof saved[key] === "string") next[key] = saved[key];
+  for (const key of ["analyst", "showChart"] as const) if (typeof saved[key] === "boolean") next[key] = saved[key];
+  if ([50, 100, 150, 200, 300].includes(saved.topN as number)) next.topN = saved.topN as number;
+  if (["All", "Targets", "Fades", "Watchlist"].includes(saved.radarFilter as string)) next.radarFilter = saved.radarFilter as string;
+  if (["draft", "performance", "risk", "full"].includes(saved.preset as string)) next.preset = saved.preset as string;
+  if (["auto", "table", "cards"].includes(saved.layout as string)) next.layout = saved.layout as string;
+  const sort = saved.sort as Partial<TableSort> | null;
+  if (sort && SORT_KEYS.includes(sort.key || "") && (sort.dir === 1 || sort.dir === -1)) next.sort = { key: sort.key!, dir: sort.dir };
+  return next;
+}
+
+function boardQuery(prefs: BoardPreferences) {
+  return new URLSearchParams(Object.entries({ ...prefs, sort: prefs.sort.key, direction: prefs.sort.dir }).map(([key, value]) => [key, String(value)])).toString();
+}
+
+function readBoardQuery(search: string, fallback: BoardPreferences) {
+  const params = new URLSearchParams(search);
+  const next = { ...fallback };
+  const invalid: string[] = [];
+  for (const key of Object.keys(DEFAULTS) as (keyof BoardPreferences)[]) {
+    const raw = params.get(key); if (raw === null || key === "sort") continue;
+    let value: unknown = raw;
+    if (["analyst", "showChart"].includes(key)) value = raw === "true" ? true : raw === "false" ? false : undefined;
+    if (key === "topN") value = Number(raw);
+    const validated = validatePreferences({ [key]: value });
+    if (value === undefined || validated[key] !== value || raw.length > 500) invalid.push(key);
+    else Object.assign(next, { [key]: value });
+  }
+  const sort = params.get("sort"); const direction = params.get("direction");
+  if (sort !== null || direction !== null) {
+    if ((sort === null || SORT_KEYS.includes(sort)) && (direction === null || ["1", "-1"].includes(direction)))
+      next.sort = { key: sort || next.sort.key, dir: direction === null ? next.sort.dir : Number(direction) as 1 | -1 };
+    else invalid.push("sort");
+  }
+  return { prefs: next, invalid };
+}
+
+function SignalDetail({ row, note, onClose }: { row: BoardRow | null; note?: string; onClose: () => void }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => { if (row && !dialog.current?.open) dialog.current?.showModal(); }, [row]);
+  return <dialog ref={dialog} className="board-signal-dialog" aria-labelledby="signal-title" onClose={onClose}
+    onClick={event => { if (event.target === event.currentTarget) dialog.current?.close(); }}>
+    <header className="mb-4 flex items-start justify-between gap-4"><h2 id="signal-title" className="font-bold">{row?.PLAYER_NAME}</h2><button aria-label="Close explanation" onClick={() => dialog.current?.close()} className="rounded px-2 py-1">✕</button></header>
+    {row && <div className="space-y-4 text-sm">
+      <section><h3 className="mb-1 font-semibold">Draft Radar</h3><p className="whitespace-pre-wrap break-words text-ink-2">{row.radar_reasons || valueCall(row)?.title || "No market disagreement recorded."}</p></section>
+      {note && <section><h3 className="mb-1 font-semibold">Your priority target</h3><p className="whitespace-pre-wrap break-words text-ink-2">{note}</p></section>}
+      {row.analyst_action && row.analyst_action !== "none" && <section><h3 className="mb-1 font-semibold">Analyst layer</h3><p className="text-ink-2">{row.analyst_action} · {row.analyst_category} · {row.analyst_date}</p><p className="mt-2 whitespace-pre-wrap break-words text-ink-2">{row.analyst_rationale || "No rationale recorded."}</p></section>}
+    </div>}
+  </dialog>;
+}
 
 // ADP-vs-board value calls: our board rank vs where the market drafts the player.
 const VALUE_GAP = 12; // picks later than our rank = a discount worth flagging
@@ -32,28 +107,40 @@ function valueCall(row: BoardRow): { tone: "up" | "down"; label: string; title: 
 export default function DraftBoard() {
   const meta = useMeta();
   const nav = useNavigate();
+  const loc = useLocation();
   const compare = useCompare();
-  const { targets, edit: editTarget } = useDraftTargets();
-
-  const [target, setTarget] = useState("2026-27");
-  const [model, setModel] = useState("learned");
-  const [stance, setStance] = useState("safe");
-  const [analyst, setAnalyst] = useState(true);
-  const [team, setTeam] = useState("All");
-  const [q, setQ] = useState("");
-  const [topN, setTopN] = useState(100);
-  const [showChart, setShowChart] = useState(false);
-  const [radarFilter, setRadarFilter] = useState("All");
-
-  const url = `/api/board?target=${target}&model=${model}&stance=${stance}&analyst=${analyst}`;
+  const { targets, edit: editTarget, storageUnavailable: targetStorageUnavailable } = useDraftTargets();
+  const [savedPrefs, setPrefs, storageUnavailable] = useStoredPreferences("fantasy-nba-local-board-preferences-v1", DEFAULTS, validatePreferences);
+  const initialPrefs = useRef(savedPrefs);
+  const route = useMemo(() => readBoardQuery(loc.search, initialPrefs.current), [loc.search]);
+  const prefs = route.prefs;
+  const update = (patch: Partial<BoardPreferences>) => nav(`/?${boardQuery({ ...prefs, ...patch })}`, { replace: Object.hasOwn(patch, "q") });
+  useEffect(() => {
+    setPrefs(current => JSON.stringify(current) === JSON.stringify(prefs) ? current : prefs);
+    if (!loc.search) nav(`/?${boardQuery(prefs)}`, { replace: true });
+  }, [prefs, loc.search, nav, setPrefs]);
+  const { analyst, team, q, topN, showChart, radarFilter } = prefs;
+  const target = meta?.target_seasons.includes(prefs.target) ? prefs.target : meta?.current_target || DEFAULTS.target;
+  const model = meta && Object.hasOwn(meta.models, prefs.model) ? prefs.model : DEFAULTS.model;
+  const stance = meta && Object.hasOwn(meta.stances, prefs.stance) ? prefs.stance : DEFAULTS.stance;
+  const [signal, setSignal] = useState<BoardRow | null>(null);
+  const url = meta ? `/api/board?target=${target}&model=${model}&stance=${stance}&analyst=${analyst}` : null;
   const { data, error, loading } = useApi<BoardResponse>(url);
+  const playerIndex = useApi<{ rows: { PLAYER_ID: number }[] }>("/api/players");
   const targetStart = Number(target.slice(0, 4));
   const previousSeason = `${targetStart - 1}-${String(targetStart).slice(-2)}`;
+
+  useEffect(() => {
+    if (meta && (target !== prefs.target || model !== prefs.model || stance !== prefs.stance)) nav(`/?${boardQuery({ ...prefs, target, model, stance })}`, { replace: true });
+  }, [meta, target, model, stance, prefs, nav]);
+  useEffect(() => {
+    if (!loading && data?.target === target && team !== "All" && !data.teams.includes(team)) nav(`/?${boardQuery({ ...prefs, team: "All" })}`, { replace: true });
+  }, [loading, data, target, team, prefs, nav]);
 
   const filtered = useMemo(() => {
     if (!data) return [];
     let rows = data.rows;
-    if (q) rows = rows.filter((r) => r.PLAYER_NAME.toLowerCase().includes(q.toLowerCase()));
+    if (q.trim()) rows = rows.filter((r) => `${r.PLAYER_NAME} ${r.TEAM_ABBREVIATION || ""} ${(r.positions || []).join(" ")}`.toLowerCase().includes(q.trim().toLowerCase()));
     if (team !== "All") rows = rows.filter((r) => r.TEAM_ABBREVIATION === team);
     if (radarFilter === "Targets") rows = rows.filter((r) => r.radar_label?.includes("target"));
     if (radarFilter === "Fades") rows = rows.filter((r) => r.radar_label?.includes("fade"));
@@ -85,7 +172,7 @@ export default function DraftBoard() {
   const cols = useMemo<Column<BoardRow>[]>(() => {
     const base: Column<BoardRow>[] = [
       {
-        key: "rank", label: "#", align: "right",
+        key: "rank", label: "Rank", align: "right", title: "Rank under the selected season-value stance",
         sortValue: (r) => r.rank,
         render: (r) => <span className="font-semibold">{r.rank}</span>,
       },
@@ -100,13 +187,15 @@ export default function DraftBoard() {
               onChange={() => compare.toggle(r.PLAYER_ID, r.PLAYER_NAME)}
               onClick={(e) => e.stopPropagation()}
               title="Add to compare"
+              aria-label={`Compare ${r.PLAYER_NAME}`}
               className="h-3.5 w-3.5 accent-[var(--accent)]"
             />
-            <span className="font-medium">{r.PLAYER_NAME}</span>
+            <button onClick={() => nav(`/players/${r.PLAYER_ID}`)} className="font-medium text-left hover:text-accent">{r.PLAYER_NAME}</button>
             <span className="text-[11px] text-ink-3">{r.TEAM_ABBREVIATION ?? ""}</span>
             <button
               onClick={(e) => { e.stopPropagation(); editTarget(r); }}
               title={targets[String(r.PLAYER_ID)] ? "Edit priority target (type REMOVE to clear)" : "Add priority target"}
+              aria-label={`${targets[String(r.PLAYER_ID)] ? "Edit" : "Add"} priority target for ${r.PLAYER_NAME}`}
               className={targets[String(r.PLAYER_ID)] ? "text-warn" : "text-ink-3 hover:text-warn"}
             >
               {targets[String(r.PLAYER_ID)] ? "★" : "☆"}
@@ -122,6 +211,7 @@ export default function DraftBoard() {
         sortValue: (r) => r.fpts_pg,
         render: (r) => <span className="font-semibold">{f1(r.fpts_pg)}</span>,
       },
+      { key: "positions", label: "Position", sortValue: row => row.positions?.join("/") || null, render: row => row.positions?.length ? row.positions.join("/") : "—" },
       {
         key: "previous_fpts_pg", label: `${previousSeason} FP/G`, align: "right",
         title: `Actual ${previousSeason} fantasy points per game under the current scoring settings`,
@@ -145,7 +235,7 @@ export default function DraftBoard() {
           const a = parseAction(r.analyst_action);
           if (!a) return null;
           return (
-            <Chip
+            <button onClick={event => { event.stopPropagation(); setSignal(r); }} aria-label={`Explain analyst adjustment for ${r.PLAYER_NAME}`}><Chip
               tone={a.value > 0 ? "up" : "down"}
               title={
                 (r.analyst_rationale ? `${r.analyst_rationale}\n\n` : "") +
@@ -153,7 +243,7 @@ export default function DraftBoard() {
               }
             >
               {a.value > 0 ? "▲" : "▼"} {Math.abs(a.value).toFixed(1)}
-            </Chip>
+            </Chip></button>
           );
         },
       },
@@ -173,14 +263,13 @@ export default function DraftBoard() {
         hideBelow: "sm",
       },
     ];
-    const hasVor = filtered.some((r) => r.vor != null);
-    const hasAdp = filtered.some((r) => r.adp != null);
+    const hasVor = data?.rows.some((r) => r.vor != null);
     if (hasVor)
       base.push({
         key: "vor", label: "VOR", align: "right", title: "FP/G above league replacement (D1.2)",
         sortValue: (r) => r.vor ?? null, render: (r) => f1(r.vor), hideBelow: "lg",
       });
-    if (hasAdp) {
+    {
       base.push({
         key: "adp", label: "ADP", align: "right", title: "Platform ADP — draft-day availability, not value",
         sortValue: (r) => r.adp ?? null, render: (r) => f0(r.adp), hideBelow: "sm",
@@ -190,10 +279,11 @@ export default function DraftBoard() {
         sortValue: (r) => r.radar_round_gap ?? null,
         render: (r) => {
           const target = targets[String(r.PLAYER_ID)];
-          if (target) return <Chip tone="accent" title={targetTitle(r, target)}>★ {target.takeBy ? `by ${target.takeBy}` : "priority"}</Chip>;
-          if (r.radar_label) return <Chip tone={radarTone(r.radar_label)} title={r.radar_reasons || undefined}>{radarName(r.radar_label)}</Chip>;
+          const explain = (content: React.ReactNode) => <button onClick={event => { event.stopPropagation(); setSignal(r); }} aria-label={`Explain Radar for ${r.PLAYER_NAME}`}>{content}</button>;
+          if (target) return explain(<Chip tone="accent" title={targetTitle(r, target)}>★ {target.takeBy ? `by ${target.takeBy}` : "priority"}</Chip>);
+          if (r.radar_label) return explain(<Chip tone={radarTone(r.radar_label)} title={r.radar_reasons || undefined}>{radarName(r.radar_label)}</Chip>);
           const value = valueCall(r);
-          return value ? <Chip tone={value.tone} title={value.title}>{value.label}</Chip> : null;
+          return value ? explain(<Chip tone={value.tone} title={value.title}>{value.label}</Chip>) : null;
         },
       });
     }
@@ -215,10 +305,23 @@ export default function DraftBoard() {
     return base;
   }, [data, filtered, rMin, rMax, compare, previousSeason, targets, editTarget]);
 
+  const tableColumns = useMemo(() => {
+    const selected = prefs.preset === "full" ? cols : (PRESETS[prefs.preset] || PRESETS.draft)
+      .map(key => cols.find(column => column.key === key))
+      .filter((column): column is Column<BoardRow> => column != null);
+    const actuals = data?.has_actuals ? cols.filter(column => ["actual_rank", "act_fpg", "act_total"].includes(column.key) && !selected.includes(column)) : [];
+    return [...selected, ...actuals].map(column => ({ ...column, hideBelow: undefined }));
+  }, [cols, prefs.preset, data?.has_actuals]);
+  const displayed = useMemo(() => sortTableRows(filtered, cols, prefs.sort), [filtered, cols, prefs.sort]);
+  useEffect(() => {
+    if (!loading && data && !cols.some(column => column.key === prefs.sort.key && column.sortValue)) nav(`/?${boardQuery({ ...prefs, sort: DEFAULTS.sort })}`, { replace: true });
+  }, [loading, data, cols, prefs, nav]);
+  const resetFilters = () => update({ q: "", team: "All", radarFilter: "All", topN: 100, sort: DEFAULTS.sort });
+
   if (!meta) return <Spinner label="Loading…" />;
 
   return (
-    <div className="space-y-4">
+    <div className="local-board space-y-4" data-layout={prefs.layout}>
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-bold tracking-tight">Draft Board</h1>
@@ -230,29 +333,35 @@ export default function DraftBoard() {
         </div>
         <div className="flex flex-wrap items-end gap-2.5">
           <Field label="Season">
-            <Select value={target} onChange={setTarget}
+            <Select value={target} onChange={value => update({ target: value, team: "All" })}
               options={meta.target_seasons.map((s) => ({ value: s, label: s }))} />
           </Field>
           <Field label="Model">
-            <Select value={model} onChange={setModel} title={meta.models[model]}
+            <Select value={model} onChange={value => update({ model: value })} title={meta.models[model]}
               options={Object.keys(meta.models).map((v) => ({ value: v, label: v === "learned" ? "learned (default)" : v }))} />
           </Field>
           <Field label="Rank by">
-            <Segmented value={stance} onChange={setStance}
+            <Segmented value={stance} onChange={value => update({ stance: value })}
               options={Object.entries(meta.stances).map(([v, d]) => ({ value: v, label: v[0].toUpperCase() + v.slice(1), title: d }))} />
           </Field>
         </div>
       </header>
 
+      <div className="flex flex-wrap items-center gap-3"><CopyLink url={`${location.origin}/?${boardQuery({ ...prefs, radarFilter: radarFilter === "Watchlist" ? "All" : radarFilter })}`} />
+        {radarFilter === "Watchlist" && <span className="text-xs text-ink-3">Shared board links show all players; export your watchlist to transfer targets.</span>}
+      </div>
+      {playerIndex.data && <WatchlistBackup season={meta.current_target} knownIds={playerIndex.data.rows.map(row => row.PLAYER_ID)} />}
+      {route.invalid.length > 0 && <p role="status" className="text-xs text-ink-2">Ignored invalid link settings: {route.invalid.join(", ")}. Your saved settings apply.</p>}
+
       <div className="flex flex-wrap items-center gap-2.5">
-        <SearchInput value={q} onChange={setQ} placeholder="Search player…" className="w-56" />
-        <Select value={team} onChange={setTeam}
-          options={[{ value: "All", label: "All teams" }, ...(data?.teams ?? []).map((t) => ({ value: t, label: t }))]} />
-        <Select value={String(topN)} onChange={(v) => setTopN(Number(v))}
-          options={[50, 100, 150, 200, 300].map((n) => ({ value: String(n), label: `Top ${n}` }))} />
-        <Select value={radarFilter} onChange={setRadarFilter}
-          options={["All", "Targets", "Fades", "Watchlist"].map((v) => ({ value: v, label: v === "All" ? "All radar" : v }))} />
-        <Toggle checked={analyst} onChange={setAnalyst} label="Analyst layer (B)" />
+        <SearchInput value={q} onChange={value => update({ q: value })} placeholder="Search player, team or position…" className="w-full sm:w-64" />
+        <Field label="Team"><Select value={team} onChange={value => update({ team: value })}
+          options={[{ value: "All", label: "All teams" }, ...(data?.teams ?? []).map((t) => ({ value: t, label: t }))]} /></Field>
+        <Field label="Show"><Select value={String(topN)} onChange={(v) => update({ topN: Number(v) })}
+          options={[50, 100, 150, 200, 300].map((n) => ({ value: String(n), label: `Top ${n}` }))} /></Field>
+        <Field label="Radar"><Select value={radarFilter} onChange={value => update({ radarFilter: value })}
+          options={["All", "Targets", "Fades", "Watchlist"].map((v) => ({ value: v, label: v === "All" ? "All radar" : v }))} /></Field>
+        <Toggle checked={analyst} onChange={value => update({ analyst: value })} label="Analyst layer (B)" />
         <div className="ml-auto flex items-center gap-3 text-xs text-ink-2">
           {data?.analyst_applied && data.n_adjusted > 0 && (
             <Chip tone="accent" title="config/analyst_overrides.yaml applied before the ranges were simulated">
@@ -264,13 +373,25 @@ export default function DraftBoard() {
               hit rate {hitRate}%
             </Chip>
           )}
-          <Toggle checked={showChart} onChange={setShowChart} label="Range chart" />
+          <Toggle checked={showChart} onChange={value => update({ showChart: value })} label="Range chart" />
         </div>
       </div>
 
+      <Card className="space-y-3 p-3">
+        <div className="flex flex-wrap items-end gap-3">
+          <Field label="Table columns"><Select value={prefs.preset} onChange={value => update({ preset: value })} options={[{value:"draft",label:"Draft"},{value:"performance",label:"Performance"},{value:"risk",label:"Risk"},{value:"full",label:"Full detail"}]} /></Field>
+          <Field label="Layout"><Select value={prefs.layout} onChange={value => update({ layout: value })} options={[{value:"auto",label:"Automatic"},{value:"table",label:"Table"},{value:"cards",label:"Cards"}]} /></Field>
+          <Field label="Sort by"><Select value={prefs.sort.key} onChange={key => update({ sort: { key, dir: ["rank", "player", "positions", "age", "risk", "adp", "actual_rank"].includes(key) ? 1 : -1 } })} options={cols.filter(column => column.sortValue).map(column => ({value:column.key,label:String(column.label)}))} /></Field>
+          <button onClick={() => update({ sort: { ...prefs.sort, dir: prefs.sort.dir === 1 ? -1 : 1 } })} className="h-8 rounded-lg border border-bdr px-3 text-xs" aria-label="Change sort direction">{prefs.sort.dir === 1 ? "Ascending ↑" : "Descending ↓"}</button>
+          <button onClick={resetFilters} className="h-8 px-2 text-xs font-semibold text-accent">Reset filters</button>
+        </div>
+        <p className="text-xs leading-relaxed text-ink-2"><b>{stance[0].toUpperCase() + stance.slice(1)} season-value ranking:</b> {meta.stances[stance]}. Sorting rearranges the displayed top {topN}; ranks and tiers remain tied to this stance. FP/G measures production when playing; ranges describe season totals.</p>
+        {(storageUnavailable || targetStorageUnavailable) && <p className="text-xs text-ink-2" role="status">Browser storage is unavailable. Your changes will last for this session only.</p>}
+      </Card>
+
       {error && <ErrorNote message={error} />}
       {loading && <Spinner label={`Computing the ${model} board for ${target}…`} />}
-      {!loading && data && filtered.length === 0 && <EmptyNote>No players match the current filters.</EmptyNote>}
+      {!loading && data && filtered.length === 0 && <EmptyNote>No players match the current filters. <button onClick={resetFilters} className="font-semibold text-accent">Reset filters</button></EmptyNote>}
 
       {!loading && data && filtered.length > 0 && (
         <>
@@ -294,15 +415,22 @@ export default function DraftBoard() {
               />
             </Card>
           )}
-          <DataTable
-            columns={cols}
-            rows={filtered}
+          <div className="board-table-view"><DataTable
+            columns={tableColumns}
+            rows={displayed}
             rowKey={(r) => r.PLAYER_ID}
             onRowClick={(r) => nav(`/players/${r.PLAYER_ID}`)}
             defaultSort="rank"
+            controlledSort={prefs.sort}
+            onSortChange={sort => update({ sort })}
+            maxHeight="max(260px, calc(100dvh - 400px))"
             groupOf={(r) => r.tier}
             renderGroup={(t) => <>Tier {t}</>}
-          />
+          /></div>
+          <BoardCards rows={displayed} columns={cols} targets={targets} compareIds={compare.ids}
+            onCompare={row => compare.toggle(row.PLAYER_ID, row.PLAYER_NAME)} onTarget={editTarget}
+            onPlayer={row => nav(`/players/${row.PLAYER_ID}`)} />
+          <p className="text-xs text-ink-3" role="status">{displayed.length} players · sorted by {String(cols.find(column => column.key === prefs.sort.key)?.label || "Rank")} {prefs.sort.dir === 1 ? "ascending" : "descending"}</p>
           <p className="text-xs text-ink-3">
             {meta.models[model]} · ranked by <b>{stance}</b> — {meta.stances[stance]}.
             Click a row for the player page; tick the checkbox to compare. Tier breaks = unusually
@@ -310,6 +438,7 @@ export default function DraftBoard() {
           </p>
         </>
       )}
+      <SignalDetail row={signal} note={signal && targets[String(signal.PLAYER_ID)] ? targetTitle(signal, targets[String(signal.PLAYER_ID)]) : undefined} onClose={() => setSignal(null)} />
     </div>
   );
 }

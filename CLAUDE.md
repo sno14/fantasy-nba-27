@@ -1,6 +1,6 @@
 # fantasy-nba-27 — session orientation
 
-Fantasy NBA projection system for the 2026-27 season (ESPN 10-team weekly-H2H points
+Fantasy NBA projection system for the 2026-27 season (ESPN 12-team weekly-H2H points
 league). Read in this order before changing anything:
 
 1. **README.md** — setup, layout, commands; its documentation map is the canonical
@@ -12,6 +12,12 @@ league). Read in this order before changing anything:
    are dated addenda).
 
 ## Standing workflows — follow the named doc exactly, don't improvise
+
+- **Product/UI work:** `docs/product-experience-plan.md` owns the experience roadmap
+  and latest session handoff; `docs/ui-views-plan.md` records the shipped V1–V6 views.
+  As of 2026-09-30, P1a–P1c are implemented on the public and local interfaces.
+  Next is P2 My Draft Plan, on both surfaces. Resume from that plan's handoff;
+  preserve public FP/G ranks versus local season-value ranks and the modelling calendar.
 
 - **BBM commentary → analyst layer.** Trigger: a new transcript lands in
   `data/manual/bbm_transcripts/` or the user shares fantasy-relevant commentary/news —

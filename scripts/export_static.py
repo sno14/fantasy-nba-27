@@ -140,6 +140,7 @@ def main(argv: list[str] | None = None) -> None:
     market_date, market_source = _latest_adp_vintage()
     payload = {
         "title": title,
+        "season": "2026-27",
         "generated_at": datetime.now(UTC).replace(microsecond=0).isoformat(),
         "source_board": source_board,
         "analyst_layer": True,

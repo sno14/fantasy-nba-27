@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useCompare } from "../App";
+import { CopyLink } from "../components/Portability";
 import { PlayerDetail, useApi } from "../lib/api";
 import { f0, f1, parseAction, signed } from "../lib/format";
 import { BarChart, LineChart, RangeStrip } from "../components/charts";
@@ -85,7 +86,7 @@ export default function Player() {
     <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <button onClick={() => nav(-1)} className="grid h-8 w-8 place-items-center rounded-lg border border-bdr text-ink-2 transition-colors hover:bg-surface-2" title="Back">
+          <button onClick={() => window.history.state?.idx > 0 ? nav(-1) : nav("/")} className="grid h-8 w-8 place-items-center rounded-lg border border-bdr text-ink-2 transition-colors hover:bg-surface-2" title="Back">
             ←
           </button>
           <div>
@@ -104,7 +105,8 @@ export default function Player() {
             <p className="text-[13px] text-ink-2">2026-27 projection · learned model · board B (analyst layer applied)</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <CopyLink url={`${location.origin}/players/${id}`} />
           <button onClick={() => editTarget(p)} title={targetTitle(p, priority)}
             className={`h-8 rounded-lg px-3 text-[13px] font-semibold ${priority ? "bg-warn/15 text-warn" : "border border-bdr text-ink-2 hover:bg-surface-2"}`}>
             {priority ? `★ ${priority.takeBy ? `Take by ${priority.takeBy}` : "Priority target"}` : "☆ Add target"}

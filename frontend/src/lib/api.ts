@@ -21,6 +21,7 @@ export interface BoardRow {
   PLAYER_ID: number;
   PLAYER_NAME: string;
   TEAM_ABBREVIATION: string | null;
+  positions?: string[];
   // market-seeded rows (rookies / returning vets with no 2025-26 games) carry no model
   // projection: age/gp/mpg and the simulated ranges arrive as null — render "—".
   target_age: number | null;

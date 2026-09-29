@@ -4,22 +4,27 @@ import { useCompare } from "../App";
 import { PlayerDetail, get } from "../lib/api";
 import { f0, f1, parseAction } from "../lib/format";
 import { LineChart, RangeStrip, Series } from "../components/charts";
-import { Card, Chip, EmptyNote, Spinner } from "../components/ui";
+import { Card, Chip, EmptyNote, ErrorNote, Spinner } from "../components/ui";
+import { CopyLink } from "../components/Portability";
 
 const SERIES_COLORS = ["var(--series-1)", "var(--series-2)", "var(--series-3)", "var(--series-5)"];
 
 export default function Compare() {
-  const { ids, toggle, clear } = useCompare();
+  const { ids, toggle, clear, linkError } = useCompare();
   const nav = useNavigate();
   const [details, setDetails] = useState<Record<number, PlayerDetail>>({});
   const [loading, setLoading] = useState(false);
+  const [missing, setMissing] = useState<number[]>([]);
 
   useEffect(() => {
     let stale = false;
     setLoading(true);
-    Promise.all(ids.map((id) => get<PlayerDetail>(`/api/player/${id}`).then((d) => [id, d] as const)))
-      .then((pairs) => {
-        if (!stale) setDetails(Object.fromEntries(pairs));
+    Promise.allSettled(ids.map((id) => get<PlayerDetail>(`/api/player/${id}`).then((d) => [id, d] as const)))
+      .then((results) => {
+        if (!stale) {
+          setDetails(Object.fromEntries(results.flatMap(result => result.status === "fulfilled" ? [result.value] : [])));
+          setMissing(ids.filter((_, index) => results[index].status === "rejected"));
+        }
       })
       .finally(() => !stale && setLoading(false));
     return () => {
@@ -44,10 +49,14 @@ export default function Compare() {
     }));
   }, [players]);
 
+  const unavailable = missing.some(id => ids.includes(id)) && <div role="status" className="rounded-lg border border-bdr p-3 text-sm">Some player details are unavailable. The ID may be absent from this board, or loading failed. {missing.filter(id => ids.includes(id)).map(id => <button key={id} className="ml-2 text-accent" onClick={() => toggle(id, String(id))}>Remove {id}</button>)}</div>;
+
   if (ids.length < 2)
     return (
       <div className="space-y-4">
         <h1 className="text-lg font-bold tracking-tight">Compare</h1>
+        {linkError && <ErrorNote message={linkError} />}
+        {unavailable}
         <EmptyNote>
           Pick 2–4 players to compare — tick the checkboxes on the{" "}
           <button className="font-semibold text-accent" onClick={() => nav("/")}>Draft Board</button>{" "}
@@ -56,7 +65,8 @@ export default function Compare() {
       </div>
     );
 
-  if (loading && players.length < ids.length) return <Spinner label="Loading players…" />;
+  if (loading) return <Spinner label="Loading players…" />;
+  if (players.length < 2) return <div className="space-y-4"><h1 className="font-bold">Compare</h1>{unavailable}<EmptyNote>Choose at least two available players on the <button className="text-accent" onClick={() => nav("/")}>Draft Board</button>.</EmptyNote></div>;
 
   const rangeLo = Math.min(...players.map((p) => p.projection.fpts_p10 as number)) * 0.95;
   const rangeHi = Math.max(...players.map((p) => p.projection.fpts_p90 as number)) * 1.03;
@@ -78,12 +88,13 @@ export default function Compare() {
 
   return (
     <div className="space-y-4">
-      <header className="flex items-end justify-between">
+      {unavailable}
+      <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-bold tracking-tight">Compare</h1>
           <p className="text-[13px] text-ink-2">Side-by-side 2026-27 projections (board B) and career trajectories.</p>
         </div>
-        <button onClick={clear} className="text-xs font-medium text-ink-3 hover:text-ink-2">Clear all</button>
+        <div className="flex flex-wrap items-center gap-3"><CopyLink /><button onClick={clear} className="text-xs font-medium text-ink-3 hover:text-ink-2">Clear all</button></div>
       </header>
 
       <Card className="overflow-hidden">

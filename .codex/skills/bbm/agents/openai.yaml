@@ -1,0 +1,6 @@
+﻿interface:
+  display_name: "BBM Analyst Pass"
+  short_description: "Turn BBM transcripts into review-gated proposals"
+  default_prompt: "Use $bbm to process any unhandled BBM transcripts."
+policy:
+  allow_implicit_invocation: true

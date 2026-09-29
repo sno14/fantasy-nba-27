@@ -1,3 +1,4 @@
+import { downloadBackup, MAX_FILE_BYTES, parseIds, validateBackup } from "./workspace.mjs";
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const fmt = (value, digits = 1) => value == null || !Number.isFinite(Number(value)) ? "—" : Number(value).toFixed(digits);
@@ -5,23 +6,45 @@ const integer = (value) => fmt(value, 0);
 const signed = (value, digits = 1) => value == null || !Number.isFinite(Number(value)) ? "—" : `${Number(value) > 0 ? "+" : ""}${Number(value).toFixed(digits)}`;
 const esc = (value) => String(value ?? "").replace(/[&<>'"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]);
 
+function storageUnavailable() {
+  const note = $("#storage-note");
+  if (note) note.hidden = false;
+}
+
+function readStored(key, fallback) {
+  try { return JSON.parse(localStorage.getItem(key) || "null") ?? fallback; }
+  catch (error) {
+    if (!(error instanceof SyntaxError)) storageUnavailable();
+    return fallback;
+  }
+}
+
+function writeStored(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); }
+  catch (_) { storageUnavailable(); }
+}
+
+const savedCompare = readStored("fantasy-nba-compare", []);
 const state = {
   rows: [], meta: null, view: "board", query: "", team: "All", tier: "All",
   radar: "All", adjustedOnly: false, limit: 100, sort: "rank", direction: 1,
-  compare: new Set(JSON.parse(localStorage.getItem("fantasy-nba-compare") || "[]")),
-  targets: {},
+  compare: new Set(Array.isArray(savedCompare) ? savedCompare.filter(Number.isInteger).slice(0, 4) : []),
+  preset: "draft", layout: "auto",
+  targets: {}, playerId: null, season: "",
   mock: { picks: [], myTeam: 1, query: "", radar: "All", limit: 60 },
 };
 
 const TARGETS_KEY = "fantasy-nba-draft-targets-v1";
 
 function loadTargets() {
-  try { state.targets = JSON.parse(localStorage.getItem(TARGETS_KEY) || "{}"); }
-  catch (_) { state.targets = {}; }
+  const saved = readStored(TARGETS_KEY, {});
+  if (saved && typeof saved === "object" && !Array.isArray(saved)) {
+    state.targets = Object.fromEntries(Object.entries(saved).filter(([id, target]) => /^[1-9]\d*$/.test(id) && target && typeof target.note === "string" && (target.takeBy === null || (Number.isInteger(target.takeBy) && target.takeBy > 0))));
+  }
 }
 
 function saveTargets() {
-  localStorage.setItem(TARGETS_KEY, JSON.stringify(state.targets));
+  writeStored(TARGETS_KEY, state.targets);
 }
 
 function isTarget(row) { return Boolean(state.targets[String(row.PLAYER_ID)]); }
@@ -33,17 +56,20 @@ function radarMatches(row, filter) {
   return true;
 }
 
-function radarMarkup(row, currentPick = null) {
+function radarMarkup(row, currentPick = null, interactive = true) {
+  const chip = (tone, label, title) => interactive
+    ? `<button type="button" class="chip radar-button ${tone}" data-player="${row.PLAYER_ID}" title="${esc(title)}" aria-label="Explain ${esc(label)} for ${esc(row.PLAYER_NAME)}">${esc(label)}</button>`
+    : `<span class="chip ${tone}" title="${esc(title)}">${esc(label)}</span>`;
   const target = state.targets[String(row.PLAYER_ID)];
   if (target) {
     const due = target.takeBy != null && currentPick != null && currentPick >= target.takeBy;
     const label = due ? "★ due" : target.takeBy ? `★ by ${target.takeBy}` : "★ priority";
     const title = [row.radar_reasons, target.takeBy ? `Take by overall pick ${target.takeBy}` : "", target.note].filter(Boolean).join(" · ");
-    return `<span class="chip ${due ? "watch-due" : "watch"}" title="${esc(title)}">${esc(label)}</span>`;
+    return chip(due ? "watch-due" : "watch", label, title);
   }
   if (!row.radar_label) return "";
   const tone = String(row.radar_label).includes("target") ? "up" : row.radar_label === "strong_fade" ? "down" : "fade";
-  return `<span class="chip ${tone}" title="${esc(row.radar_reasons || "")}">${esc(radarName(row.radar_label))}</span>`;
+  return chip(tone, radarName(row.radar_label), row.radar_reasons || "");
 }
 
 function openTarget(row) {
@@ -67,17 +93,15 @@ const viewCopy = {
 };
 
 function loadMock() {
-  try {
-    const saved = JSON.parse(localStorage.getItem("fantasy-nba-mock") || "{}");
-    state.mock.picks = Array.isArray(saved.picks) ? saved.picks : [];
+  const saved = readStored("fantasy-nba-mock", {});
+  if (saved && typeof saved === "object") {
+    state.mock.picks = Array.isArray(saved.picks) ? saved.picks.filter(pick => pick && Number.isInteger(pick.playerId) && Number.isInteger(pick.team)) : [];
     state.mock.myTeam = Number(saved.myTeam) || 1;
-  } catch (_) {
-    state.mock.picks = [];
   }
 }
 
 function saveMock() {
-  localStorage.setItem("fantasy-nba-mock", JSON.stringify({ picks: state.mock.picks, myTeam: state.mock.myTeam }));
+  writeStored("fantasy-nba-mock", { picks: state.mock.picks, myTeam: state.mock.myTeam });
   $("#mock-count").textContent = state.mock.picks.length || "";
 }
 
@@ -225,7 +249,7 @@ function changeMarkup(value) {
 }
 
 function saveCompare() {
-  localStorage.setItem("fantasy-nba-compare", JSON.stringify([...state.compare]));
+  writeStored("fantasy-nba-compare", [...state.compare]);
   const count = state.compare.size;
   $("#compare-count").textContent = count || "";
   $("#top-compare-count").textContent = count;
@@ -241,12 +265,85 @@ function toggleCompare(id) {
   saveCompare();
   drawBoard();
   drawCompare();
+  if (state.view === "compare") writeRoute();
+}
+
+function playerMarkup(row) {
+  return `<button class="player-button" data-player="${row.PLAYER_ID}">${esc(row.PLAYER_NAME)}</button><button class="target-star ${isTarget(row) ? "active" : ""}" data-target-player="${row.PLAYER_ID}" aria-label="${isTarget(row) ? "Edit" : "Add"} priority target for ${esc(row.PLAYER_NAME)}" title="${isTarget(row) ? "Edit priority target" : "Add priority target"}">${isTarget(row) ? "★" : "☆"}</button><small class="player-team">${esc(row.TEAM_ABBREVIATION || "—")}</small>`;
+}
+
+function compareMarkup(row) {
+  return `<input class="row-check" type="checkbox" data-compare="${row.PLAYER_ID}" ${state.compare.has(row.PLAYER_ID) ? "checked" : ""} aria-label="Compare ${esc(row.PLAYER_NAME)}">`;
+}
+
+const BOARD_COLUMNS = [
+  { key: "compare", label: "Compare", className: "compare-cell", render: compareMarkup },
+  { key: "rank", label: "FP/G rank", sort: "rank", className: "rank tnum", render: row => integer(row.rank) },
+  { key: "player", label: "Player", sort: "PLAYER_NAME", className: "player-col", render: playerMarkup },
+  { key: "positions", label: "Position", sort: "positions", className: "muted", render: row => esc((row.positions || "—").replaceAll("|", "/")) },
+  { key: "team", label: "Team", sort: "TEAM_ABBREVIATION", className: "muted", render: row => esc(row.TEAM_ABBREVIATION || "—") },
+  { key: "tier", label: "Tier", sort: "tier", render: row => integer(row.tier) },
+  { key: "age", label: "Age", sort: "target_age", render: row => integer(row.target_age) },
+  { key: "fpg", label: "FP/G", sort: "fpts_pg", className: "fpg tnum", render: row => fmt(row.fpts_pg) },
+  { key: "previous", label: "25–26 FP/G", sort: "previous_fpts_pg", render: row => fmt(row.previous_fpts_pg) },
+  { key: "change", label: "Proj Δ", sort: "fpts_pg_change", render: row => changeMarkup(row.fpts_pg_change) },
+  { key: "vor", label: "VOR", sort: "vor", render: row => fmt(row.vor) },
+  { key: "adp", label: "ADP", sort: "adp", render: row => integer(row.adp) },
+  { key: "radar", label: "Radar", sort: "radar_round_gap", render: row => radarMarkup(row) },
+  { key: "mpg", label: "MPG", sort: "mpg", render: row => fmt(row.mpg) },
+  { key: "gp", label: "GP", sort: "gp", render: row => integer(row.gp) },
+  { key: "range", label: "Season range", render: rangeMarkup },
+  { key: "median", label: "Season median", sort: "fpts_median", render: row => integer(row.fpts_median) },
+  { key: "risk", label: "Risk", sort: "risk", render: row => riskMarkup(row.risk) },
+  { key: "analyst", label: "Analyst", render: analystChip },
+];
+
+const COLUMN_PRESETS = {
+  draft: ["compare", "rank", "player", "positions", "fpg", "adp", "radar"],
+  performance: ["compare", "rank", "player", "positions", "fpg", "previous", "change", "mpg", "gp"],
+  risk: ["compare", "rank", "player", "fpg", "gp", "range", "median", "risk"],
+  full: BOARD_COLUMNS.map(column => column.key),
+};
+const PREFERENCES_KEY = "fantasy-nba-board-preferences-v1";
+const BOARD_DEFAULTS = { query: "", team: "All", tier: "All", radar: "All", adjustedOnly: false, limit: 100, sort: "rank", direction: 1, preset: "draft", layout: "auto" };
+
+function loadBoardPreferences() {
+  const saved = readStored(PREFERENCES_KEY, {});
+  if (!saved || typeof saved !== "object" || Array.isArray(saved)) return;
+  for (const key of ["query", "team", "tier"]) {
+    if (typeof saved[key] === "string") state[key] = saved[key];
+  }
+  if (Object.hasOwn(COLUMN_PRESETS, saved.preset)) state.preset = saved.preset;
+  if (["auto", "table", "cards"].includes(saved.layout)) state.layout = saved.layout;
+  if (["All", "Targets", "Fades", "Watchlist"].includes(saved.radar)) state.radar = saved.radar;
+  if ([50, 100, 200, 9999].includes(saved.limit)) state.limit = saved.limit;
+  if (typeof saved.adjustedOnly === "boolean") state.adjustedOnly = saved.adjustedOnly;
+  if (typeof saved.sort === "string" && BOARD_COLUMNS.some(column => column.sort === saved.sort)) state.sort = saved.sort;
+  if (saved.direction === 1 || saved.direction === -1) state.direction = saved.direction;
+}
+
+function syncBoardControls() {
+  for (const [id, key] of [["search", "query"], ["team-filter", "team"], ["tier-filter", "tier"], ["radar-filter", "radar"], ["limit", "limit"], ["column-preset", "preset"], ["board-layout", "layout"], ["board-sort", "sort"]]) {
+    $("#" + id).value = state[key];
+  }
+  $("#adjusted-only").checked = state.adjustedOnly;
+  $("#sort-direction").textContent = state.direction === 1 ? "Ascending ↑" : "Descending ↓";
+}
+
+function resetBoardFilters() {
+  for (const key of ["query", "team", "tier", "radar", "adjustedOnly", "limit", "sort", "direction"]) state[key] = BOARD_DEFAULTS[key];
+  drawBoard();
+}
+
+function selectBoardSort(sort) {
+  state.sort = sort;
+  state.direction = ["rank", "PLAYER_NAME", "TEAM_ABBREVIATION", "positions", "tier", "target_age", "adp", "risk"].includes(sort) ? 1 : -1;
 }
 
 function filteredRows() {
   const query = state.query.trim().toLowerCase();
   const filtered = state.rows.filter(row => {
-    if (query && !`${row.PLAYER_NAME} ${row.TEAM_ABBREVIATION || ""}`.toLowerCase().includes(query)) return false;
+    if (query && !`${row.PLAYER_NAME} ${row.TEAM_ABBREVIATION || ""} ${row.positions || ""}`.toLowerCase().includes(query)) return false;
     if (state.team !== "All" && row.TEAM_ABBREVIATION !== state.team) return false;
     if (state.tier !== "All" && String(row.tier) !== state.tier) return false;
     if (!radarMatches(row, state.radar)) return false;
@@ -256,6 +353,7 @@ function filteredRows() {
   filtered.sort((a, b) => {
     const av = a[state.sort];
     const bv = b[state.sort];
+    if (av == null && bv == null) return 0;
     if (av == null) return 1;
     if (bv == null) return -1;
     return (typeof av === "string" ? av.localeCompare(bv) : av - bv) * direction;
@@ -279,28 +377,38 @@ function drawSummary() {
 
 function drawBoard() {
   if (!state.rows.length) return;
+  if (state.meta && !applyingRoute && state.view === "board") writeRoute(document.activeElement?.id === "search");
+  const focused = document.activeElement;
+  const hadBoardFocus = Boolean(focused?.closest("#rows, #board-cards"));
+  const focusAttribute = ["data-compare", "data-player", "data-target-player"].find(attribute => focused?.hasAttribute(attribute));
+  const focusValue = focusAttribute && focused.getAttribute(focusAttribute);
+  const expanded = new Set($$("#board-cards details[open]").map(detail => detail.closest("[data-card]").dataset.card));
   const all = filteredRows();
   const rows = all.slice(0, state.limit);
-  $("#rows").innerHTML = rows.map(row => `<tr>
-    <td class="compare-cell"><input class="row-check" type="checkbox" data-compare="${row.PLAYER_ID}" ${state.compare.has(row.PLAYER_ID) ? "checked" : ""} aria-label="Compare ${esc(row.PLAYER_NAME)}"></td>
-    <td class="rank tnum">${row.rank}</td>
-    <td class="player-col"><button class="player-button" data-player="${row.PLAYER_ID}">${esc(row.PLAYER_NAME)}</button><button class="target-star ${isTarget(row) ? "active" : ""}" data-target-player="${row.PLAYER_ID}" title="${isTarget(row) ? "Edit priority target" : "Add priority target"}">${isTarget(row) ? "★" : "☆"}</button></td>
-    <td class="muted">${esc(row.TEAM_ABBREVIATION || "—")}</td>
-    <td class="optional tnum">${row.tier == null ? "—" : row.tier}</td>
-    <td class="optional tnum">${integer(row.target_age)}</td>
-    <td class="fpg tnum">${fmt(row.fpts_pg)}</td>
-    <td class="optional tnum">${fmt(row.previous_fpts_pg)}</td>
-    <td class="tnum">${changeMarkup(row.fpts_pg_change)}</td>
-    <td class="optional tnum">${fmt(row.vor)}</td>
-    <td class="optional tnum">${integer(row.adp)}</td>
-    <td>${radarMarkup(row)}</td>
-    <td class="optional tnum">${fmt(row.mpg)}</td>
-    <td class="tnum">${integer(row.gp)}</td>
-    <td class="range-col">${rangeMarkup(row)}</td>
-    <td class="optional tnum">${riskMarkup(row.risk)}</td>
-    <td>${analystChip(row)}</td>
-  </tr>`).join("");
-  $("#status").textContent = `${rows.length} of ${all.length} matching players · sorted by ${state.sort === "rank" ? "FP/G rank" : state.sort}${state.direction < 0 ? " descending" : " ascending"}`;
+  const columns = COLUMN_PRESETS[state.preset].map(key => BOARD_COLUMNS.find(column => column.key === key));
+  $("#board-head").innerHTML = `<tr>${columns.map(column => {
+    const active = column.sort === state.sort;
+    const label = column.key === "compare" ? `<span class="sr-only">Compare</span>` : esc(column.label);
+    return `<th scope="col" class="${column.className || "tnum"}"${active ? ` aria-sort="${state.direction === 1 ? "ascending" : "descending"}"` : ""}>${column.sort ? `<button data-sort="${column.sort}">${label}${active ? (state.direction === 1 ? " ↑" : " ↓") : ""}</button>` : label}</th>`;
+  }).join("")}</tr>`;
+  $("#rows").innerHTML = rows.map(row => `<tr>${columns.map(column => `<td class="${column.className || "tnum"}">${column.render(row)}</td>`).join("")}</tr>`).join("");
+  const detailColumns = BOARD_COLUMNS.filter(column => !["compare", "rank", "player", "positions", "team", "fpg", "adp", "radar"].includes(column.key));
+  $("#board-cards").innerHTML = rows.map(row => `<article class="player-card panel" data-card="${row.PLAYER_ID}">
+    <header><span class="rank">#${row.rank}</span><div class="card-player">${playerMarkup(row)}<span class="card-position">${esc((row.positions || "Position unavailable").replaceAll("|", "/"))}</span></div><label class="card-compare">${compareMarkup(row)}<span>Compare</span></label></header>
+    <div class="card-metrics"><div><small>FP/G</small><strong class="fpg tnum">${fmt(row.fpts_pg)}</strong></div><div><small>ADP</small><strong class="tnum">${integer(row.adp)}</strong></div><div class="card-radar">${radarMarkup(row) || '<span class="muted">No Radar signal</span>'}</div></div>
+    <details${expanded.has(String(row.PLAYER_ID)) ? " open" : ""}><summary>Projection details</summary><dl>${detailColumns.map(column => `<div><dt>${esc(column.label)}</dt><dd>${column.render(row) || "—"}</dd></div>`).join("")}</dl></details>
+  </article>`).join("");
+  $("#view-board").dataset.layout = state.layout;
+  $("#board-empty").hidden = all.length > 0;
+  $("#board-table-wrap").classList.toggle("no-results", all.length === 0);
+  const sortLabel = BOARD_COLUMNS.find(column => column.sort === state.sort)?.label || "FP/G rank";
+  $("#status").textContent = `${rows.length} of ${all.length} matching players · sorted by ${sortLabel} ${state.direction === 1 ? "ascending" : "descending"}`;
+  syncBoardControls();
+  writeStored(PREFERENCES_KEY, Object.fromEntries(Object.keys(BOARD_DEFAULTS).map(key => [key, state[key]])));
+  if (focusAttribute && hadBoardFocus) {
+    const next = $$(`[${focusAttribute}]`, $("#view-board")).find(element => element.getAttribute(focusAttribute) === focusValue && element.getClientRects().length);
+    next?.focus({ preventScroll: true });
+  }
 }
 
 function drawTiers() {
@@ -336,8 +444,10 @@ function drawTeams() {
 function drawCompare() {
   if (!state.rows.length) return;
   const players = [...state.compare].map(id => state.rows.find(row => row.PLAYER_ID === id)).filter(Boolean);
+  const unknown = [...state.compare].filter(id => !players.some(row => row.PLAYER_ID === id));
+  const missing = unknown.length ? `<p class="status">IDs absent from this board: ${unknown.map(id => `${id} <button class="link-button" data-remove="${id}">Remove</button>`).join(" · ")}</p>` : "";
   if (!players.length) {
-    $("#compare-view").innerHTML = `<div class="empty">Select two to four players from the Draft Board or a player detail card.<br><button class="link-button" data-go="board">Open draft board</button></div>`;
+    $("#compare-view").innerHTML = `${missing}<div class="empty">Select two to four players from the Draft Board or a player detail card.<br><button class="link-button" data-go="board">Open draft board</button></div>`;
     return;
   }
   const metrics = [
@@ -356,12 +466,18 @@ function drawCompare() {
     const best = !bestDirection || !values.length ? null : (bestDirection === "max" ? Math.max(...values) : Math.min(...values));
     return `<tr><td>${label}</td>${players.map(player => `<td class="tnum ${best != null && player[key] === best ? "best" : ""}">${render(player[key])}</td>`).join("")}</tr>`;
   }).join("");
-  $("#compare-view").innerHTML = `<div class="compare-actions"><p>${players.length} of 4 comparison slots used</p><button class="link-button" id="clear-compare">Clear all</button></div><div class="compare-shell panel"><table class="compare-table"><thead><tr><th>Metric</th>${players.map(player => `<th><button class="player-button compare-name" data-player="${player.PLAYER_ID}">${esc(player.PLAYER_NAME)}</button><br><span class="muted">${esc(player.TEAM_ABBREVIATION || "—")} · Tier ${player.tier ?? "—"}</span></th>`).join("")}</tr></thead><tbody>${rows}<tr><td>Analyst</td>${players.map(player => `<td>${analystChip(player) || "—"}</td>`).join("")}</tr><tr><td>Remove</td>${players.map(player => `<td><button class="link-button" data-remove="${player.PLAYER_ID}">Remove</button></td>`).join("")}</tr></tbody></table></div>`;
+  $("#compare-view").innerHTML = `${missing}<div class="compare-actions"><p>${players.length} of 4 comparison slots used</p><button class="link-button" id="clear-compare">Clear all</button></div><div class="compare-shell panel"><table class="compare-table"><thead><tr><th>Metric</th>${players.map(player => `<th><button class="player-button compare-name" data-player="${player.PLAYER_ID}">${esc(player.PLAYER_NAME)}</button><br><span class="muted">${esc(player.TEAM_ABBREVIATION || "—")} · Tier ${player.tier ?? "—"}</span></th>`).join("")}</tr></thead><tbody>${rows}<tr><td>Analyst</td>${players.map(player => `<td>${analystChip(player) || "—"}</td>`).join("")}</tr><tr><td>Remove</td>${players.map(player => `<td><button class="link-button" data-remove="${player.PLAYER_ID}">Remove</button></td>`).join("")}</tr></tbody></table></div>`;
 }
 
-function openPlayer(id) {
+function openPlayer(id, navigate = true) {
+  state.playerId = Number(id);
+  if (navigate) writeRoute();
   const row = state.rows.find(player => player.PLAYER_ID === Number(id));
-  if (!row) return;
+  if (!row) {
+    $("#player-detail").innerHTML = `<div class="target-form"><h2>Player unavailable</h2><p>Player ID ${esc(id)} is absent from this published board. Close this card to browse available players.</p></div>`;
+    if (!$("#player-dialog").open) $("#player-dialog").showModal();
+    return;
+  }
   const valueGap = row.adp == null ? null : row.adp - row.rank;
   const valueText = valueGap == null ? "No ADP available" : valueGap >= 12 ? `Market discount: ${integer(valueGap)} picks` : valueGap <= -12 ? `Market is ${integer(-valueGap)} picks higher` : "Close to market price";
   $("#player-detail").innerHTML = `<header class="player-hero"><p class="eyebrow">${esc(row.TEAM_ABBREVIATION || "FREE AGENT")} · TIER ${row.tier ?? "—"}</p><h2>${esc(row.PLAYER_NAME)}</h2><p>FP/G rank #${row.rank} · safe source rank #${row.source_rank ?? "—"} · model source rank #${row.model_source_rank ?? "—"}</p></header>
@@ -369,22 +485,23 @@ function openPlayer(id) {
       <div class="detail-stats"><div class="detail-stat"><small>FP / game</small><strong>${fmt(row.fpts_pg)}</strong></div><div class="detail-stat"><small>2025-26 FP/G</small><strong>${fmt(row.previous_fpts_pg)}</strong></div><div class="detail-stat"><small>Projected change</small><strong>${changeMarkup(row.fpts_pg_change)}</strong></div><div class="detail-stat"><small>VOR</small><strong>${fmt(row.vor)}</strong></div><div class="detail-stat"><small>Projected GP</small><strong>${integer(row.gp)}</strong></div><div class="detail-stat"><small>Projected MPG</small><strong>${fmt(row.mpg)}</strong></div><div class="detail-stat"><small>Age</small><strong>${integer(row.target_age)}</strong></div><div class="detail-stat"><small>ADP</small><strong>${integer(row.adp)}</strong></div><div class="detail-stat"><small>Risk</small><strong>${fmt(row.risk, 2)}</strong></div><div class="detail-stat"><small>Market read</small><strong>${esc(valueText)}</strong></div></div>
       <section class="detail-section"><h3>Projected per-game line</h3><div class="projection-line">${[["PTS",row.pts],["REB",row.reb],["AST",row.ast],["STL",row.stl],["BLK",row.blk],["3PM",row.fg3m],["TOV",row.tov]].map(([label,value]) => `<div><small>${label}</small><strong>${fmt(value)}</strong></div>`).join("")}</div></section>
       <section class="detail-section"><h3>Simulated season totals</h3><div class="season-band"><div><small>Floor · p10</small><strong>${integer(row.fpts_p10)}</strong></div><div><small>Median</small><strong>${integer(row.fpts_median)}</strong></div><div><small>Ceiling · p90</small><strong>${integer(row.fpts_p90)}</strong></div></div></section>
-      ${(row.radar_label || isTarget(row)) ? `<section class="detail-section"><h3>Draft radar</h3><div class="analyst-note">${radarMarkup(row)} &nbsp; ${esc(row.radar_reasons || "Personal priority target")}</div></section>` : ""}
+      ${(row.radar_label || isTarget(row)) ? `<section class="detail-section"><h3>Draft radar</h3><div class="analyst-note">${radarMarkup(row, null, false)} &nbsp; ${esc(row.radar_reasons || "Personal priority target")}</div></section>` : ""}
+      ${isTarget(row) ? `<section class="detail-section"><h3>Your draft note</h3><div class="analyst-note">${state.targets[String(row.PLAYER_ID)].takeBy ? `Take by pick ${esc(state.targets[String(row.PLAYER_ID)].takeBy)}. ` : ""}${esc(state.targets[String(row.PLAYER_ID)].note || "No note yet.")}</div></section>` : ""}
       ${isAdjusted(row) ? `<section class="detail-section"><h3>Analyst layer</h3><div class="analyst-note">${analystChip(row)} &nbsp; ${esc(row.analyst_category || "")} · ${esc(row.analyst_date || "")}. Detailed rationale remains in the private review workflow.</div></section>` : ""}
-      <div class="detail-actions"><button class="button" data-target-player="${row.PLAYER_ID}">${isTarget(row) ? "Edit priority target" : "Add priority target"}</button><button class="button" data-modal-compare="${row.PLAYER_ID}">${state.compare.has(row.PLAYER_ID) ? "Remove from compare" : "Add to compare"}</button></div>
+      <div class="detail-actions"><button class="button" data-target-player="${row.PLAYER_ID}">${isTarget(row) ? "Edit priority target" : "Add priority target"}</button><button class="button" data-modal-compare="${row.PLAYER_ID}">${state.compare.has(row.PLAYER_ID) ? "Remove from compare" : "Add to compare"}</button><button class="button" data-copy-link>Copy link</button><span class="copy-status" role="status"></span><input class="copy-fallback" aria-label="Link to copy" readonly hidden /></div>
     </div>`;
   const dialog = $("#player-dialog");
-  if (dialog.showModal) dialog.showModal(); else dialog.setAttribute("open", "");
+  if (!dialog.open) { if (dialog.showModal) dialog.showModal(); else dialog.setAttribute("open", ""); }
 }
 
-function setView(view) {
-  if (!viewCopy[view]) view = "board";
+function setView(view, navigate = true) {
+  if (!Object.hasOwn(viewCopy, view)) view = "board";
   state.view = view;
   $$(".view").forEach(section => section.hidden = section.id !== `view-${view}`);
   $$(".nav-item").forEach(button => button.classList.toggle("active", button.dataset.view === view));
   [$("#view-title").textContent, $("#view-subtitle").textContent] = viewCopy[view];
   $(".sidebar").classList.remove("open");
-  if (location.hash !== `#${view}`) history.replaceState(null, "", `#${view}`);
+  if (navigate) { state.playerId = null; $("#player-dialog").close(); writeRoute(); }
   if (view === "compare") drawCompare();
 }
 
@@ -393,15 +510,122 @@ function populateFilters() {
   $("#team-filter").insertAdjacentHTML("beforeend", teams.map(team => `<option value="${team}">${team}</option>`).join(""));
   const tiers = [...new Set(state.rows.map(row => row.tier).filter(tier => tier != null))].sort((a, b) => a - b);
   $("#tier-filter").insertAdjacentHTML("beforeend", tiers.map(tier => `<option value="${tier}">Tier ${tier}</option>`).join(""));
+  if (state.team !== "All" && !teams.includes(state.team)) state.team = "All";
+  if (state.tier !== "All" && !tiers.some(tier => String(tier) === state.tier)) state.tier = "All";
+  $("#board-sort").innerHTML = BOARD_COLUMNS.filter(column => column.sort).map(column => `<option value="${column.sort}">${esc(column.label)}</option>`).join("");
+}
+
+let applyingRoute = false;
+let routeFallback = {};
+let lastRouteHash = "";
+let importPreview = null;
+
+function routeHash(shared = false) {
+  const params = new URLSearchParams(Object.keys(BOARD_DEFAULTS).map(key => [key, String(shared && key === "radar" && state.radar === "Watchlist" ? "All" : state[key])]));
+  if (state.view === "compare") params.set("ids", [...state.compare].join(","));
+  if (state.playerId !== null) params.set("player", state.playerId);
+  return `#${state.view}?${params}`;
+}
+
+function writeRoute(replace = false) {
+  if (applyingRoute) return;
+  const hash = routeHash();
+  if (location.hash !== hash) history[replace ? "replaceState" : "pushState"](null, "", hash);
+  lastRouteHash = location.hash;
+}
+
+function applyRoute(force = false) {
+  if (!state.rows.length || (!force && location.hash === lastRouteHash)) return;
+  applyingRoute = true;
+  const [view, search = ""] = location.hash.slice(1).split("?");
+  const params = new URLSearchParams(search);
+  const invalid = [];
+  Object.assign(state, routeFallback);
+  for (const key of Object.keys(BOARD_DEFAULTS)) {
+    const raw = params.get(key); if (raw === null) continue;
+    let value = raw;
+    let valid = raw.length <= 500;
+    if (key === "preset") valid &&= Object.hasOwn(COLUMN_PRESETS, raw);
+    if (key === "layout") valid &&= ["auto", "table", "cards"].includes(raw);
+    if (key === "radar") valid &&= ["All", "Targets", "Fades", "Watchlist"].includes(raw);
+    if (key === "limit") { value = Number(raw); valid &&= [50, 100, 200, 9999].includes(value); }
+    if (key === "direction") { value = Number(raw); valid &&= [1, -1].includes(value); }
+    if (key === "adjustedOnly") { value = raw === "true"; valid &&= ["true", "false"].includes(raw); }
+    if (key === "sort") valid &&= BOARD_COLUMNS.some(column => column.sort === raw);
+    if (key === "team") valid &&= raw === "All" || state.rows.some(row => row.TEAM_ABBREVIATION === raw);
+    if (key === "tier") valid &&= raw === "All" || state.rows.some(row => String(row.tier) === raw);
+    if (valid) state[key] = value; else invalid.push(key);
+  }
+  if (params.has("ids")) {
+    try { state.compare = new Set(parseIds(params.get("ids"))); }
+    catch (error) { state.compare.clear(); invalid.push(error.message); }
+  }
+  state.playerId = null;
+  setView(view || "board", false);
+  if (view && !Object.hasOwn(viewCopy, view)) invalid.push("page");
+  const player = params.get("player");
+  if (player !== null && /^[1-9]\d*$/.test(player) && Number.isSafeInteger(Number(player))) openPlayer(player, false);
+  else { if (player !== null) invalid.push("player ID"); $("#player-dialog").close(); }
+  $("#route-note").textContent = invalid.length ? `Ignored invalid link settings: ${invalid.join(", ")}. Browse the board or choose players again.` : "";
+  $("#route-note").hidden = !invalid.length;
+  saveCompare(); drawBoard(); drawCompare();
+  applyingRoute = false;
+  lastRouteHash = location.hash;
+  if (!search && !invalid.length) writeRoute(true);
+}
+
+async function copyCurrentLink(button) {
+  const url = `${location.origin}${location.pathname}${routeHash(true)}`;
+  const modal = button.closest("#player-dialog");
+  const note = modal ? $(".copy-status", modal) : $("#route-note");
+  note.hidden = false;
+  try {
+    await navigator.clipboard.writeText(url);
+    note.textContent = state.radar === "Watchlist" ? "Link copied. Shared boards show all players; export your watchlist to transfer targets." : "Link copied";
+  } catch {
+    note.textContent = "Select and copy the link below.";
+    const input = modal ? $(".copy-fallback", modal) : $("#copy-url");
+    if (!modal) $("#copy-fallback").hidden = false;
+    input.hidden = false; input.value = url; input.focus(); input.select();
+  }
 }
 
 function bindEvents() {
+  $("#export-watchlist").addEventListener("click", () => {
+    try { downloadBackup(state.targets, state.season); $("#backup-status").textContent = "Backup downloaded, including your private notes."; }
+    catch (error) { $("#backup-status").textContent = error.message; }
+  });
+  $("#import-watchlist").addEventListener("click", () => $("#watchlist-file").click());
+  $("#watchlist-file").addEventListener("change", async event => {
+    const file = event.target.files[0]; event.target.value = ""; if (!file) return;
+    importPreview = null;
+    try {
+      if (file.size > MAX_FILE_BYTES) throw new Error("Choose a backup smaller than 1 MB.");
+      importPreview = validateBackup(JSON.parse(await file.text()), state.season);
+      const unknown = Object.keys(importPreview).filter(id => !state.rows.some(row => row.PLAYER_ID === Number(id)));
+      $("#import-preview").textContent = `${Object.keys(importPreview).length} targets for ${state.season}. Import includes private notes.`;
+      $("#import-unknown").textContent = unknown.length ? `Unknown player IDs (kept for future boards): ${unknown.join(", ")}` : "All player IDs are on the current board.";
+      $('[name="import-mode"][value="merge"]').checked = true;
+      $("#backup-status").textContent = ""; $("#import-dialog").showModal();
+    } catch (error) { $("#backup-status").textContent = error.message; }
+  });
+  $("#cancel-import").addEventListener("click", () => $("#import-dialog").close());
+  $("#confirm-import").addEventListener("click", () => {
+    if (!importPreview) return;
+    state.targets = $('[name="import-mode"]:checked').value === "merge" ? { ...state.targets, ...importPreview } : importPreview;
+    saveTargets(); drawBoard(); drawMock(); $("#import-dialog").close(); $("#backup-status").textContent = "Watchlist imported.";
+  });
   $("#search").addEventListener("input", event => { state.query = event.target.value; drawBoard(); });
   $("#team-filter").addEventListener("change", event => { state.team = event.target.value; drawBoard(); });
   $("#tier-filter").addEventListener("change", event => { state.tier = event.target.value; drawBoard(); });
   $("#radar-filter").addEventListener("change", event => { state.radar = event.target.value; drawBoard(); });
   $("#limit").addEventListener("change", event => { state.limit = Number(event.target.value); drawBoard(); });
   $("#adjusted-only").addEventListener("change", event => { state.adjustedOnly = event.target.checked; drawBoard(); });
+  $("#column-preset").addEventListener("change", event => { state.preset = event.target.value; drawBoard(); });
+  $("#board-layout").addEventListener("change", event => { state.layout = event.target.value; drawBoard(); });
+  $("#board-sort").addEventListener("change", event => { selectBoardSort(event.target.value); drawBoard(); });
+  $("#sort-direction").addEventListener("click", () => { state.direction *= -1; drawBoard(); });
+  $("#reset-filters").addEventListener("click", resetBoardFilters);
   $("#mock-search").addEventListener("input", event => { state.mock.query = event.target.value; drawMock(); });
   $("#mock-radar").addEventListener("change", event => { state.mock.radar = event.target.value; drawMock(); });
   $("#mock-limit").addEventListener("change", event => { state.mock.limit = Number(event.target.value); drawMock(); });
@@ -412,12 +636,16 @@ function bindEvents() {
       state.mock.picks = []; saveMock(); drawMock();
     }
   });
-  $$("[data-sort]").forEach(button => button.addEventListener("click", () => {
-    if (state.sort === button.dataset.sort) state.direction *= -1;
-    else { state.sort = button.dataset.sort; state.direction = ["rank", "PLAYER_NAME", "TEAM_ABBREVIATION", "tier"].includes(state.sort) ? 1 : -1; }
-    drawBoard();
-  }));
   document.addEventListener("click", event => {
+    const copy = event.target.closest("[data-copy-link]"); if (copy) copyCurrentLink(copy);
+    const sort = event.target.closest("[data-sort]");
+    if (sort) {
+      if (state.sort === sort.dataset.sort) state.direction *= -1;
+      else selectBoardSort(sort.dataset.sort);
+      drawBoard();
+      $$('[data-sort]', $("#board-head")).find(button => button.dataset.sort === state.sort)?.focus({ preventScroll: true });
+    }
+    if (event.target.closest("[data-reset-filters]")) resetBoardFilters();
     const view = event.target.closest("[data-view], [data-go]");
     if (view) setView(view.dataset.view || view.dataset.go);
     const player = event.target.closest("[data-player]");
@@ -437,11 +665,14 @@ function bindEvents() {
     }
     const team = event.target.closest("[data-team]");
     if (team) { state.team = team.dataset.team; $("#team-filter").value = state.team; setView("board"); drawBoard(); }
-    if (event.target.id === "clear-compare") { state.compare.clear(); saveCompare(); drawBoard(); drawCompare(); }
+    if (event.target.id === "clear-compare") { state.compare.clear(); saveCompare(); drawBoard(); drawCompare(); writeRoute(); }
   });
   $("#mobile-nav").addEventListener("click", () => $(".sidebar").classList.toggle("open"));
   $(".dialog-close").addEventListener("click", () => $("#player-dialog").close());
   $("#player-dialog").addEventListener("click", event => { if (event.target === $("#player-dialog")) $("#player-dialog").close(); });
+  $("#player-dialog").addEventListener("close", () => {
+    if (!$("#player-dialog").open && state.playerId !== null) { state.playerId = null; writeRoute(); }
+  });
   $(".target-dialog-close").addEventListener("click", () => $("#target-dialog").close());
   $("#target-dialog").addEventListener("click", event => { if (event.target === $("#target-dialog")) $("#target-dialog").close(); });
   $("#target-form").addEventListener("submit", event => {
@@ -455,11 +686,14 @@ function bindEvents() {
     delete state.targets[String($("#target-player-id").value)];
     saveTargets(); $("#target-dialog").close(); drawBoard(); drawMock();
   });
-  window.addEventListener("hashchange", () => setView(location.hash.slice(1)));
+  window.addEventListener("hashchange", () => applyRoute());
+  window.addEventListener("popstate", () => applyRoute());
 }
 
 loadTargets();
 loadMock();
+loadBoardPreferences();
+routeFallback = Object.fromEntries(Object.keys(BOARD_DEFAULTS).map(key => [key, state[key]]));
 bindEvents();
 saveCompare();
 saveMock();
@@ -467,8 +701,9 @@ fetch("data/board.json", { cache: "no-store" })
   .then(response => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
   .then(data => {
     state.meta = data;
+    state.season = data.season || data.title?.match(/\b\d{4}-\d{2}\b/)?.[0] || "";
+    applyingRoute = true;
     state.rows = [...data.rows].sort((a, b) => a.rank - b.rank);
-    state.compare = new Set([...state.compare].filter(id => state.rows.some(row => row.PLAYER_ID === id)).slice(0, 4));
     const knownIds = new Set(state.rows.map(row => row.PLAYER_ID));
     state.mock.picks = state.mock.picks.filter(pick => knownIds.has(pick.playerId) && pick.team >= 1 && pick.team <= mockConfig().teams);
     $("#loading").hidden = true;
@@ -477,8 +712,11 @@ fetch("data/board.json", { cache: "no-store" })
     const teamOptions = Array.from({ length: mockConfig().teams }, (_, index) => `<option value="${index + 1}">Team ${index + 1}</option>`).join("");
     $("#mock-team").innerHTML = teamOptions;
     $("#mock-my-team").innerHTML = teamOptions;
-    populateFilters(); drawSummary(); drawBoard(); drawMock(); drawTiers(); drawTeams(); drawCompare(); saveCompare(); saveMock();
-    setView(location.hash.slice(1) || "board");
+    populateFilters();
+    routeFallback = Object.fromEntries(Object.keys(BOARD_DEFAULTS).map(key => [key, state[key]]));
+    drawSummary(); drawBoard(); drawMock(); drawTiers(); drawTeams(); drawCompare(); saveCompare(); saveMock();
+    applyingRoute = false;
+    applyRoute(true);
   })
   .catch(error => {
     $("#loading").hidden = true;

@@ -231,6 +231,16 @@ analyst workflow v2** (living layer, nightly in-season application — see the D
 under 7.E and `data/manual/bbm_transcripts/README.md`) · EXP-022/023/024
 decomposition refinements if the preseason gap ever re-opens.
 
+**Product experience follow-up (2026-09-29):** the detailed plan and active tracker
+are in [docs/product-experience-plan.md](docs/product-experience-plan.md). Delivery
+starts with public board presets/mobile cards and workspace persistence, followed by
+My Draft Plan, practice drafts, change history, rotation context, usable-lineup
+streaming, trade scenarios, Today and minutes scenarios. These are product steps;
+the standing modelling calendar and experiment gates remain unchanged.
+Public board usability (P1a) is complete locally on 2026-09-29, and local app
+parity (P1b) and links/watchlist portability (P1c) on 2026-09-30.
+My Draft Plan (P2) is next.
+
 ### Stage 6 — Uncertainty / risk ranges  ← DONE 2026-07-10 (shipped: SD_PG spread — re-affirmed by EXP-021 — on the adopted (age × chronic) GP pools, EXP-015b)
 - [x] **Monte-Carlo risk ranges** (`models/uncertainty.py`) — simulate each player's season:
       games drawn from the empirical (no-leakage, modern-era, elite-tier ≥2000-min) GP

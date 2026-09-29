@@ -312,6 +312,12 @@ def current_rosters() -> dict:
     }
 
 
+def player_positions() -> dict[int, list[str]]:
+    """Current ESPN eligibility from the existing session map, without a live pull."""
+    return ({int(pid): sorted(slots) for pid, slots in _session.pmap.eligible_of.items()}
+            if _session.pmap else {})
+
+
 def _num(row, col: str) -> float | None:
     if row is None or col not in row or pd.isna(row[col]):
         return None

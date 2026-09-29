@@ -13,6 +13,20 @@ export interface Column<T> {
   hideBelow?: "sm" | "md" | "lg" | "xl"; // cell hidden below this breakpoint
 }
 
+export interface TableSort { key: string; dir: 1 | -1 }
+
+export function sortTableRows<T>(rows: T[], columns: Column<T>[], sort: TableSort | null): T[] {
+  const value = columns.find(column => column.key === sort?.key)?.sortValue;
+  if (!sort || !value) return rows;
+  return [...rows].sort((a, b) => {
+    const va = value(a), vb = value(b);
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    return va < vb ? -sort.dir : va > vb ? sort.dir : 0;
+  });
+}
+
 // Literal class strings — Tailwind only generates classes it can see in the source.
 const HIDE_BELOW: Record<string, string> = {
   sm: "hidden sm:table-cell",
@@ -31,6 +45,8 @@ export function DataTable<T>({
   defaultSort,
   maxHeight = "calc(100vh - 260px)",
   dense = false,
+  controlledSort,
+  onSortChange,
 }: {
   columns: Column<T>[];
   rows: T[];
@@ -42,33 +58,23 @@ export function DataTable<T>({
   defaultSort?: string;
   maxHeight?: string;
   dense?: boolean;
+  controlledSort?: TableSort | null;
+  onSortChange?: (sort: TableSort) => void;
 }) {
-  const [sort, setSort] = useState<{ key: string; dir: 1 | -1 } | null>(
+  const [internalSort, setSort] = useState<TableSort | null>(
     defaultSort ? { key: defaultSort, dir: 1 } : null,
   );
+  const sort = controlledSort === undefined ? internalSort : controlledSort;
   const userSorted = sort?.key !== defaultSort || sort?.dir !== 1;
 
-  const sorted = useMemo(() => {
-    if (!sort) return rows;
-    const col = columns.find((c) => c.key === sort.key);
-    if (!col?.sortValue) return rows;
-    const sv = col.sortValue;
-    return [...rows].sort((a, b) => {
-      const va = sv(a);
-      const vb = sv(b);
-      if (va == null && vb == null) return 0;
-      if (va == null) return 1; // nulls last regardless of direction
-      if (vb == null) return -1;
-      if (va < vb) return -sort.dir;
-      if (va > vb) return sort.dir;
-      return 0;
-    });
-  }, [rows, sort, columns]);
+  const sorted = useMemo(() => sortTableRows(rows, columns, sort), [rows, sort, columns]);
 
   const clickSort = (key: string) => {
     const col = columns.find((c) => c.key === key);
     if (!col?.sortValue) return;
-    setSort((s) => (s?.key === key ? { key, dir: s.dir === 1 ? -1 : 1 } : { key, dir: 1 }));
+    const next: TableSort = { key, dir: sort?.key === key && sort.dir === 1 ? -1 : 1 };
+    if (onSortChange) onSortChange(next);
+    else setSort(next);
   };
 
   const pad = dense ? "px-2.5 py-1" : "px-2.5 py-1.5";
@@ -83,14 +89,15 @@ export function DataTable<T>({
               <th
                 key={c.key}
                 title={c.title}
-                onClick={() => clickSort(c.key)}
+                scope="col"
+                aria-sort={sort?.key === c.key ? (sort.dir === 1 ? "ascending" : "descending") : undefined}
                 className={`${pad} whitespace-nowrap border-b border-bdr font-semibold ${
                   c.sortValue ? "cursor-pointer select-none hover:text-ink-2" : ""
                 } ${c.align === "right" ? "text-right" : c.align === "center" ? "text-center" : ""} ${
                   c.hideBelow ? HIDE_BELOW[c.hideBelow] : ""
                 }`}
               >
-                {c.label}
+                {c.sortValue ? <button type="button" onClick={() => clickSort(c.key)} className="text-inherit" aria-label={`Sort by ${typeof c.label === "string" ? c.label : c.key}`}>{c.label}</button> : c.label}
                 {sort?.key === c.key && (
                   <span className="ml-0.5 text-accent">{sort.dir === 1 ? "▲" : "▼"}</span>
                 )}
