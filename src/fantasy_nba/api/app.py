@@ -136,8 +136,11 @@ def board(
     eligibility = player_positions() if target == boards.CURRENT_TARGET else {}
     for row in rows:
         row["positions"] = eligibility.get(int(row["PLAYER_ID"]), [])
+    market_files = sorted((RAW_DIR / "market").glob("fantasypros_*.parquet")) \
+        if target == boards.CURRENT_TARGET else []
     return {
         "target": target, "model": model, "stance": stance,
+        "market_date": market_files[-1].stem.removeprefix("fantasypros_") if market_files else None,
         "analyst_applied": analyst_applied, "n_adjusted": n_adjusted,
         "has_actuals": "actual_rank" in b.columns,
         "teams": sorted(b["TEAM_ABBREVIATION"].dropna().unique().tolist()),

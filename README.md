@@ -316,13 +316,22 @@ For example, the public site accepts `#board?player=203999` and
 `/compare?ids=203999,1641705`. Browser back/forward and reload restore the view.
 Private target notes and take-by picks stay out of links.
 
-Use **Export watchlist / Import watchlist** on either Draft Board to move targets,
-take-by picks and Unicode notes between browsers or the two apps. Imports preview
-merge/replace choices and unknown IDs; invalid files leave your watchlist intact.
-Backups use the current target season, version 1, with a 1 MB limit. The file includes
-your private notes. Copying a board with Watchlist selected shares the All filter;
-transfer the watchlist separately. Shared format checks run from the repo root with
-`node tests/test_workspace.mjs`.
+Use **Export watchlist / Import watchlist** on either Draft Board or My Draft Plan to
+move targets, plan details, take-by picks and Unicode notes between browsers or the
+two apps. Imports preview merge/replace choices and unknown IDs; invalid files leave
+your watchlist intact.
+Backups use the current target season, version 2, with a 1 MB limit; version-1 files
+still import. The file includes your private notes. Copying a board with Watchlist
+selected shares the All filter; transfer the watchlist separately. Shared format
+checks run from the repo root with `node tests/test_workspace.mjs`.
+
+**My Draft Plan** is at `#plan` on the public site and `/draft-plan` in the local app.
+Set a preferred round, backup group, priority, take-by pick, status and note for each
+target. The plan groups targets around your upcoming snake picks, shows remaining
+players in each FP/G tier and flags missed or conflicting deadlines. Public picks
+follow the configured manual mock; local picks use a verified saved ESPN order when
+available and otherwise carry an explicit illustrative label. The plan reads draft
+state and never makes a pick.
 
 To preview the public site locally, run
 `python -m http.server 8788 --bind 127.0.0.1 --directory static` from the repo root.
@@ -333,7 +342,8 @@ mobile navigation is available from Menu; Radar and analyst signals have a dialo
 for touch and keyboard users. Local historical boards omit current eligibility.
 
 Optional browser verification: with both previews running, real local caches and
-Python Playwright/Chromium installed, run `python scripts/check_product_portability.py`.
+Python Playwright/Chromium installed, run `python scripts/check_product_portability.py`
+and `python scripts/check_draft_plan.py`.
 It uses isolated browser contexts and writes disposable results to `.tmp/ux-review/`.
 The completed tracker and next-session handoff are in
 [docs/product-experience-plan.md](docs/product-experience-plan.md).

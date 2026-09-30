@@ -10,6 +10,9 @@ IDS = [row['PLAYER_ID'] for row in BOARD['rows'][:2]]
 NOTE = 'Jokić ★\n中文 <img src=x onerror="window.PWN=1">'
 TARGETS = {str(IDS[0]): {'takeBy': 3, 'note': NOTE}, '99999999': {'takeBy': None, 'note': ''}}
 BACKUP = {'format': 'fantasy-nba-watchlist', 'version': 1, 'season': '2026-27', 'targets': [dict(playerId=int(id), **target) for id, target in TARGETS.items()]}
+PLAN_DEFAULTS = {'preferredRound': None, 'backupGroup': '', 'priority': None, 'status': 'active'}
+NORMALIZED = {id: {**target, **PLAN_DEFAULTS} for id, target in TARGETS.items()}
+EXPORTED_TARGETS = [dict(playerId=int(id), **target) for id, target in NORMALIZED.items()]
 KEY = 'fantasy-nba-draft-targets-v1'
 errors = []
 
@@ -72,7 +75,7 @@ with sync_playwright() as p:
     assert stored(page) == {}
     page.locator('#watchlist-file').set_input_files(payload(BACKUP))
     page.get_by_role('button', name='Confirm import', exact=True).click()
-    assert stored(page) == TARGETS
+    assert stored(page) == NORMALIZED
     page.locator(f'#rows [data-player="{IDS[0]}"]').click()
     expect(page.locator('#player-detail')).to_contain_text(NOTE)
     assert not page.evaluate('Boolean(window.PWN)')
@@ -84,10 +87,10 @@ with sync_playwright() as p:
         page.get_by_role('button', name='Export watchlist').click()
     dl.value.save_as(str(OUT / 'public-watchlist.json'))
     exported = json.loads((OUT / 'public-watchlist.json').read_text(encoding='utf-8'))
-    assert exported['season'] == '2026-27' and exported['targets'] == BACKUP['targets']
+    assert exported['season'] == '2026-27' and exported['version'] == 2 and exported['targets'] == EXPORTED_TARGETS
     page.locator('#watchlist-file').set_input_files(payload({**BACKUP, 'version': 999}))
-    expect(page.locator('#backup-status')).to_contain_text('version 1')
-    assert stored(page) == TARGETS
+    expect(page.locator('#backup-status')).to_contain_text('version 1 or 2')
+    assert stored(page) == NORMALIZED
     for width in [320, 390, 760]:
         page.set_viewport_size({'width': width, 'height': 844})
         expect(page.locator('.topbar [data-copy-link]')).to_be_visible()
@@ -111,16 +114,16 @@ with sync_playwright() as p:
     page.locator('input[type=file]').set_input_files(str(OUT / 'public-watchlist.json'))
     expect(page.get_by_role('dialog', name='Import watchlist')).to_contain_text('99999999')
     page.get_by_role('button', name='Confirm import').click()
-    assert stored(page) == TARGETS
+    assert stored(page) == NORMALIZED
     with page.expect_download() as dl:
         page.get_by_role('button', name='Export watchlist').click()
     dl.value.save_as(str(OUT / 'local-watchlist.json'))
-    assert json.loads((OUT / 'local-watchlist.json').read_text(encoding='utf-8'))['targets'] == BACKUP['targets']
+    assert json.loads((OUT / 'local-watchlist.json').read_text(encoding='utf-8'))['targets'] == EXPORTED_TARGETS
     reverse = ctx.new_page()
     reverse.goto('http://127.0.0.1:8788/#board')
     reverse.locator('#watchlist-file').set_input_files(str(OUT / 'local-watchlist.json'))
     reverse.get_by_role('button', name='Confirm import').click()
-    assert stored(reverse) == TARGETS
+    assert stored(reverse) == NORMALIZED
     reverse.locator('#watchlist-file').set_input_files(payload({**BACKUP, 'targets': []}))
     reverse.locator('[name=import-mode][value=replace]').check()
     reverse.get_by_role('button', name='Confirm import').click()
@@ -153,7 +156,7 @@ with sync_playwright() as p:
     page.locator('input[type=file]').set_input_files(payload(replacement))
     page.get_by_label('Replace —', exact=False).check()
     page.get_by_role('button', name='Confirm import').click()
-    assert stored(page) == {str(IDS[0]): TARGETS[str(IDS[0])]}
+    assert stored(page) == {str(IDS[0]): NORMALIZED[str(IDS[0])]}
     for width in [320, 390, 760]:
         page.set_viewport_size({'width': width, 'height': 844})
         assert page.evaluate('document.body.scrollWidth <= innerWidth')

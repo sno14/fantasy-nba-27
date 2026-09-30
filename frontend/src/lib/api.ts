@@ -57,6 +57,7 @@ export interface BoardRow {
 
 export interface BoardResponse {
   target: string;
+  market_date?: string | null;
   model: string;
   stance: string;
   analyst_applied: boolean;
@@ -275,6 +276,7 @@ export interface DraftStateResponse {
   my_team_id: number;
   team_ids: number[];
   settings: DraftSettings | null;
+  roster_slots: Record<string, number>;
   espn_error: string | null;
   browser_sync_asof: string | null;
   espn_ready: boolean;

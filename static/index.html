@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#0b1118" />
     <title>Fantasy NBA 2026–27</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🏀%3C/text%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="style.css?v=8" />
+    <link rel="stylesheet" href="style.css?v=9" />
   </head>
   <body>
     <div class="shell">
@@ -17,6 +17,7 @@
           <span><strong>Fantasy NBA</strong><small>2026–27 · Board B</small></span>
         </a>
         <nav aria-label="Main navigation">
+          <button class="nav-item" data-view="plan"><span>◎</span> My Draft Plan</button>
           <button class="nav-item active" data-view="board"><span>▤</span> Draft board</button>
           <button class="nav-item" data-view="mock"><span>◎</span> Mock draft <b id="mock-count"></b></button>
           <button class="nav-item" data-view="tiers"><span>≡</span> Tiers</button>
@@ -118,6 +119,13 @@
           <div id="mock-teams" class="mock-team-grid"></div>
         </section>
 
+        <section id="view-plan" class="view" hidden>
+          <div class="plan-toolbar panel"><label><span>Draft position / my team</span><select id="plan-team"></select></label><p>Pick numbers use the configured snake order. They describe a plan, not a prediction that a player survives.</p><button class="button" data-go="mock">Open mock draft</button></div>
+          <div id="plan-summary" class="summary-grid"></div>
+          <p id="plan-source" class="status"></p>
+          <div id="plan-groups" class="plan-groups"></div>
+        </section>
+
         <section id="view-tiers" class="view" hidden><div id="tier-grid" class="tier-grid"></div></section>
         <section id="view-teams" class="view" hidden><div id="team-grid" class="team-grid"></div></section>
         <section id="view-compare" class="view" hidden><div id="compare-view"></div></section>
@@ -141,6 +149,11 @@
         <p class="eyebrow">PRIVATE WATCHLIST</p>
         <h2 id="target-player-name">Priority target</h2>
         <input id="target-player-id" type="hidden" />
+        <label><span>Preferred round</span><input id="target-round" type="number" min="1" max="100" step="1" placeholder="Optional" /></label>
+        <label><span>Backup group</span><input id="target-group" type="text" maxlength="50" placeholder="e.g. round 3 guards" /></label>
+        <label><span>Priority order</span><input id="target-priority" type="number" min="1" max="1000" step="1" placeholder="Optional; lower comes first" /></label>
+        <label><span>Status</span><select id="target-status"><option value="active">Active</option><option value="hold">On hold</option></select></label>
+        <p id="target-error" class="status" role="alert"></p>
         <label><span>Take by overall pick</span><input id="target-take-by" type="number" min="1" max="10000" step="1" placeholder="Optional" /></label>
         <label><span>Draft note</span><textarea id="target-note" rows="4" maxlength="10000" placeholder="Why you are willing to reach…"></textarea></label>
         <div class="target-actions"><button type="button" id="target-remove" class="button danger-action">Remove target</button><button type="submit" class="button">Save target</button></div>
@@ -152,6 +165,6 @@
       <label><input type="radio" name="import-mode" value="replace" /> Replace — remove existing targets before importing.</label>
       <div class="target-actions"><button id="cancel-import" class="button subtle-action">Cancel</button><button id="confirm-import" class="button">Confirm import</button></div>
     </div></dialog>
-    <script type="module" src="app.js?v=9"></script>
+    <script type="module" src="app.js?v=10"></script>
   </body>
 </html>

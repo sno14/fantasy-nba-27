@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { normalizeTarget } from "../../../static/workspace.mjs";
 
 export type RadarLabel = "strong_target" | "target" | "fade" | "strong_fade" | "";
 
@@ -14,6 +15,10 @@ export interface RadarRow {
 export interface DraftTarget {
   takeBy: number | null;
   note: string;
+  preferredRound: number | null;
+  backupGroup: string;
+  priority: number | null;
+  status: "active" | "hold";
 }
 
 export type DraftTargets = Record<string, DraftTarget>;
@@ -27,11 +32,12 @@ function loadTargets(): DraftTargets {
   try {
     const value = JSON.parse(localStorage.getItem(TARGETS_KEY) || "{}");
     if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-    return Object.fromEntries(Object.entries(value).filter(([key, target]) => {
-      const t = target as DraftTarget | null;
-      return /^\d+$/.test(key) && t && typeof t.note === "string" &&
-        (t.takeBy === null || (Number.isInteger(t.takeBy) && t.takeBy > 0));
-    })) as DraftTargets;
+    const valid: DraftTargets = {};
+    for (const [key, target] of Object.entries(value)) {
+      if (!/^[1-9]\d*$/.test(key)) continue;
+      try { valid[key] = normalizeTarget(target); } catch { /* Ignore invalid saved entries. */ }
+    }
+    return valid;
   } catch (error) {
     unavailable = !(error instanceof SyntaxError);
     return {};
@@ -79,7 +85,7 @@ export function useDraftTargets() {
     const noteInput = window.prompt("Private draft note (optional)", existing?.note || "");
     const note = noteInput == null ? (existing?.note || "") : noteInput;
     if (note.length > 10000) { window.alert("Keep notes under 10,000 characters."); return; }
-    const next = { ...targets, [key]: { takeBy: parsed == null ? null : Math.round(parsed), note } };
+    const next = { ...targets, [key]: normalizeTarget({ ...existing, takeBy: parsed == null ? null : parsed, note }) };
     save(next);
   };
 

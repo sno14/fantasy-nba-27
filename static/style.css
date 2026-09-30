@@ -311,6 +311,22 @@ dialog::backdrop { background: rgba(4,8,12,.76); backdrop-filter: blur(3px); }
 #import-dialog { max-width: min(560px, calc(100vw - 24px)); }
 #import-unknown { overflow-wrap: anywhere; }
 #import-dialog input[type="radio"] { width: auto; }
+.plan-toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; padding: 15px; margin-bottom: 14px; }
+.plan-toolbar label > span { display: block; margin-bottom: 5px; color: var(--muted-2); font-size: .68rem; }
+.plan-toolbar p { flex: 1 1 240px; margin: 0; color: var(--muted); font-size: .75rem; line-height: 1.5; }
+.plan-groups { display: grid; gap: 12px; }
+.plan-group { overflow: hidden; }
+.plan-group > header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 5px 12px; padding: 13px 15px; border-bottom: 1px solid var(--line); }
+.plan-group h2 { margin: 0; font-size: .95rem; }
+.plan-group header span { color: var(--muted); font-size: .72rem; }
+.plan-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 13px 15px; border-bottom: 1px solid var(--line); }
+.plan-row > div { flex: 1 1 230px; min-width: 0; }
+.plan-row strong, .plan-row small { display: block; overflow-wrap: anywhere; }
+.plan-row strong { font-size: .8rem; }
+.plan-row small { margin-top: 3px; color: var(--muted); font-size: .69rem; }
+.plan-row p { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--muted); font-size: .7rem; }
+.plan-status { color: var(--amber); font-size: .72rem; font-weight: 700; }
+.plan-row .plan-deadline { color: var(--amber); font-weight: 700; }
 .topbar-actions { flex-wrap: wrap; }
 #route-note, #backup-status { overflow-wrap: anywhere; }
 @media (max-width: 430px) {

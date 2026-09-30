@@ -237,9 +237,9 @@ starts with public board presets/mobile cards and workspace persistence, followe
 My Draft Plan, practice drafts, change history, rotation context, usable-lineup
 streaming, trade scenarios, Today and minutes scenarios. These are product steps;
 the standing modelling calendar and experiment gates remain unchanged.
-Public board usability (P1a) is complete locally on 2026-09-29, and local app
-parity (P1b) and links/watchlist portability (P1c) on 2026-09-30.
-My Draft Plan (P2) is next.
+Public board usability (P1a) is complete locally on 2026-09-29; local app parity
+(P1b), links/watchlist portability (P1c), and both-surface My Draft Plan (P2) are
+complete locally on 2026-09-30. Practice My Draft (P3) is next.
 
 ### Stage 6 — Uncertainty / risk ranges  ← DONE 2026-07-10 (shipped: SD_PG spread — re-affirmed by EXP-021 — on the adopted (age × chronic) GP pools, EXP-015b)
 - [x] **Monte-Carlo risk ranges** (`models/uncertainty.py`) — simulate each player's season:

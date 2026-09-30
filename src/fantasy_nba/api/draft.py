@@ -429,6 +429,7 @@ def draft_state(top: int = Query(default=120, le=400)) -> dict:
         "my_team_id": s.my_team_id,
         "team_ids": state.all_team_ids,
         "settings": s.settings,
+        "roster_slots": _league_cfg()["roster"],
         "espn_error": s.espn_error,
         "browser_sync_asof": s.browser_sync_asof,
         "espn_ready": bool(s.pmap) and bool(s.team_ids),

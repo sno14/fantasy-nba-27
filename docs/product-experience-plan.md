@@ -68,7 +68,7 @@ Each row ships independently with the acceptance checks below.
 | P1a | Board column presets, mobile cards, tap explanations, saved preferences | Public | Small | Existing export | Complete locally, 2026-09-29 |
 | P1b | Local board/navigation parity and ranking explanations | Local | Medium | P1a conventions | Complete locally, 2026-09-30 |
 | P1c | Shareable player/compare URLs and watchlist backup/restore | Both | Small–medium | P1a storage conventions | Complete locally, 2026-09-30 |
-| P2 | My Draft Plan workspace and useful draft summary cards | Both | Medium | P1c; existing targets and picks | Planned |
+| P2 | My Draft Plan workspace and useful draft summary cards | Both | Medium | P1c; existing targets and picks | Complete locally, 2026-09-30 |
 | P3 | Practice My Draft with saved runs | Public, then local | Medium | P2; existing snake/slot logic | Planned |
 | P4 | What Changed: published history and watched-player changes | Both | Medium | P1c; dated exports | Planned |
 | P5 | Rotation & Opportunity team detail | Local, curated public | Medium | Existing team/analyst data | Planned |
@@ -78,7 +78,7 @@ Each row ships independently with the acceptance checks below.
 | P8 | Today home page evolving My Team | Local | Medium | P4 and P6 | Planned |
 | P9 | Player minutes scenario explorer | Local, then public | Medium | Verified decomposition inputs | Planned |
 
-P1a, P1b and P1c are complete locally. The next implementation is P2 My Draft Plan.
+P1a–P2 are complete locally. The next implementation is P3 Practice My Draft.
 The remaining rows are documented scope, not an assertion that they are implemented.
 
 ## 4. P1 — board usability and workspace foundations
@@ -527,3 +527,41 @@ or adding private research. The reusable browser check is now
 `scripts/check_product_portability.py`. Local agent guidance and the Codex BBM skill
 are included for session continuity; generated build files, browser downloads,
 screenshots and server logs remain local.
+
+## 15. P2 delivery and handoff — 2026-09-30
+
+P2 My Draft Plan is implemented on both surfaces: public `#plan` and local
+`/draft-plan`. Both use the existing browser-local target key and show configured
+snake picks, grouped targets, backups, target deadlines, FP/G tier counts, ADP
+vintage, roster needs and a link to their respective draft rooms. Editing a target
+from either the board or the plan updates the same store. Picks and undo change
+target availability; neither plan submits a pick. Public `rank` remains the
+published FP/G ordinal, while local `rank` retains the selected board semantics.
+
+The target schema now adds `preferredRound`, `backupGroup`, `priority` and `status`.
+Old stored targets load with defaults without changing the storage key. Exported
+backups use version 2; version-1 files remain importable on both apps. Unknown IDs
+remain in a backup and appear as absent targets. Plan notes are private, escaped in
+the public HTML renderer and never added to shareable URLs.
+
+The local plan uses real, potentially non-contiguous team IDs only when the saved
+ESPN order is complete and non-placeholder. Otherwise the page labels its pick
+numbers as an illustrative slot scenario. Open starting positions are explicitly
+unknown without confirmed eligibility and a selected team. Current-board ADP
+vintage comes from the latest cached market filename; historical board responses
+do not borrow it. No survival odds or automatic board reorder are shown.
+
+Verification: frontend production build; shared workspace tests including v1/v2
+backup validation and non-contiguous snake picks; 63 relevant backend tests; the
+cross-app portability Playwright check; and `scripts/check_draft_plan.py` covering
+old-target migration, plan editing, public pick/undo, simulated local pick/undo,
+verified order and placeholder fallback. The draft-plan browser check intercepts
+read-only draft-state requests in an isolated context and does not touch the live
+session. Mobile screenshots are in ignored `.tmp/ux-review/`.
+
+Next: P3 Practice My Draft (§6). Keep practice runs isolated from the existing
+manual mock and live draft session. Follow the standing calendar in
+`docs/implementation-plan.md` before product work at its scheduled gates. Local
+previews can be started with `python scripts/serve.py` on port 8787 and
+`python -m http.server 8788 --bind 127.0.0.1 --directory static`; rebuild the
+frontend with `npm --prefix frontend run build` after React changes.

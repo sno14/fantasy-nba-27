@@ -1,4 +1,4 @@
-import { downloadBackup, MAX_FILE_BYTES, parseIds, validateBackup } from "./workspace.mjs";
+import { downloadBackup, MAX_FILE_BYTES, normalizeTarget, parseIds, snakePicks, validateBackup } from "./workspace.mjs";
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const fmt = (value, digits = 1) => value == null || !Number.isFinite(Number(value)) ? "—" : Number(value).toFixed(digits);
@@ -39,12 +39,16 @@ const TARGETS_KEY = "fantasy-nba-draft-targets-v1";
 function loadTargets() {
   const saved = readStored(TARGETS_KEY, {});
   if (saved && typeof saved === "object" && !Array.isArray(saved)) {
-    state.targets = Object.fromEntries(Object.entries(saved).filter(([id, target]) => /^[1-9]\d*$/.test(id) && target && typeof target.note === "string" && (target.takeBy === null || (Number.isInteger(target.takeBy) && target.takeBy > 0))));
+    for (const [id, target] of Object.entries(saved)) {
+      if (!/^[1-9]\d*$/.test(id)) continue;
+      try { state.targets[id] = normalizeTarget(target); } catch { /* Ignore invalid saved entries. */ }
+    }
   }
 }
 
 function saveTargets() {
   writeStored(TARGETS_KEY, state.targets);
+  drawPlan();
 }
 
 function isTarget(row) { return Boolean(state.targets[String(row.PLAYER_ID)]); }
@@ -78,6 +82,11 @@ function openTarget(row) {
   $("#target-player-id").value = row.PLAYER_ID;
   $("#target-take-by").value = target.takeBy ?? (row.adp != null ? Math.max(1, Math.round(row.adp - 12)) : "");
   $("#target-note").value = target.note || "";
+  $("#target-round").value = target.preferredRound ?? "";
+  $("#target-group").value = target.backupGroup ?? "";
+  $("#target-priority").value = target.priority ?? "";
+  $("#target-status").value = target.status || "active";
+  $("#target-error").textContent = "";
   $("#target-remove").hidden = !isTarget(row);
   const dialog = $("#target-dialog");
   if (dialog.showModal) dialog.showModal(); else dialog.setAttribute("open", "");
@@ -89,6 +98,7 @@ const viewCopy = {
   tiers: ["Projection Tiers", "Value bands from unusually large adjacent FP/G gaps."],
   teams: ["Team Overview", "Projected leaders and top-five strength for every NBA team."],
   compare: ["Player Compare", "Put up to four projections side by side."],
+  plan: ["My Draft Plan", "Your targets, upcoming picks and roster needs."],
   method: ["Methodology", "What this public snapshot includes—and what remains local."],
 };
 
@@ -103,6 +113,7 @@ function loadMock() {
 function saveMock() {
   writeStored("fantasy-nba-mock", { picks: state.mock.picks, myTeam: state.mock.myTeam });
   $("#mock-count").textContent = state.mock.picks.length || "";
+  drawPlan();
 }
 
 function mockConfig() {
@@ -141,6 +152,51 @@ function rosterFit(players) {
     }
   });
   return { open, starterFpg };
+}
+
+function drawPlan() {
+  if (!state.rows.length) return;
+  const config = mockConfig();
+  const fromOverall = state.mock.picks.length + 1;
+  const rounds = Object.entries(config.roster || {}).filter(([slot]) => slot !== "IR").reduce((sum, [, count]) => sum + Number(count), 0);
+  const order = Array.from({ length: config.teams }, (_, index) => index + 1);
+  const picks = snakePicks(order, state.mock.myTeam, fromOverall, Math.min(30, rounds));
+  const selected = state.mock.picks.filter(pick => pick.team === state.mock.myTeam);
+  const owned = new Map(state.mock.picks.map(pick => [pick.playerId, pick.team]));
+  const byId = new Map(state.rows.map(row => [row.PLAYER_ID, row]));
+  const tierRemaining = new Map();
+  state.rows.forEach(row => { if (row.tier != null && !owned.has(row.PLAYER_ID)) tierRemaining.set(row.tier, (tierRemaining.get(row.tier) || 0) + 1); });
+  const fit = rosterFit(selected.map(pick => byId.get(pick.playerId)).filter(Boolean));
+  const openSlots = Object.entries(fit.open).filter(([, count]) => count > 0).map(([slot, count]) => `${slot} ${count}`);
+  const entries = Object.entries(state.targets).map(([id, target]) => ({ id: Number(id), row: byId.get(Number(id)), target, owner: owned.get(Number(id)) }));
+  const active = entries.filter(item => item.target.status === "active" && !item.owner && item.row);
+  const overdue = active.filter(item => item.target.takeBy != null && item.target.takeBy < fromOverall);
+  $("#plan-team").value = String(state.mock.myTeam);
+  $("#plan-summary").innerHTML = [
+    ["Next planned pick", picks.length ? `#${picks[0].overall}` : "—", picks.length ? `Round ${picks[0].round} · Team ${state.mock.myTeam}` : "Draft complete"],
+    ["Remaining targets", String(active.length), `${entries.length} saved targets`],
+    ["Past take-by pick", String(overdue.length), "Available targets only"],
+    ["Open starters", openSlots.length ? String(openSlots.reduce((n, x) => n + Number(x.split(" ")[1]), 0)) : "0", openSlots.join(" · ") || "None"],
+  ].map(([label, value, note]) => `<article class="summary-card"><small>${esc(label)}</small><strong>${esc(value)}</strong><em>${esc(note)}</em></article>`).join("");
+  const unknownPositions = selected.some(pick => !playerPositions(byId.get(pick.playerId)).length);
+  $("#plan-source").textContent = `Published ${state.season} board · ADP vintage ${state.meta.market_date || "unavailable"}. ${picks.length ? `Upcoming picks: ${picks.slice(0, 5).map(pick => `#${pick.overall} (R${pick.round})`).join(", ")}.` : "No picks remain in this scenario."} ${unknownPositions ? "Open starting slots are an estimate because some drafted players have unknown eligibility." : ""}`;
+  const groups = new Map();
+  for (const item of entries) {
+    const round = item.target.preferredRound ?? (item.target.takeBy ? Math.ceil(item.target.takeBy / config.teams) : null);
+    const key = round && round <= rounds ? round : "Unassigned";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(item);
+  }
+  if (!entries.length) { $("#plan-groups").innerHTML = `<div class="empty">No targets yet. Star a player on the <button class="link-button" data-go="board">Draft Board</button> to begin.</div>`; return; }
+  $("#plan-groups").innerHTML = [...groups].sort(([a], [b]) => a === "Unassigned" ? 1 : b === "Unassigned" ? -1 : a - b).map(([round, items]) => {
+    const upcoming = typeof round === "number" ? picks.find(pick => pick.round === round) : null;
+    const sorted = items.sort((a, b) => (a.target.backupGroup || "").localeCompare(b.target.backupGroup || "") || (a.target.priority ?? 1001) - (b.target.priority ?? 1001) || (a.row?.rank ?? 9999) - (b.row?.rank ?? 9999));
+    return `<section class="panel plan-group"><header><h2>${round === "Unassigned" ? "Unassigned targets" : `Round ${round}`}</h2><span>${upcoming ? `Your pick #${upcoming.overall}` : round === "Unassigned" ? "Choose a round in Edit plan" : "Pick already passed or not yours"}</span></header>${sorted.map(({ id, row, target, owner }) => {
+      const availability = owner ? owner === state.mock.myTeam ? "Drafted by you" : `Drafted by Team ${owner}` : !row ? "Absent from this board" : target.status === "hold" ? "On hold" : target.takeBy != null && target.takeBy < fromOverall ? "Past take-by pick" : target.takeBy === fromOverall ? "Due now" : "Available";
+      const conflict = !owner && upcoming && target.takeBy != null && upcoming.overall > target.takeBy;
+      return `<div class="plan-row"><div><strong>${row ? esc(row.PLAYER_NAME) : `Player ID ${id}`}</strong><small>${row ? `#${row.rank} · ${fmt(row.fpts_pg)} FP/G · ADP ${integer(row.adp)}${row.tier != null ? ` · Tier ${integer(row.tier)} (${tierRemaining.get(row.tier) || 0} remain)` : ""}` : "No current projection"}</small><small>${target.backupGroup ? `Backup: ${esc(target.backupGroup)} · ` : ""}${target.priority ? `Priority ${target.priority} · ` : ""}${target.takeBy ? `Take by #${target.takeBy}` : "No take-by pick"}</small>${conflict ? `<small class="plan-deadline">Your round pick #${upcoming.overall} is after take-by #${target.takeBy}.</small>` : ""}${target.note ? `<p>${esc(target.note)}</p>` : ""}</div><span class="plan-status">${esc(availability)}</span>${row ? `<button class="button subtle-action" data-target-player="${id}">Edit plan</button>` : `<button class="button subtle-action" data-plan-remove="${id}">Remove</button>`}</div>`;
+    }).join("")}</section>`;
+  }).join("");
 }
 
 function draftPlayer(playerId) {
@@ -503,6 +559,7 @@ function setView(view, navigate = true) {
   $(".sidebar").classList.remove("open");
   if (navigate) { state.playerId = null; $("#player-dialog").close(); writeRoute(); }
   if (view === "compare") drawCompare();
+  if (view === "plan") drawPlan();
 }
 
 function populateFilters() {
@@ -630,6 +687,7 @@ function bindEvents() {
   $("#mock-radar").addEventListener("change", event => { state.mock.radar = event.target.value; drawMock(); });
   $("#mock-limit").addEventListener("change", event => { state.mock.limit = Number(event.target.value); drawMock(); });
   $("#mock-my-team").addEventListener("change", event => { state.mock.myTeam = Number(event.target.value); saveMock(); drawMock(); });
+  $("#plan-team").addEventListener("change", event => { state.mock.myTeam = Number(event.target.value); saveMock(); drawMock(); });
   $("#mock-undo").addEventListener("click", () => { state.mock.picks.pop(); saveMock(); drawMock(); });
   $("#mock-reset").addEventListener("click", () => {
     if (state.mock.picks.length && confirm("Clear every pick in this browser mock draft?")) {
@@ -663,6 +721,8 @@ function bindEvents() {
       const row = state.rows.find(r => r.PLAYER_ID === Number(target.dataset.targetPlayer));
       if (row) { if ($("#player-dialog").open) $("#player-dialog").close(); openTarget(row); }
     }
+    const planRemove = event.target.closest("[data-plan-remove]");
+    if (planRemove) { delete state.targets[planRemove.dataset.planRemove]; saveTargets(); drawBoard(); drawMock(); }
     const team = event.target.closest("[data-team]");
     if (team) { state.team = team.dataset.team; $("#team-filter").value = state.team; setView("board"); drawBoard(); }
     if (event.target.id === "clear-compare") { state.compare.clear(); saveCompare(); drawBoard(); drawCompare(); writeRoute(); }
@@ -679,12 +739,18 @@ function bindEvents() {
     event.preventDefault();
     const id = String($("#target-player-id").value);
     const takeBy = $("#target-take-by").value ? Number($("#target-take-by").value) : null;
-    state.targets[id] = { takeBy, note: $("#target-note").value.trim() };
-    saveTargets(); $("#target-dialog").close(); drawBoard(); drawMock();
+    try {
+      state.targets[id] = normalizeTarget({ takeBy, note: $("#target-note").value.trim(),
+        preferredRound: $("#target-round").value ? Number($("#target-round").value) : null,
+        backupGroup: $("#target-group").value.trim(),
+        priority: $("#target-priority").value ? Number($("#target-priority").value) : null,
+        status: $("#target-status").value });
+      saveTargets(); $("#target-dialog").close(); drawBoard(); drawMock(); drawPlan();
+    } catch (error) { $("#target-error").textContent = error.message; }
   });
   $("#target-remove").addEventListener("click", () => {
     delete state.targets[String($("#target-player-id").value)];
-    saveTargets(); $("#target-dialog").close(); drawBoard(); drawMock();
+    saveTargets(); $("#target-dialog").close(); drawBoard(); drawMock(); drawPlan();
   });
   window.addEventListener("hashchange", () => applyRoute());
   window.addEventListener("popstate", () => applyRoute());
@@ -712,9 +778,10 @@ fetch("data/board.json", { cache: "no-store" })
     const teamOptions = Array.from({ length: mockConfig().teams }, (_, index) => `<option value="${index + 1}">Team ${index + 1}</option>`).join("");
     $("#mock-team").innerHTML = teamOptions;
     $("#mock-my-team").innerHTML = teamOptions;
+    $("#plan-team").innerHTML = teamOptions;
     populateFilters();
     routeFallback = Object.fromEntries(Object.keys(BOARD_DEFAULTS).map(key => [key, state[key]]));
-    drawSummary(); drawBoard(); drawMock(); drawTiers(); drawTeams(); drawCompare(); saveCompare(); saveMock();
+    drawSummary(); drawBoard(); drawMock(); drawTiers(); drawTeams(); drawCompare(); drawPlan(); saveCompare(); saveMock();
     applyingRoute = false;
     applyRoute(true);
   })
