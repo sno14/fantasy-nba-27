@@ -28,6 +28,8 @@ jobs:
         run: python scripts/validate_public_history.py
       - name: Validate curated rotation summary
         run: python scripts/public_rotation.py --check
+      - name: Validate public minutes scenarios
+        run: node scripts/validate_public_minutes.mjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

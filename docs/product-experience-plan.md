@@ -1,6 +1,6 @@
 # Product experience implementation plan
 
-Created: 2026-09-29. Status: active; P1a–P8 are verified locally (P6b has a single-move MVP).
+Created: 2026-09-29. Status: active; P1a–P9 are verified locally (P6b has a single-move MVP).
 
 This is the execution plan for the experience and feature discussion of 2026-09-29.
 It extends the shipped views in [ui-views-plan.md](ui-views-plan.md), which remains
@@ -76,11 +76,10 @@ Each row ships independently with the acceptance checks below.
 | P6b | Personal Streaming Planner and add/drop scenarios | Local | Large | P6a; league acquisition rules | Single-move MVP complete locally, 2026-10-02; multi-move follow-up |
 | P7 | Trade Sandbox with both sides and uneven trades | Local | Large | P6a; ownership and schedule | Complete locally, 2026-10-02; weekly/playoff views await schedule |
 | P8 | Today home page evolving My Team | Local | Medium | P4 and P6 | Complete locally, 2026-10-02; league timezone and live dates remain unconfigured |
-| P9 | Player minutes scenario explorer | Local, then public | Medium | Verified decomposition inputs | Planned |
+| P9 | Player minutes scenario explorer | Local, then public | Medium | Verified decomposition inputs | Complete locally, 2026-10-02, both surfaces |
 
-P1a–P8 and P6b's single-move scope are complete locally. P9 minutes explorer is next; multi-move
-streaming awaits verified transaction rules.
-The remaining rows are documented scope, not an assertion that they are implemented.
+P1a–P9 and P6b's single-move scope are complete locally. Multi-move streaming awaits
+verified transaction rules. The standing modelling calendar retains priority.
 
 ## 4. P1 — board usability and workspace foundations
 
@@ -842,3 +841,33 @@ entry applies.
 Next: P9 minutes scenario explorer (§12), subject to the standing October
 calendar. Faithful Board-B rate decomposition and a verified public export
 schema are gates; do not rescale final adjusted FP/G directly.
+
+## 23. P9 delivery and handoff — 2026-10-02
+
+The local player page now has a read-only minutes scenario panel backed by
+`/api/player/{id}/minutes-scenario`. It uses the model's actual minutes rescaler
+and scoring configuration. The approved Board-B FP/G is the baseline; the current
+stat line is rescored at assumed MPG, and the recorded analyst rate residual is
+retained separately. Input rounds to 0.1 MPG, with a positive lower bound and the
+model's 42 MPG cap. A player without a complete, reconcilable stat line receives
+an explicit unavailable reason. The URL carries only the assumed minutes.
+
+The public player card uses `static/data/minutes.json`, a compact pre-scored grid
+generated from the same Board B and scorer at 0.5 MPG intervals. The browser
+looks up values without reimplementing scoring. The schema binds to the board's
+season, timestamp and scoring fingerprint; Pages validates it before deployment.
+The public export includes 586 verified curves from 595 unchanged player rows;
+the other nine have no complete rescalable stat line. No private rationale, raw
+model data or roster state is included. Both panels show approved baseline,
+minutes-only contribution, retained rate residual and resulting FP/G, and share
+the assumption through the existing player URL. Neither panel changes rankings,
+games played, team budgets, uncertainty ranges or future exports.
+
+Focused Python and JavaScript tests, public artifact/history/rotation validation,
+the production frontend build, and 320/390px browser checks cover scoring
+parity, link reload, invalid assumptions, unavailable and market-seed rows. This is product
+arithmetic using adopted model behavior, so no modelling experiment entry applies.
+
+Next: resume the standing October calendar. P6b multi-move streaming remains
+gated on verified league transaction rules; no unverified acquisition policy
+should be inferred from the current ESPN settings.

@@ -38,6 +38,7 @@ from .draft import player_positions, router as draft_router
 from .season import router as season_router
 from .rotation import router as rotation_router
 from .trade_sandbox import router as trade_sandbox_router
+from .minutes import router as minutes_router
 
 PROPOSALS_PATH = CONFIG_DIR / "analyst_proposals.yaml"
 LEAGUE_PATH = CONFIG_DIR / "league.yaml"
@@ -68,6 +69,7 @@ app.include_router(draft_router)
 app.include_router(season_router)
 app.include_router(rotation_router)
 app.include_router(trade_sandbox_router)
+app.include_router(minutes_router)
 
 
 def _records(df: pd.DataFrame) -> list[dict]:

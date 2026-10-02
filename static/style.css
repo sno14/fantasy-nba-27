@@ -267,6 +267,16 @@ dialog::backdrop { background: rgba(4,8,12,.76); backdrop-filter: blur(3px); }
 .detail-stat small { color: var(--muted-2); font-size: .58rem; text-transform: uppercase; letter-spacing: .05em; }
 .detail-stat strong { margin-top: 5px; font-size: .93rem; }
 .detail-section h3 { margin: 0 0 9px; font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; }
+.minutes-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; margin: 14px 0 8px; }
+.minutes-controls label { color: var(--muted); font-size: .72rem; display: grid; gap: 5px; }
+.minutes-controls input { width: 130px; }
+.minutes-results { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.minutes-results div { padding: 11px; background: var(--panel-2); border-radius: 8px; min-width: 0; }
+.minutes-results small, .minutes-results strong, .minutes-results span { display: block; }
+.minutes-results small { color: var(--muted-2); font-size: .62rem; text-transform: uppercase; letter-spacing: .04em; }
+.minutes-results strong { margin-top: 5px; font-size: .98rem; }
+.minutes-results span { color: var(--muted); font-size: .66rem; margin-top: 4px; }
+.minutes-scope { font-size: .7rem; line-height: 1.5; }
 .projection-line { display: grid; grid-template-columns: repeat(7,1fr); gap: 6px; }
 .projection-line div { padding: 9px 5px; text-align: center; background: #0c141d; border: 1px solid var(--line); border-radius: 7px; }
 .projection-line small, .projection-line strong { display: block; }

@@ -7,6 +7,7 @@ import { f0, f1, parseAction, signed } from "../lib/format";
 import { BarChart, LineChart, RangeStrip } from "../components/charts";
 import { Card, Chip, ErrorNote, SearchInput, Spinner } from "../components/ui";
 import { radarName, radarTone, targetTitle, useDraftTargets } from "../lib/draftRadar";
+import { MinutesScenario } from "../components/MinutesScenario";
 
 function StatCard({ label, value, sub, title }: { label: string; value: string; sub?: string; title?: string }) {
   return (
@@ -133,6 +134,8 @@ export default function Player() {
         <StatCard label="Projected change" value={p.fpts_pg_change == null ? "—" : signed(p.fpts_pg_change)} />
         <StatCard label="Median total" value={f0(p.fpts_median as number)} sub={`risk ${(p.risk as number).toFixed(2)}`} />
       </div>
+
+      <MinutesScenario playerId={p.PLAYER_ID} />
 
       <Card className="flex flex-wrap items-center gap-4 px-4 py-3">
         <span className="text-[13px] font-semibold text-ink-2">Season range</span>

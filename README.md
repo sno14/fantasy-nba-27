@@ -285,10 +285,10 @@ python scripts/export_static.py              # manual refresh without a promotio
 python scripts/update_daily.py --static-export
 ```
 
-Commit and push `static/data/board.json`; `.github/workflows/pages.yml` validates and deploys
+Commit and push `static/data/board.json` and `static/data/minutes.json`; `.github/workflows/pages.yml` validates and deploys
 `static/` on every push to `main`. Git only pushes committed files, so the generated JSON must be
-included in the commit (`git add static/data/board.json`, or `git commit -am` when all intended files
-are already tracked). The private BBM notes, analyst histories, and parquet caches remain intentionally ignored;
+included in the commit (`git add static/data/board.json static/data/minutes.json static/data/history static/data/rotation.json`,
+including new history files). The private BBM notes, analyst histories, and parquet caches remain intentionally ignored;
 only their redacted public snapshot is published. In the repository settings, set Pages **Source**
 to **GitHub Actions**.
 The public `rank` is a deterministic ordinal rank by projected **FP/G**. The internal safe/
@@ -296,6 +296,10 @@ season-value rank is deliberately not used as the page's rank; it remains in the
 `source_rank` (with pure-model rank in `model_source_rank`) for auditing. The Pages workflow checks
 that ranks are sequential and FP/G-descending before deployment. Public tiers are likewise derived
 from unusually large adjacent FP/G gaps; the internal season-value tier remains `source_tier`.
+The public player card includes a read-only minutes scenario for players with a verified stat
+line. The exporter scores 0.5-MPG steps with the canonical model/scoring path and retains the
+Board-B rate residual. Pages checks that this artifact matches the board. Missing inputs disable
+the panel; an assumed MPG changes neither the published board nor its FP/G ranks.
 The static site is a richer projection companion: sortable/filterable draft board, player
 drill-down with projected stat lines, side-by-side compare, projection tiers, NBA team summaries,
 and the browser-local manual mock room. The Draft Radar flags explainable targets/fades from the
@@ -462,6 +466,9 @@ The completed tracker and next-session handoff are in
   Without a configured league timezone it withholds date-specific “today” claims.
   The full roster remains in My Team. Backed by `/api/today/context`, My Team and
   the dated What Changed? snapshots.
+- **Minutes scenario** — the local player page can test a 0.1-MPG assumption through a
+  read-only Board-B scoring endpoint. It shows approved FP/G, minutes contribution and
+  the retained analyst rate residual separately; the shareable URL stores the assumption.
 - **My Team** — the full roster page (Draft Room picks or live ESPN roster snapshot): per player the
   ROS rank/FP-G, 14-day trend + sparkline, season floor→median→ceiling strip, risk,
   chronic/OUT/redistribution chips, and week volume; plus the team block — projected

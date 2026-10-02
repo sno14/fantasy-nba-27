@@ -37,11 +37,11 @@ projection edge converts to wins.
 Follow-up experience and new-feature work is tracked in
 [product-experience-plan.md](product-experience-plan.md) (2026-09-29). It builds on
 these shipped views; this document remains the V1–V6 implementation record.
-P1a–P8 and the P6b single-move MVP are implemented locally as of 2026-10-02: public/local board usability,
+P1a–P9 and the P6b single-move MVP are implemented locally as of 2026-10-02: public/local board usability,
 responsive navigation, shareable URLs, watchlist portability, My Draft Plan and
 Practice My Draft, What Changed?, Rotation & Opportunity, and local feasible
 daily lineups in V4/V5, the local Streaming Planner, two-sided Trade Sandbox
-and Today daily home. Next is P9 minutes scenarios; resume
+and Today daily home, plus player minutes scenarios on both surfaces. Resume
 from the product plan's latest handoff.
 
 | View | What | Backend | Frontend | Tests | Shipped |
@@ -59,6 +59,13 @@ Build order: **A → V1 → V6 → V2 → V3 → V4 → V5.** V3–V5 share the 
 which ships with A; V4/V5 reuse V3's week-games join; V5 reuses V4's per-roster totals.
 
 ## Session hand-off notes (append, dated, newest first)
+
+- **2026-10-02: P9 minutes scenarios complete locally on both surfaces.** The
+  local endpoint reuses the model rescaler and scorer; the public card looks up
+  verified pre-scored curves tied to the published board. Board-B rate residuals
+  remain separate, and scenarios never change board rankings. The latest handoff
+  and remaining transaction-rule gate are in
+  [product-experience-plan.md](product-experience-plan.md).
 
 - **2026-10-02: Today daily home complete locally (P8).** Source dates remain
   separate; no league timezone means no asserted league-day lineup. Dated

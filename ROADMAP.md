@@ -249,8 +249,10 @@ team detail from the published board. P6a exact feasible daily lineup arithmetic
 complete locally on 2026-10-02 in My Team and Matchup. P6b's conditional single-move
 streaming planner is complete locally on 2026-10-02. P7 read-only two-sided trade
 scenarios and the P8 Today daily home are complete locally on 2026-10-02;
-P9 minutes scenarios are next,
-subject to the standing October modelling and draft-verification calendar.
+P9 player minutes scenarios are complete locally on both surfaces as of 2026-10-02,
+using verified Board-B decomposition and a public pre-scored grid. P6b multi-move
+streaming awaits confirmed transaction rules; the standing October modelling
+and draft-verification calendar retains priority.
 
 ### Stage 6 — Uncertainty / risk ranges  ← DONE 2026-07-10 (shipped: SD_PG spread — re-affirmed by EXP-021 — on the adopted (age × chronic) GP pools, EXP-015b)
 - [x] **Monte-Carlo risk ranges** (`models/uncertainty.py`) — simulate each player's season:

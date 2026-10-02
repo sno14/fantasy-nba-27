@@ -22,11 +22,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from fantasy_nba.config import PROCESSED_DIR, ROOT
 from fantasy_nba.draft.radar import add_draft_radar
 from fantasy_nba.models.value import load_league
+from fantasy_nba.scoring import load_scoring
 from scripts.public_history import archive_public_board, scoring_key
+from scripts.public_minutes import build_public_minutes
 from scripts.public_rotation import write_public_rotation
 
 
 OUT = ROOT / "static" / "data" / "board.json"
+MINUTES_OUT = ROOT / "static" / "data" / "minutes.json"
 
 PUBLIC_COLUMNS = (
     "rank", "source_rank", "model_source_rank", "tier", "source_tier", "PLAYER_ID", "PLAYER_NAME",
@@ -151,18 +154,22 @@ def main(argv: list[str] | None = None) -> None:
         "scoring_key": scoring_key(ROOT / "config" / "scoring.yaml"),
         "market_date": market_date,
         "market_source": market_source,
-        "capabilities": ["board", "player_detail", "compare", "tiers", "teams", "mock_draft", "draft_radar"],
+        "capabilities": ["board", "player_detail", "compare", "tiers", "teams", "mock_draft", "draft_radar", "minutes_scenarios"],
         "draft_config": {
             "teams": int(league.get("teams", 10)),
             "roster": public_roster,
         },
         "rows": rows,
     }
+    minutes = build_public_minutes(board, load_scoring(), generated_at=payload["generated_at"],
+                                   scoring_key=payload["scoring_key"])
     OUT.parent.mkdir(parents=True, exist_ok=True)
     archive_public_board(payload, OUT.parent / "history")
     OUT.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    MINUTES_OUT.write_text(json.dumps(minutes, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     write_public_rotation(payload, OUT.parent / "rotation.json")
-    print(f"Exported {len(rows)} Board B rows -> {OUT.relative_to(ROOT)}")
+    print(f"Exported {len(rows)} Board B rows -> {OUT.relative_to(ROOT)}; "
+          f"{len(minutes['rows'])} verified minutes curves -> {MINUTES_OUT.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

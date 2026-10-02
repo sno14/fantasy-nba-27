@@ -1,6 +1,7 @@
 import { downloadBackup, MAX_FILE_BYTES, normalizeTarget, parseIds, snakePicks, validateBackup } from "./workspace.mjs";
 import { choosePracticePlayer, createPracticeRun, MAX_RUNS, parsePracticeRuns, PRACTICE_KEY, practiceRounds, practiceSummary, practiceTeam, undoPracticePick, validatePracticeRun } from "./practice.mjs";
 import { compareSnapshots, validateChangeSnapshot } from "./changes.mjs";
+import { minutesResult, validMinutes, validateMinutesArtifact } from "./minutes.mjs";
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const fmt = (value, digits = 1) => value == null || !Number.isFinite(Number(value)) ? "—" : Number(value).toFixed(digits);
@@ -32,7 +33,7 @@ const state = {
   radar: "All", adjustedOnly: false, limit: 100, sort: "rank", direction: 1,
   compare: new Set(Array.isArray(savedCompare) ? savedCompare.filter(Number.isInteger).slice(0, 4) : []),
   preset: "draft", layout: "auto",
-  targets: {}, playerId: null, season: "",
+  targets: {}, playerId: null, minutesAssumed: null, minutesData: null, minutesLoading: null, season: "",
   mock: { picks: [], myTeam: 1, query: "", radar: "All", limit: 60 },
   practice: { runs: [], selected: null, query: "" },
   changes: { entries: [], events: [], baseline: null, view: "all", team: "All", visitBaseline: readStored("fantasy-nba-changes-last-seen-v1", null), latest: null, previous: null },
@@ -684,7 +685,32 @@ function drawCompare() {
   $("#compare-view").innerHTML = `${missing}<div class="compare-actions"><p>${players.length} of 4 comparison slots used</p><button class="link-button" id="clear-compare">Clear all</button></div><div class="compare-shell panel"><table class="compare-table"><thead><tr><th>Metric</th>${players.map(player => `<th><button class="player-button compare-name" data-player="${player.PLAYER_ID}">${esc(player.PLAYER_NAME)}</button><br><span class="muted">${esc(player.TEAM_ABBREVIATION || "—")} · Tier ${player.tier ?? "—"}</span></th>`).join("")}</tr></thead><tbody>${rows}<tr><td>Analyst</td>${players.map(player => `<td>${analystChip(player) || "—"}</td>`).join("")}</tr><tr><td>Remove</td>${players.map(player => `<td><button class="link-button" data-remove="${player.PLAYER_ID}">Remove</button></td>`).join("")}</tr></tbody></table></div>`;
 }
 
+function loadMinutesData() {
+  if (state.minutesData) return Promise.resolve(state.minutesData);
+  if (!state.minutesLoading) state.minutesLoading = fetch("data/minutes.json", { cache: "no-store" })
+    .then(response => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
+    .then(data => { state.minutesData = validateMinutesArtifact(data, state.meta); return state.minutesData; });
+  return state.minutesLoading;
+}
+
+function drawMinutesPanel(id) {
+  const host = $("#public-minutes");
+  if (!host || state.playerId !== Number(id)) return;
+  const curve = state.minutesData?.rows[String(id)];
+  if (!curve) {
+    host.innerHTML = `<h3>Minutes scenario</h3><p class="muted">Unavailable: this player has no verified projected stat line and minutes rate to rescale.</p>`;
+    return;
+  }
+  const result = minutesResult(curve, state.minutesAssumed);
+  host.innerHTML = `<h3>Minutes scenario</h3><p class="muted">Change projected playing time while holding the current per-minute stat rates. This is an exploration, not an updated board.</p>
+    <div class="minutes-controls"><label>Assumed MPG <input id="public-minutes-input" type="number" min="0.5" max="42" step="0.5" inputmode="decimal" placeholder="Current ${fmt(curve.current_mpg)}" value="${result.assumed ?? ""}" /></label><button type="button" class="button subtle-action" data-minutes-reset>Reset</button></div>
+    <p id="public-minutes-error" class="status" role="alert"></p>
+    <div class="minutes-results"><div><small>Approved baseline</small><strong>${fmt(curve.approved_fpts_pg, 2)} FP/G</strong><span>${fmt(curve.current_mpg)} MPG</span></div><div><small>Minutes contribution</small><strong>${signed(result.contribution, 2)} FP/G</strong><span>Held stat rates</span></div><div><small>Retained rate residual</small><strong>${signed(curve.retained_rate_residual, 2)} FP/G</strong><span>Included in both values</span></div><div><small>Scenario result</small><strong>${fmt(result.fpts, 2)} FP/G</strong><span>${result.assumed == null ? "Approved baseline" : `${fmt(result.assumed)} MPG assumption`}</span></div></div>
+    <p class="muted minutes-scope">The scorer re-evaluates bonuses after scaling the stat line. Games played, ranks, team minutes, usage and uncertainty ranges stay as published. Share this assumption with Copy link.</p>`;
+}
+
 function openPlayer(id, navigate = true) {
+  if (navigate) state.minutesAssumed = null;
   state.playerId = Number(id);
   if (navigate) writeRoute();
   const row = state.rows.find(player => player.PLAYER_ID === Number(id));
@@ -700,6 +726,7 @@ function openPlayer(id, navigate = true) {
       <div class="detail-stats"><div class="detail-stat"><small>FP / game</small><strong>${fmt(row.fpts_pg)}</strong></div><div class="detail-stat"><small>2025-26 FP/G</small><strong>${fmt(row.previous_fpts_pg)}</strong></div><div class="detail-stat"><small>Projected change</small><strong>${changeMarkup(row.fpts_pg_change)}</strong></div><div class="detail-stat"><small>VOR</small><strong>${fmt(row.vor)}</strong></div><div class="detail-stat"><small>Projected GP</small><strong>${integer(row.gp)}</strong></div><div class="detail-stat"><small>Projected MPG</small><strong>${fmt(row.mpg)}</strong></div><div class="detail-stat"><small>Age</small><strong>${integer(row.target_age)}</strong></div><div class="detail-stat"><small>ADP</small><strong>${integer(row.adp)}</strong></div><div class="detail-stat"><small>Risk</small><strong>${fmt(row.risk, 2)}</strong></div><div class="detail-stat"><small>Market read</small><strong>${esc(valueText)}</strong></div></div>
       <section class="detail-section"><h3>Projected per-game line</h3><div class="projection-line">${[["PTS",row.pts],["REB",row.reb],["AST",row.ast],["STL",row.stl],["BLK",row.blk],["3PM",row.fg3m],["TOV",row.tov]].map(([label,value]) => `<div><small>${label}</small><strong>${fmt(value)}</strong></div>`).join("")}</div></section>
       <section class="detail-section"><h3>Simulated season totals</h3><div class="season-band"><div><small>Floor · p10</small><strong>${integer(row.fpts_p10)}</strong></div><div><small>Median</small><strong>${integer(row.fpts_median)}</strong></div><div><small>Ceiling · p90</small><strong>${integer(row.fpts_p90)}</strong></div></div></section>
+      <section class="detail-section" id="public-minutes"><h3>Minutes scenario</h3><p class="muted">Loading verified minutes data...</p></section>
       ${(row.radar_label || isTarget(row)) ? `<section class="detail-section"><h3>Draft radar</h3><div class="analyst-note">${radarMarkup(row, null, false)} &nbsp; ${esc(row.radar_reasons || "Personal priority target")}</div></section>` : ""}
       ${isTarget(row) ? `<section class="detail-section"><h3>Your draft note</h3><div class="analyst-note">${state.targets[String(row.PLAYER_ID)].takeBy ? `Take by pick ${esc(state.targets[String(row.PLAYER_ID)].takeBy)}. ` : ""}${esc(state.targets[String(row.PLAYER_ID)].note || "No note yet.")}</div></section>` : ""}
       ${isAdjusted(row) ? `<section class="detail-section"><h3>Analyst layer</h3><div class="analyst-note">${analystChip(row)} &nbsp; ${esc(row.analyst_category || "")} · ${esc(row.analyst_date || "")}. Detailed rationale remains in the private review workflow.</div></section>` : ""}
@@ -707,6 +734,10 @@ function openPlayer(id, navigate = true) {
     </div>`;
   const dialog = $("#player-dialog");
   if (!dialog.open) { if (dialog.showModal) dialog.showModal(); else dialog.setAttribute("open", ""); }
+  loadMinutesData().then(() => drawMinutesPanel(id)).catch(() => {
+    const host = $("#public-minutes");
+    if (host && state.playerId === Number(id)) host.innerHTML = `<h3>Minutes scenario</h3><p class="muted">Unavailable: the minutes data could not be verified against this board.</p>`;
+  });
 }
 
 function setView(view, navigate = true) {
@@ -716,7 +747,7 @@ function setView(view, navigate = true) {
   $$(".nav-item").forEach(button => button.classList.toggle("active", button.dataset.view === view));
   [$("#view-title").textContent, $("#view-subtitle").textContent] = viewCopy[view];
   $(".sidebar").classList.remove("open");
-  if (navigate) { state.playerId = null; $("#player-dialog").close(); writeRoute(); }
+  if (navigate) { state.playerId = null; state.minutesAssumed = null; $("#player-dialog").close(); writeRoute(); }
   if (view === "compare") drawCompare();
   if (view === "plan") drawPlan();
   if (view === "practice") drawPractice();
@@ -744,6 +775,7 @@ function routeHash(shared = false) {
   if (state.view === "compare") params.set("ids", [...state.compare].join(","));
   if (state.view === "rotation" && state.rotation.team) params.set("nbaTeam", state.rotation.team);
   if (state.playerId !== null) params.set("player", state.playerId);
+  if (state.playerId !== null && state.minutesAssumed !== null) params.set("minutes", state.minutesAssumed);
   return `#${state.view}?${params}`;
 }
 
@@ -786,10 +818,16 @@ function applyRoute(force = false) {
     else invalid.push("NBA team");
   }
   state.playerId = null;
+  state.minutesAssumed = null;
   setView(view || "board", false);
   if (view && !Object.hasOwn(viewCopy, view)) invalid.push("page");
   const player = params.get("player");
-  if (player !== null && /^[1-9]\d*$/.test(player) && Number.isSafeInteger(Number(player))) openPlayer(player, false);
+  const minutes = params.get("minutes");
+  if (minutes !== null) {
+    if (player !== null && validMinutes(minutes)) state.minutesAssumed = Number(minutes);
+    else invalid.push("minutes");
+  }
+  if (player !== null && /^-?[1-9]\d*$/.test(player) && Number.isSafeInteger(Number(player))) openPlayer(player, false);
   else { if (player !== null) invalid.push("player ID"); $("#player-dialog").close(); }
   $("#route-note").textContent = invalid.length ? `Ignored invalid link settings: ${invalid.join(", ")}. Browse the board or choose players again.` : "";
   $("#route-note").hidden = !invalid.length;
@@ -936,6 +974,7 @@ function bindEvents() {
     if (rotationTeam) { state.rotation.team = rotationTeam.dataset.openRotation; setView("rotation"); return; }
     const player = event.target.closest("[data-player]");
     if (player) openPlayer(player.dataset.player);
+    if (event.target.closest("[data-minutes-reset]")) { state.minutesAssumed = null; drawMinutesPanel(state.playerId); writeRoute(); }
     const compare = event.target.closest("[data-compare]");
     if (compare) toggleCompare(Number(compare.dataset.compare));
     const remove = event.target.closest("[data-remove]");
@@ -959,7 +998,14 @@ function bindEvents() {
   $(".dialog-close").addEventListener("click", () => $("#player-dialog").close());
   $("#player-dialog").addEventListener("click", event => { if (event.target === $("#player-dialog")) $("#player-dialog").close(); });
   $("#player-dialog").addEventListener("close", () => {
-    if (!$("#player-dialog").open && state.playerId !== null) { state.playerId = null; writeRoute(); }
+    if (!$("#player-dialog").open && state.playerId !== null) { state.playerId = null; state.minutesAssumed = null; writeRoute(); }
+  });
+  $("#player-dialog").addEventListener("change", event => {
+    if (event.target.id !== "public-minutes-input") return;
+    if (event.target.value === "") state.minutesAssumed = null;
+    else if (validMinutes(event.target.value)) state.minutesAssumed = Number(event.target.value);
+    else { $("#public-minutes-error").textContent = "Enter 0.5 to 42 MPG in half-minute steps."; return; }
+    drawMinutesPanel(state.playerId); writeRoute();
   });
   $(".target-dialog-close").addEventListener("click", () => $("#target-dialog").close());
   $("#target-dialog").addEventListener("click", event => { if (event.target === $("#target-dialog")) $("#target-dialog").close(); });

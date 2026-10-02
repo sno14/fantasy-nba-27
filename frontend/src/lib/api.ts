@@ -235,6 +235,27 @@ export interface DraftBoardRow {
   radar_reasons?: string | null;
 }
 
+export interface MinutesScenarioResponse {
+  player_id: number;
+  name: string;
+  enabled: boolean;
+  reason?: string | null;
+  current_mpg: number | null;
+  approved_fpts_pg: number | null;
+  min_mpg: number;
+  max_mpg: number;
+  assumed_mpg?: number;
+  scored_current_fpts_pg?: number;
+  scored_assumed_fpts_pg?: number;
+  minutes_contribution?: number;
+  retained_rate_residual?: number;
+  recorded_rate_leg?: number;
+  assumed_fpts_pg?: number;
+  fpts_pg_change?: number;
+  rate_note?: string;
+  scope_note?: string;
+}
+
 export interface RosterPlayer {
   player_id: number;
   name: string;
