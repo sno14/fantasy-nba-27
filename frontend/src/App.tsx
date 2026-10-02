@@ -13,6 +13,7 @@ import { Chip } from "./components/ui";
 import DraftBoard from "./views/DraftBoard";
 import DraftRoom from "./views/DraftRoom";
 import DraftPlan from "./views/DraftPlan";
+import PracticeDraft from "./views/PracticeDraft";
 import Power from "./views/Power";
 import Ros from "./views/Ros";
 import Trends from "./views/Trends";
@@ -133,6 +134,7 @@ function CompareTray() {
 const NAV = [
   { section: "Draft", to: "/", label: "Draft Board", icon: "M4 6h16M4 10h16M4 14h10M4 18h7" },
   { section: "Draft", to: "/draft-plan", label: "My Draft Plan", icon: "M4 5h16v16H4zM8 10h8M8 14h8M8 18h5" },
+  { section: "Draft", to: "/practice", label: "Practice My Draft", icon: "M4 7h16M4 12h16M4 17h16" },
   { section: "Draft", to: "/room", label: "Draft Room", icon: "M12 3v4M5 8h14l-1.5 11a2 2 0 01-2 2h-7a2 2 0 01-2-2L5 8zM9 12v5M15 12v5" },
   { section: "Draft", to: "/power", label: "Power Rankings", icon: "M4 20V10M10 20V4M16 20v-8M22 20H2" },
   { section: "Season", to: "/ros", label: "ROS", icon: "M4 17l5-5 4 3 7-8M16 7h4v4" },
@@ -227,6 +229,7 @@ function Shell() {
             <Routes>
               <Route path="/" element={<DraftBoard />} />
               <Route path="/draft-plan" element={<DraftPlan />} />
+              <Route path="/practice" element={<PracticeDraft />} />
               <Route path="/room" element={<DraftRoom />} />
               <Route path="/power" element={<Power />} />
               <Route path="/ros" element={<Ros />} />

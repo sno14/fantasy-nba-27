@@ -37,9 +37,10 @@ projection edge converts to wins.
 Follow-up experience and new-feature work is tracked in
 [product-experience-plan.md](product-experience-plan.md) (2026-09-29). It builds on
 these shipped views; this document remains the V1–V6 implementation record.
-P1a–P2 are implemented locally as of 2026-09-30: public/local board usability,
-responsive navigation, shareable URLs, watchlist portability and My Draft Plan.
-Next is P3 Practice My Draft; resume from the product plan's latest handoff.
+P1a–P3 are implemented locally as of 2026-10-02: public/local board usability,
+responsive navigation, shareable URLs, watchlist portability, My Draft Plan and
+Practice My Draft. Next is P4 What Changed?; resume from the product plan's
+latest handoff.
 
 | View | What | Backend | Frontend | Tests | Shipped |
 |---|---|---|---|---|---|
@@ -56,6 +57,12 @@ Build order: **A → V1 → V6 → V2 → V3 → V4 → V5.** V3–V5 share the 
 which ships with A; V4/V5 reuse V3's week-games join; V5 reuses V4's per-roster totals.
 
 ## Session hand-off notes (append, dated, newest first)
+
+- **2026-10-02: Practice My Draft complete locally (P3).** Both interfaces use
+  one deterministic practice engine, isolated from the manual mock and live draft.
+  Runs retain compact board snapshots, undo history, versioned export/import and
+  roster comparison. Build, shared-engine, API and browser checks passed. P4 handoff:
+  [product-experience-plan.md](product-experience-plan.md).
 
 - **2026-09-30: My Draft Plan complete locally (P2).** Both interfaces now group
   browser-local targets by round and show snake picks, deadlines, tier counts and

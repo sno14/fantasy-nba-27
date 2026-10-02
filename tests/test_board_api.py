@@ -1,11 +1,24 @@
 """Current platform eligibility is display context, never historical board evidence."""
 
 import importlib
+from types import SimpleNamespace
 
 import pandas as pd
 import pytest
 
 api = importlib.import_module("fantasy_nba.api.app")
+
+
+def test_meta_exposes_configured_roster_for_isolated_practice(monkeypatch, tmp_path):
+    league_file = tmp_path / "league.yaml"
+    league_file.write_text("teams: 12\nroster:\n  PG: 1\n  UTIL: 2\n  BENCH: 3\n  IR: 1\n", encoding="utf-8")
+    monkeypatch.setattr(api, "LEAGUE_PATH", league_file)
+    monkeypatch.setattr(api, "RAW_DIR", tmp_path)
+    monkeypatch.setattr(api, "load_scoring", lambda: SimpleNamespace(name="ESPN", weights={}))
+    monkeypatch.setattr(api.boards, "raw", lambda _: pd.DataFrame({"SEASON": ["2025-26"]}))
+    monkeypatch.setattr(api.boards, "data_ready", lambda: True)
+    response = api.meta()
+    assert response["league"]["roster"] == {"PG": 1, "UTIL": 2, "BENCH": 3, "IR": 1}
 
 
 @pytest.mark.parametrize("target,expected,market_date", [

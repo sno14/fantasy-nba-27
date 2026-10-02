@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#0b1118" />
     <title>Fantasy NBA 2026–27</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🏀%3C/text%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="style.css?v=9" />
+    <link rel="stylesheet" href="style.css?v=10" />
   </head>
   <body>
     <div class="shell">
@@ -18,6 +18,7 @@
         </a>
         <nav aria-label="Main navigation">
           <button class="nav-item" data-view="plan"><span>◎</span> My Draft Plan</button>
+          <button class="nav-item" data-view="practice"><span>◎</span> Practice My Draft</button>
           <button class="nav-item active" data-view="board"><span>▤</span> Draft board</button>
           <button class="nav-item" data-view="mock"><span>◎</span> Mock draft <b id="mock-count"></b></button>
           <button class="nav-item" data-view="tiers"><span>≡</span> Tiers</button>
@@ -126,6 +127,22 @@
           <div id="plan-groups" class="plan-groups"></div>
         </section>
 
+        <section id="view-practice" class="view" hidden>
+          <p class="status">Practice runs are browser-local and separate from the manual mock and live Draft Room. Opponents follow a repeatable rule; their picks are scenarios, not availability odds.</p>
+          <form id="practice-form" class="panel practice-form">
+            <h2>Start a run</h2>
+            <label><span>Run name</span><input id="practice-name" maxlength="60" value="Practice run" required /></label>
+            <label><span>Teams</span><select id="practice-teams"></select></label>
+            <label><span>Draft position</span><select id="practice-position"></select></label>
+            <label><span>Opponents</span><select id="practice-rule"><option value="adp">ADP order</option><option value="board">Board rank</option></select></label>
+            <button class="button" type="submit">Start practice</button>
+            <p>Team count is a draft scenario and does not recalculate projections. ADP ties use player ID. Players without ADP follow board rank after priced players. The configured roster sets draft rounds; injured-reserve slots are excluded.</p>
+          </form>
+          <p id="practice-message" class="status" role="status"></p>
+          <div id="practice-current"></div>
+          <div class="panel practice-saved"><header><h2>Compare saved runs</h2><label class="button subtle-action">Import run<input id="practice-import" type="file" accept=".json,application/json" hidden /></label></header><div id="practice-runs"></div></div>
+        </section>
+
         <section id="view-tiers" class="view" hidden><div id="tier-grid" class="tier-grid"></div></section>
         <section id="view-teams" class="view" hidden><div id="team-grid" class="team-grid"></div></section>
         <section id="view-compare" class="view" hidden><div id="compare-view"></div></section>
@@ -165,6 +182,6 @@
       <label><input type="radio" name="import-mode" value="replace" /> Replace — remove existing targets before importing.</label>
       <div class="target-actions"><button id="cancel-import" class="button subtle-action">Cancel</button><button id="confirm-import" class="button">Confirm import</button></div>
     </div></dialog>
-    <script type="module" src="app.js?v=10"></script>
+    <script type="module" src="app.js?v=11"></script>
   </body>
 </html>

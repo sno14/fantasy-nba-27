@@ -15,8 +15,8 @@ league). Read in this order before changing anything:
 
 - **Product/UI work:** `docs/product-experience-plan.md` owns the experience roadmap
   and latest session handoff; `docs/ui-views-plan.md` records the shipped V1–V6 views.
-  As of 2026-09-30, P1a–P2 are implemented locally on the public and local interfaces.
-  Next is P3 Practice My Draft. Resume from that plan's latest handoff;
+  As of 2026-10-02, P1a–P3 are implemented locally on the public and local interfaces.
+  Next is P4 What Changed? Resume from that plan's latest handoff;
   preserve public FP/G ranks versus local season-value ranks and the modelling calendar.
 
 - **BBM commentary → analyst layer.** Trigger: a new transcript lands in

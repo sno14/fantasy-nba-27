@@ -1,6 +1,6 @@
 # Product experience implementation plan
 
-Created: 2026-09-29. Status: active; P1a, P1b and P1c implemented and verified locally.
+Created: 2026-09-29. Status: active; P1a–P3 implemented and verified locally.
 
 This is the execution plan for the experience and feature discussion of 2026-09-29.
 It extends the shipped views in [ui-views-plan.md](ui-views-plan.md), which remains
@@ -69,7 +69,7 @@ Each row ships independently with the acceptance checks below.
 | P1b | Local board/navigation parity and ranking explanations | Local | Medium | P1a conventions | Complete locally, 2026-09-30 |
 | P1c | Shareable player/compare URLs and watchlist backup/restore | Both | Small–medium | P1a storage conventions | Complete locally, 2026-09-30 |
 | P2 | My Draft Plan workspace and useful draft summary cards | Both | Medium | P1c; existing targets and picks | Complete locally, 2026-09-30 |
-| P3 | Practice My Draft with saved runs | Public, then local | Medium | P2; existing snake/slot logic | Planned |
+| P3 | Practice My Draft with saved runs | Public, then local | Medium | P2; existing snake/slot logic | Complete locally, 2026-10-02 |
 | P4 | What Changed: published history and watched-player changes | Both | Medium | P1c; dated exports | Planned |
 | P5 | Rotation & Opportunity team detail | Local, curated public | Medium | Existing team/analyst data | Planned |
 | P6a | Feasible daily lineup and usable-production calculation | Local | Medium | Ownership, eligibility, schedule | Planned |
@@ -78,7 +78,7 @@ Each row ships independently with the acceptance checks below.
 | P8 | Today home page evolving My Team | Local | Medium | P4 and P6 | Planned |
 | P9 | Player minutes scenario explorer | Local, then public | Medium | Verified decomposition inputs | Planned |
 
-P1a–P2 are complete locally. The next implementation is P3 Practice My Draft.
+P1a–P3 are complete locally. The next implementation is P4 What Changed?
 The remaining rows are documented scope, not an assertion that they are implemented.
 
 ## 4. P1 — board usability and workspace foundations
@@ -565,3 +565,38 @@ manual mock and live draft session. Follow the standing calendar in
 previews can be started with `python scripts/serve.py` on port 8787 and
 `python -m http.server 8788 --bind 127.0.0.1 --directory static`; rebuild the
 frontend with `npm --prefix frontend run build` after React changes.
+
+## 16. P3 delivery and handoff — 2026-10-02
+
+Practice My Draft is implemented on the public `#practice` route and local
+`/practice` route. The shared pure engine is `static/practice.mjs`, with a typed
+declaration for the React app. A manager chooses a run name, team count (8, 10,
+12, 14 or the configured count), draft position and deterministic opponent rule.
+Opponents take the best remaining ADP or board-rank player. Equal ADP uses player
+ID; unpriced players follow board rank after priced players. The manager makes only
+their own picks. Undo returns to the state before the last manager decision and
+removes all intervening scripted picks.
+
+Each run saves its own compact player snapshot, source/rank meaning, board capture
+time, ADP vintage, roster configuration, strategy, picks and undo checkpoints in a
+separate browser-local key (`fantasy-nba-practice-v1`). Up to ten named runs can be
+compared, exported as version-1 JSON, imported, opened and deleted. Snapshot rows
+drive both subsequent opponent picks and review metrics, so a current-board update
+does not silently reprice an old run. Comparison shows position mix, feasible
+starter FP/G, depth and projected season FP; unknown eligibility and missing season
+totals are explicit. Public provisional player IDs can be negative and are retained
+as stable IDs. The public mock key and local live draft session are never written
+by practice actions.
+
+Verification: `node tests/test_practice.mjs` covers snake boundaries, final-round
+limits, deterministic strategy, negative provisional IDs, snapshot immutability,
+matching, undo/reload and malformed-run rejection; `npm run build` passed; 64
+relevant backend tests passed; `scripts/check_practice_draft.py` passed against
+both previews in isolated browser contexts, covering scripted turns, persistence,
+export/import, mobile fit and no live-draft POST. Browser screenshots are ignored
+under `.tmp/ux-review/`.
+
+Next: P4 What Changed? (§7), after the scheduled October modelling and draft
+verification gates in `docs/implementation-plan.md` when those dates arrive. Keep
+the public archive redacted and use dated exports as real baselines. P3 requires no
+model experiment entry and changes no board values.

@@ -1,4 +1,5 @@
 import { downloadBackup, MAX_FILE_BYTES, normalizeTarget, parseIds, snakePicks, validateBackup } from "./workspace.mjs";
+import { choosePracticePlayer, createPracticeRun, MAX_RUNS, parsePracticeRuns, PRACTICE_KEY, practiceRounds, practiceSummary, practiceTeam, undoPracticePick, validatePracticeRun } from "./practice.mjs";
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const fmt = (value, digits = 1) => value == null || !Number.isFinite(Number(value)) ? "—" : Number(value).toFixed(digits);
@@ -32,6 +33,7 @@ const state = {
   preset: "draft", layout: "auto",
   targets: {}, playerId: null, season: "",
   mock: { picks: [], myTeam: 1, query: "", radar: "All", limit: 60 },
+  practice: { runs: [], selected: null, query: "" },
 };
 
 const TARGETS_KEY = "fantasy-nba-draft-targets-v1";
@@ -99,6 +101,7 @@ const viewCopy = {
   teams: ["Team Overview", "Projected leaders and top-five strength for every NBA team."],
   compare: ["Player Compare", "Put up to four projections side by side."],
   plan: ["My Draft Plan", "Your targets, upcoming picks and roster needs."],
+  practice: ["Practice My Draft", "Test choices in a saved, repeatable snake draft."],
   method: ["Methodology", "What this public snapshot includes—and what remains local."],
 };
 
@@ -197,6 +200,56 @@ function drawPlan() {
       return `<div class="plan-row"><div><strong>${row ? esc(row.PLAYER_NAME) : `Player ID ${id}`}</strong><small>${row ? `#${row.rank} · ${fmt(row.fpts_pg)} FP/G · ADP ${integer(row.adp)}${row.tier != null ? ` · Tier ${integer(row.tier)} (${tierRemaining.get(row.tier) || 0} remain)` : ""}` : "No current projection"}</small><small>${target.backupGroup ? `Backup: ${esc(target.backupGroup)} · ` : ""}${target.priority ? `Priority ${target.priority} · ` : ""}${target.takeBy ? `Take by #${target.takeBy}` : "No take-by pick"}</small>${conflict ? `<small class="plan-deadline">Your round pick #${upcoming.overall} is after take-by #${target.takeBy}.</small>` : ""}${target.note ? `<p>${esc(target.note)}</p>` : ""}</div><span class="plan-status">${esc(availability)}</span>${row ? `<button class="button subtle-action" data-target-player="${id}">Edit plan</button>` : `<button class="button subtle-action" data-plan-remove="${id}">Remove</button>`}</div>`;
     }).join("")}</section>`;
   }).join("");
+}
+
+function loadPractice() {
+  try { state.practice.runs = parsePracticeRuns(readStored(PRACTICE_KEY, [])); }
+  catch { state.practice.runs = []; }
+}
+
+function savePractice(runs) {
+  state.practice.runs = runs;
+  try { localStorage.setItem(PRACTICE_KEY, JSON.stringify(runs)); $("#practice-message").textContent = ""; }
+  catch { storageUnavailable(); $("#practice-message").textContent = "Browser storage is full or unavailable. Export this run to keep it."; }
+  drawPractice();
+}
+
+function exportPractice(run) {
+  const blob = new Blob([JSON.stringify(run, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `fantasy-nba-practice-${run.snapshot.season}-${run.name.replace(/[^a-z0-9-]+/gi, "-").toLowerCase()}.json`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function drawPractice() {
+  const runs = state.practice.runs;
+  const run = runs.find(item => item.id === state.practice.selected) || runs[0];
+  const summary = run ? practiceSummary(run) : null;
+  const currentBoardDate = state.meta?.market_date || null;
+  $("#practice-current").innerHTML = !run ? `<div class="empty">No practice runs yet. Start one from the current board.</div>` : (() => {
+    const limit = run.config.teams * practiceRounds(run.config.roster);
+    const next = run.picks.length + 1;
+    const yourTurn = next <= limit && practiceTeam(next, run.config.teams) === run.config.position;
+    const taken = new Set(run.picks.map(pick => pick.playerId));
+    const query = state.practice.query.toLowerCase();
+    const choices = run.snapshot.players.filter(player => !taken.has(player.id) && player.name.toLowerCase().includes(query)).sort((a, b) => a.rank - b.rank || a.id - b.id).slice(0, 100);
+    const byId = new Map(run.snapshot.players.map(player => [player.id, player]));
+    const metrics = [["Projected season FP", integer(summary.seasonFp)], ["Feasible starter FP/G", fmt(summary.starterFpg)], ["Open starters", summary.openStarters], ["Depth outside starters", summary.depth]];
+    return `<section class="panel practice-current"><header><div><h2>${esc(run.name)}</h2><p>${esc(run.snapshot.season)} · ${esc(run.snapshot.ranking)} · Board captured ${esc(new Date(run.createdAt).toLocaleString())} · ADP ${esc(run.snapshot.marketDate || "unavailable")} · ${run.config.teams} teams · slot ${run.config.position} · ${run.config.rule === "adp" ? "ADP" : "board rank"} opponents</p></div><div class="practice-actions"><button class="button subtle-action" data-practice-undo ${run.checkpoints.length ? "" : "disabled"}>Undo my last pick</button><button class="button subtle-action" data-practice-export="${esc(run.id)}">Export run</button></div></header>
+      <p class="status">${run.snapshot.marketDate === currentBoardDate ? "Using this run's saved board snapshot." : "The published board has changed or is unavailable; this run keeps its original projections and pick order."}</p>
+      <strong>${yourTurn ? `Your pick #${next} · round ${Math.ceil(next / run.config.teams)}` : `Draft complete · ${run.picks.length} picks`}</strong>
+      <div class="summary-grid">${metrics.map(([label, value]) => `<article class="summary-card"><small>${esc(label)}</small><strong>${esc(value)}</strong></article>`).join("")}</div>
+      <p class="status">Positions: ${Object.entries(summary.positions).map(([slot, count]) => `${slot} ${count}`).join(" · ")}. ${summary.unknownEligibility ? `${summary.unknownEligibility} player(s) have unknown eligibility and can only fill UTIL here. ` : ""}${summary.unknownSeasonTotal ? `${summary.unknownSeasonTotal} player(s) lack season totals; the sum excludes them.` : ""}</p>
+      <div class="practice-grid"><div><h3>Your available choices</h3><input id="practice-search" type="search" placeholder="Search saved board…" value="${esc(state.practice.query)}" aria-label="Search practice players" /><div class="practice-list">${choices.map(player => `<div><span><strong>${esc(player.name)}</strong><small>#${player.rank} · ${fmt(player.fptsPg)} FP/G · ADP ${fmt(player.adp)}</small></span><button class="button subtle-action" data-practice-pick="${player.id}" ${yourTurn ? "" : "disabled"}>Pick</button></div>`).join("") || `<p>No matching available players.</p>`}</div></div><div><h3>Pick history</h3><div class="practice-list">${run.picks.slice().reverse().map((pick, index) => `<div class="${pick.team === run.config.position ? "mine" : ""}"><span>#${run.picks.length - index} ${esc(byId.get(pick.playerId)?.name || `Player ${pick.playerId}`)}</span><small>Team ${pick.team}${pick.team === run.config.position ? " · you" : ""}</small></div>`).join("")}</div></div></div></section>`;
+  })();
+  $("#practice-runs").innerHTML = runs.map(item => {
+    const view = practiceSummary(item);
+    return `<div class="practice-run"><div><strong>${esc(item.name)}</strong><small>${esc(item.snapshot.marketDate || "No ADP date")} · ${item.config.teams} teams · slot ${item.config.position} · ${view.own.length} of ${practiceRounds(item.config.roster)} picks · ${view.starters} starters at ${fmt(view.starterFpg)} FP/G · ${view.depth} depth · ${integer(view.seasonFp)} season FP${view.unknownSeasonTotal ? ` (${view.unknownSeasonTotal} totals missing)` : ""}</small><small>Position mix: ${Object.entries(view.positions).map(([slot, count]) => `${slot} ${count}`).join(" · ")}${view.unknownEligibility ? ` · ${view.unknownEligibility} eligibility unknown` : ""}</small></div><div class="practice-actions"><button class="button subtle-action" data-practice-open="${esc(item.id)}">Open</button><button class="button subtle-action" data-practice-delete="${esc(item.id)}">Delete</button></div></div>`;
+  }).join("");
+  $("#practice-form button[type=submit]").disabled = !state.rows.length || runs.length >= MAX_RUNS;
 }
 
 function draftPlayer(playerId) {
@@ -560,6 +613,7 @@ function setView(view, navigate = true) {
   if (navigate) { state.playerId = null; $("#player-dialog").close(); writeRoute(); }
   if (view === "compare") drawCompare();
   if (view === "plan") drawPlan();
+  if (view === "practice") drawPractice();
 }
 
 function populateFilters() {
@@ -688,6 +742,40 @@ function bindEvents() {
   $("#mock-limit").addEventListener("change", event => { state.mock.limit = Number(event.target.value); drawMock(); });
   $("#mock-my-team").addEventListener("change", event => { state.mock.myTeam = Number(event.target.value); saveMock(); drawMock(); });
   $("#plan-team").addEventListener("change", event => { state.mock.myTeam = Number(event.target.value); saveMock(); drawMock(); });
+  $("#practice-teams").addEventListener("change", event => {
+    const teams = Number(event.target.value);
+    $("#practice-position").innerHTML = Array.from({ length: teams }, (_, index) => `<option value="${index + 1}">${index + 1}</option>`).join("");
+  });
+  $("#practice-form").addEventListener("submit", event => {
+    event.preventDefault();
+    try {
+      if (state.practice.runs.length >= MAX_RUNS) throw new Error(`Save at most ${MAX_RUNS} runs. Export and delete one to continue.`);
+      const run = createPracticeRun({ name: $("#practice-name").value, teams: Number($("#practice-teams").value), position: Number($("#practice-position").value), rule: $("#practice-rule").value, roster: mockConfig().roster, season: state.season, source: "public", ranking: "FP/G ordinal", marketDate: state.meta.market_date, boardDate: state.meta.generated_at, rows: state.rows });
+      state.practice.selected = run.id;
+      state.practice.query = "";
+      savePractice([run, ...state.practice.runs]);
+    } catch (error) { $("#practice-message").textContent = error.message; }
+  });
+  $("#practice-import").addEventListener("change", async event => {
+    const file = event.target.files?.[0]; event.target.value = ""; if (!file) return;
+    try {
+      if (file.size > 2 * 1024 * 1024) throw new Error("Practice files must be smaller than 2 MB.");
+      const run = validatePracticeRun(JSON.parse(await file.text()));
+      const existing = state.practice.runs.find(item => item.id === run.id);
+      if (!existing && state.practice.runs.length >= MAX_RUNS) throw new Error("Delete a saved run before importing another.");
+      state.practice.selected = run.id;
+      savePractice(existing ? state.practice.runs.map(item => item.id === run.id ? run : item) : [run, ...state.practice.runs]);
+    } catch (error) { $("#practice-message").textContent = error.message; }
+  });
+  $("#view-practice").addEventListener("input", event => {
+    if (event.target.id === "practice-search") {
+      state.practice.query = event.target.value;
+      const start = event.target.selectionStart;
+      drawPractice();
+      $("#practice-search").focus();
+      $("#practice-search").setSelectionRange(start, start);
+    }
+  });
   $("#mock-undo").addEventListener("click", () => { state.mock.picks.pop(); saveMock(); drawMock(); });
   $("#mock-reset").addEventListener("click", () => {
     if (state.mock.picks.length && confirm("Clear every pick in this browser mock draft?")) {
@@ -695,6 +783,26 @@ function bindEvents() {
     }
   });
   document.addEventListener("click", event => {
+    const practicePick = event.target.closest("[data-practice-pick]");
+    if (practicePick) {
+      const run = state.practice.runs.find(item => item.id === state.practice.selected) || state.practice.runs[0];
+      try { savePractice(state.practice.runs.map(item => item.id === run.id ? choosePracticePlayer(run, Number(practicePick.dataset.practicePick)) : item)); }
+      catch (error) { $("#practice-message").textContent = error.message; }
+    }
+    if (event.target.closest("[data-practice-undo]")) {
+      const run = state.practice.runs.find(item => item.id === state.practice.selected) || state.practice.runs[0];
+      savePractice(state.practice.runs.map(item => item.id === run.id ? undoPracticePick(run) : item));
+    }
+    const practiceOpen = event.target.closest("[data-practice-open]");
+    if (practiceOpen) { state.practice.selected = practiceOpen.dataset.practiceOpen; state.practice.query = ""; drawPractice(); }
+    const practiceDelete = event.target.closest("[data-practice-delete]");
+    if (practiceDelete && confirm("Delete this browser-local practice run?")) {
+      state.practice.runs = state.practice.runs.filter(item => item.id !== practiceDelete.dataset.practiceDelete);
+      if (state.practice.selected === practiceDelete.dataset.practiceDelete) state.practice.selected = null;
+      savePractice(state.practice.runs);
+    }
+    const practiceExport = event.target.closest("[data-practice-export]");
+    if (practiceExport) { const run = state.practice.runs.find(item => item.id === practiceExport.dataset.practiceExport); if (run) exportPractice(run); }
     const copy = event.target.closest("[data-copy-link]"); if (copy) copyCurrentLink(copy);
     const sort = event.target.closest("[data-sort]");
     if (sort) {
@@ -758,6 +866,7 @@ function bindEvents() {
 
 loadTargets();
 loadMock();
+loadPractice();
 loadBoardPreferences();
 routeFallback = Object.fromEntries(Object.keys(BOARD_DEFAULTS).map(key => [key, state[key]]));
 bindEvents();
@@ -779,9 +888,12 @@ fetch("data/board.json", { cache: "no-store" })
     $("#mock-team").innerHTML = teamOptions;
     $("#mock-my-team").innerHTML = teamOptions;
     $("#plan-team").innerHTML = teamOptions;
+    $("#practice-teams").innerHTML = [...new Set([8, 10, 12, 14, mockConfig().teams])].sort((a, b) => a - b).map(count => `<option value="${count}">${count}</option>`).join("");
+    $("#practice-teams").value = String(mockConfig().teams);
+    $("#practice-position").innerHTML = Array.from({ length: mockConfig().teams }, (_, index) => `<option value="${index + 1}">${index + 1}</option>`).join("");
     populateFilters();
     routeFallback = Object.fromEntries(Object.keys(BOARD_DEFAULTS).map(key => [key, state[key]]));
-    drawSummary(); drawBoard(); drawMock(); drawTiers(); drawTeams(); drawCompare(); drawPlan(); saveCompare(); saveMock();
+    drawSummary(); drawBoard(); drawMock(); drawTiers(); drawTeams(); drawCompare(); drawPlan(); drawPractice(); saveCompare(); saveMock();
     applyingRoute = false;
     applyRoute(true);
   })

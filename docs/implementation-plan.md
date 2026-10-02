@@ -15,8 +15,8 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 - `EXPERIMENTS.md` — the append-only results ledger; each experiment step here contains the
   exact entry stub to fill in.
 - `docs/product-experience-plan.md` — product/UI delivery across the public static site
-  and local React/FastAPI app. P1a–P2 are implemented locally as of 2026-09-30;
-  P3 Practice My Draft is next. Its session handoff owns product resumption; this
+  and local React/FastAPI app. P1a–P3 are implemented locally as of 2026-10-02;
+  P4 What Changed? is next. Its session handoff owns product resumption; this
   file's calendar retains priority.
 - **This file** — what to build, in what order, to what spec, with what accept/reject gate.
 
@@ -1554,11 +1554,12 @@ floor-adjusted on movers, updating nightly, benchmarked against the market — t
 > needs a two-round gap plus an explicit projected-growth, analyst-role, or downside-risk mechanism.
 > Personal priority targets, take-by picks, and notes remain browser-local.
 
-> **2026-09-30 product addendum:** P1a–P2 add column presets, mobile cards, saved
+> **2026-10-02 product addendum:** P1a–P3 add column presets, mobile cards, saved
 > preferences, touch/keyboard explanations, local navigation parity, shareable URLs,
-> versioned watchlist import/export, and My Draft Plan on both surfaces. Their ranking
+> versioned watchlist import/export, My Draft Plan and isolated Practice My Draft runs
+> on both surfaces. Their ranking
 > meanings are preserved. The detailed tracker, verification and next-session handoff
-> live in [product-experience-plan.md](product-experience-plan.md). P3 Practice My Draft
+> live in [product-experience-plan.md](product-experience-plan.md). P4 What Changed?
 > is next. These changes do not change projection methods or experiment gates.
 
 ---

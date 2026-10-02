@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 export interface Meta {
   scoring: { name: string; weights: Record<string, number> };
-  league: { name?: string; platform?: string; teams?: number; format?: string };
+  league: { name?: string; platform?: string; teams?: number; format?: string; roster?: Record<string, number> };
   target_seasons: string[];
   current_target: string;
   models: Record<string, string>;

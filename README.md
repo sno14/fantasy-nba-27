@@ -333,6 +333,15 @@ follow the configured manual mock; local picks use a verified saved ESPN order w
 available and otherwise carry an explicit illustrative label. The plan reads draft
 state and never makes a pick.
 
+**Practice My Draft** is at `#practice` on the public site and `/practice` locally.
+Create up to ten named, browser-local snake drafts with a chosen team count, draft
+position and ADP or board-rank opponent rule. Pick only for your team; other picks
+advance automatically. Undo removes your last pick and the opponent picks that
+followed it. Runs keep their original board snapshot, roster configuration and ADP
+date, so later board refreshes do not change recorded choices or results. Compare
+position mix, feasible starters, depth and projected season points, then export or
+import a versioned run file. Practice is separate from the manual mock and live room.
+
 To preview the public site locally, run
 `python -m http.server 8788 --bind 127.0.0.1 --directory static` from the repo root.
 The full app remains at port 8787 via `python scripts/serve.py`; rebuild its frontend
@@ -344,6 +353,7 @@ for touch and keyboard users. Local historical boards omit current eligibility.
 Optional browser verification: with both previews running, real local caches and
 Python Playwright/Chromium installed, run `python scripts/check_product_portability.py`
 and `python scripts/check_draft_plan.py`.
+For practice-draft browser checks, run `python scripts/check_practice_draft.py`.
 It uses isolated browser contexts and writes disposable results to `.tmp/ux-review/`.
 The completed tracker and next-session handoff are in
 [docs/product-experience-plan.md](docs/product-experience-plan.md).

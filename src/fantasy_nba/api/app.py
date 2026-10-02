@@ -89,7 +89,7 @@ def meta() -> dict:
     seasons = sorted(ss["SEASON"].unique().tolist()) if not ss.empty else []
     return {
         "scoring": {"name": cfg.name, "weights": cfg.weights},
-        "league": {k: league.get(k) for k in ("name", "platform", "teams", "format")},
+        "league": {k: league.get(k) for k in ("name", "platform", "teams", "format", "roster")},
         "target_seasons": boards.TARGET_SEASONS,
         "current_target": boards.CURRENT_TARGET,
         "models": boards.MODELS,
