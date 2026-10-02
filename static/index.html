@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#0b1118" />
     <title>Fantasy NBA 2026–27</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🏀%3C/text%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="style.css?v=11" />
+    <link rel="stylesheet" href="style.css?v=12" />
   </head>
   <body>
     <div class="shell">
@@ -24,6 +24,7 @@
           <button class="nav-item" data-view="mock"><span>◎</span> Mock draft <b id="mock-count"></b></button>
           <button class="nav-item" data-view="tiers"><span>≡</span> Tiers</button>
           <button class="nav-item" data-view="teams"><span>◫</span> Teams</button>
+          <button class="nav-item" data-view="rotation"><span>▥</span> Rotation &amp; Opportunity</button>
           <button class="nav-item" data-view="compare"><span>⇄</span> Compare <b id="compare-count"></b></button>
           <button class="nav-item" data-view="method"><span>i</span> Methodology</button>
         </nav>
@@ -158,6 +159,13 @@
 
         <section id="view-tiers" class="view" hidden><div id="tier-grid" class="tier-grid"></div></section>
         <section id="view-teams" class="view" hidden><div id="team-grid" class="team-grid"></div></section>
+
+        <section id="view-rotation" class="view" hidden>
+          <div class="panel rotation-controls"><label><span>NBA team</span><select id="rotation-team" aria-label="Rotation team"></select></label><p>Published Board B · FP/G ordinal rank · team assignments from the dated public board.</p></div>
+          <p id="rotation-status" class="status" role="status">Loading curated team summaries…</p>
+          <div id="rotation-summary" class="summary-grid"></div>
+          <div id="rotation-rows" class="rotation-grid"></div>
+        </section>
         <section id="view-compare" class="view" hidden><div id="compare-view"></div></section>
         <section id="view-method" class="view" hidden>
           <div class="method-grid">
@@ -195,6 +203,6 @@
       <label><input type="radio" name="import-mode" value="replace" /> Replace — remove existing targets before importing.</label>
       <div class="target-actions"><button id="cancel-import" class="button subtle-action">Cancel</button><button id="confirm-import" class="button">Confirm import</button></div>
     </div></dialog>
-    <script type="module" src="app.js?v=12"></script>
+    <script type="module" src="app.js?v=13"></script>
   </body>
 </html>

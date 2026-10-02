@@ -23,6 +23,7 @@ from fantasy_nba.config import PROCESSED_DIR, ROOT
 from fantasy_nba.draft.radar import add_draft_radar
 from fantasy_nba.models.value import load_league
 from scripts.public_history import archive_public_board, scoring_key
+from scripts.public_rotation import write_public_rotation
 
 
 OUT = ROOT / "static" / "data" / "board.json"
@@ -160,6 +161,7 @@ def main(argv: list[str] | None = None) -> None:
     OUT.parent.mkdir(parents=True, exist_ok=True)
     archive_public_board(payload, OUT.parent / "history")
     OUT.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    write_public_rotation(payload, OUT.parent / "rotation.json")
     print(f"Exported {len(rows)} Board B rows -> {OUT.relative_to(ROOT)}")
 
 

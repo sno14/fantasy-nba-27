@@ -168,6 +168,25 @@ tbody tr:hover { background: rgba(116,168,255,.045); }
 .team-list { display: grid; gap: 6px; }
 .team-list div { display: flex; justify-content: space-between; color: var(--muted); font-size: .69rem; }
 .team-list b { color: #dce5ee; }
+.team-rotation-link { margin-top: 12px; }
+.rotation-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; padding: 15px; margin-bottom: 12px; }
+.rotation-controls label { min-width: 150px; color: var(--muted); font-size: .72rem; }
+.rotation-controls label span { display: block; margin-bottom: 5px; }
+.rotation-controls select { width: 100%; padding: 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel-2); color: inherit; }
+.rotation-controls p { flex: 1 1 250px; margin: 0; color: var(--muted); font-size: .72rem; line-height: 1.5; }
+.rotation-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.rotation-player { padding: 15px; min-width: 0; }
+.rotation-player header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; }
+.rotation-player header small { display: block; margin-top: 3px; color: var(--muted); font-size: .67rem; }
+.rotation-player header b { color: var(--accent); font-size: .81rem; }
+.rotation-player p { margin: 9px 0 0; overflow-wrap: anywhere; color: var(--muted); font-size: .7rem; line-height: 1.5; }
+.rotation-player p b { color: #dce5ee; }
+.rotation-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 12px; }
+.rotation-metrics > div { padding: 8px; border: 1px solid var(--line); border-radius: 7px; }
+.rotation-metrics small, .rotation-metrics strong { display: block; }
+.rotation-metrics small { color: var(--muted-2); font-size: .62rem; }
+.rotation-metrics strong { margin-top: 4px; font-size: .85rem; }
+@media (max-width: 720px) { .rotation-grid { grid-template-columns: 1fr; } }
 .target-star { margin-left: 7px; border: 0; background: none; color: var(--muted-2); cursor: pointer; font-size: .85rem; }
 .target-star:hover, .target-star.active { color: var(--amber); }
 

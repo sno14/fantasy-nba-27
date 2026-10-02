@@ -1,6 +1,6 @@
 # Product experience implementation plan
 
-Created: 2026-09-29. Status: active; P1a–P4 implemented and verified locally.
+Created: 2026-09-29. Status: active; P1a–P5 implemented and verified locally.
 
 This is the execution plan for the experience and feature discussion of 2026-09-29.
 It extends the shipped views in [ui-views-plan.md](ui-views-plan.md), which remains
@@ -71,14 +71,14 @@ Each row ships independently with the acceptance checks below.
 | P2 | My Draft Plan workspace and useful draft summary cards | Both | Medium | P1c; existing targets and picks | Complete locally, 2026-09-30 |
 | P3 | Practice My Draft with saved runs | Public, then local | Medium | P2; existing snake/slot logic | Complete locally, 2026-10-02 |
 | P4 | What Changed: published history and watched-player changes | Both | Medium | P1c; dated exports | Complete locally, 2026-10-02; awaiting real baselines |
-| P5 | Rotation & Opportunity team detail | Local, curated public | Medium | Existing team/analyst data | Planned |
+| P5 | Rotation & Opportunity team detail | Local, curated public | Medium | Existing team/analyst data | Complete locally, 2026-10-02 |
 | P6a | Feasible daily lineup and usable-production calculation | Local | Medium | Ownership, eligibility, schedule | Planned |
 | P6b | Personal Streaming Planner and add/drop scenarios | Local | Large | P6a; league acquisition rules | Planned |
 | P7 | Trade Sandbox with both sides and uneven trades | Local | Large | P6a; ownership and schedule | Planned |
 | P8 | Today home page evolving My Team | Local | Medium | P4 and P6 | Planned |
 | P9 | Player minutes scenario explorer | Local, then public | Medium | Verified decomposition inputs | Planned |
 
-P1a–P4 are complete locally. The next implementation is P5 Rotation & Opportunity.
+P1a–P5 are complete locally. The next implementation is P6a feasible daily lineups.
 The remaining rows are documented scope, not an assertion that they are implemented.
 
 ## 4. P1 — board usability and workspace foundations
@@ -293,6 +293,25 @@ Display projected MPG, FP/G, role evidence, analyst effective date and competiti
 
 Acceptance: effective/current team mapping; accurate sums and missing-data labels;
 public export allowlist tests; no change to board values.
+
+Delivered contract: local `/api/rotation` joins the current learned/safe Board A and
+approved Board B by player ID, using Board B's current team assignment. It lists
+projected minutes, FP/G, derived FP/min, analyst action/date, same-team eligible-slot
+peers, and a separate latest ROS availability/redistribution snapshot when one
+exists. A latest dated team-preview ledger supplies quoted minutes; its derived
+240-minute allocation appears only when the complete latest ledger passes its
+budget gate and sums to 240. The ledger never changes the board. Team totals sum
+known player MPG with missing counts; the gap to 240 is a diagnostic over the full
+roster, not a forced simultaneous rotation.
+
+Public `#rotation` uses generated `static/data/rotation.json`, a curated allowlist
+derived only from the committed public board. It contains team ID, dated board
+source, player ID/name/rank, MPG, FP/G, GP, derived FP/min, cached position labels
+and the already-public analyst action/date. It contains no raw transcript, private
+rationale, ledger allocation, roster or availability field. The export validator
+regenerates the expected summary from `board.json` before Pages deploys; a stale or
+expanded file fails. Public rank remains ordinal FP/G, local rank remains safe
+season value. Both surfaces label missing MPG and uncertain positional competition.
 
 ## 9. P6 — usable lineups and personal streaming
 
@@ -643,3 +662,35 @@ Next: P5 Rotation & Opportunity (§8), subject to the scheduled modelling and dr
 verification gates in `docs/implementation-plan.md`. Public archive content becomes
 visible only after future approved exports are committed and the Pages workflow
 succeeds. Product-only work requires no experiment ledger entry.
+
+## 18. P5 delivery and handoff — 2026-10-02
+
+Rotation & Opportunity is implemented locally at `/rotation` and publicly at
+`#rotation`. The local API reads current Board A/B rows, groups players by Board B's
+effective team, joins the latest dated preview ledger by unique normalized name,
+and displays approved action/date, projection minutes and FP/G, derived FP/min,
+quoted preview minutes, eligible-position peers and conditional ROS availability.
+The latest ledger supersedes older ones even when its 240-minute budget gate fails;
+only a complete, valid latest allocation is shown as a separate dated judgment.
+No ledger or preview statement is used to reprice a board player.
+
+The public view reads `static/data/rotation.json`, generated from the existing
+595-row published `board.json` without regenerating or hand-editing the board.
+The Pages workflow checks this file for exact derivation and a strict field
+allowlist. Public preview ledgers, rationales and availability notes are excluded.
+The public team summary is tied to the board's 2026-09-29 generation time; future
+`export_static.py` runs refresh it alongside the board and P4 history. Both views
+show full-roster known MPG totals against the 240-minute reference with missing
+counts, never silently reconcile them, and distinguish their rank semantics.
+
+Verification: production React build; 31 focused rotation/board/export/season tests;
+public summary and P4 archive validators; JS syntax; real-cache API response for
+30 teams; and read-only Chromium checks on both previews at 390px, covering team
+selection, link persistence, local valid/failed preview budgets and public card
+navigation. The local test server used port 8799 to leave the existing 8787 session
+undisturbed. No model experiment or board-value change was made.
+
+Next: P6a feasible daily lineup calculation (§9), before P6b streaming. Build the
+exact weighted slot assignment as a pure helper, test multi-eligibility and crowded
+days, then integrate it with My Team and Matchup. The scheduled mid-October data,
+draft verification, analyst re-review and dual freeze gates still take priority.

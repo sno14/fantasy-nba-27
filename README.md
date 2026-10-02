@@ -351,6 +351,16 @@ use nightly ROS snapshots with recorded scoring and ranking provenance; older
 snapshots still appear in Trends. Public history retains the latest 30 redacted
 versions and loads selected details on demand. Private notes never enter the archive.
 
+**Rotation & Opportunity** is at `#rotation` publicly and `/rotation` locally.
+Select an NBA team to inspect player MPG, FP/G, derived FP/min, recorded analyst
+actions and eligible-position peers. Full-roster known MPG totals appear beside
+the 240-minute reference with missing counts; they are never forced to fit 240.
+Locally, Board A and approved Board B remain separate, and dated team-preview
+figures or a valid closed preview allocation appear as historical evidence only.
+The latest nightly ROS availability and redistribution are shown only when a
+snapshot supplies them. The public page uses a generated, redacted team summary
+from the same dated Board B snapshot and contains no private preview text.
+
 To preview the public site locally, run
 `python -m http.server 8788 --bind 127.0.0.1 --directory static` from the repo root.
 The full app remains at port 8787 via `python scripts/serve.py`; rebuild its frontend
@@ -366,7 +376,10 @@ For practice-draft browser checks, run `python scripts/check_practice_draft.py`.
 For change-history browser checks, run `python scripts/check_changes.py` with an
 updated local preview (use `--local-port 8797` if 8787 has an older process). The
 script uses synthetic, isolated versions.
-It uses isolated browser contexts and writes disposable results to `.tmp/ux-review/`.
+For team-detail browser checks, run `python scripts/check_rotation.py` with both
+previews running; `--local-port` selects a fresh local server if needed. The
+practice and change scripts use isolated browser contexts. Disposable screenshots
+and downloads go to `.tmp/ux-review/`.
 The completed tracker and next-session handoff are in
 [docs/product-experience-plan.md](docs/product-experience-plan.md).
 

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useCompare } from "../App";
 import { CopyLink } from "../components/Portability";
 import { PlayerDetail, useApi } from "../lib/api";
@@ -103,6 +103,7 @@ export default function Player() {
               {p.radar_label && <Chip tone={radarTone(p.radar_label)} title={p.radar_reasons || undefined}>{radarName(p.radar_label)}</Chip>}
             </h1>
             <p className="text-[13px] text-ink-2">2026-27 projection · learned model · board B (analyst layer applied)</p>
+            {p.TEAM_ABBREVIATION && <Link className="text-xs text-accent underline" to={`/rotation?team=${encodeURIComponent(p.TEAM_ABBREVIATION)}`}>View team rotation</Link>}
           </div>
         </div>
         <div className="flex flex-wrap gap-2">

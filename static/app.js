@@ -36,6 +36,7 @@ const state = {
   mock: { picks: [], myTeam: 1, query: "", radar: "All", limit: 60 },
   practice: { runs: [], selected: null, query: "" },
   changes: { entries: [], events: [], baseline: null, view: "all", team: "All", visitBaseline: readStored("fantasy-nba-changes-last-seen-v1", null), latest: null, previous: null },
+  rotation: { data: null, team: "", loading: false },
 };
 
 const TARGETS_KEY = "fantasy-nba-draft-targets-v1";
@@ -106,6 +107,7 @@ const viewCopy = {
   plan: ["My Draft Plan", "Your targets, upcoming picks and roster needs."],
   practice: ["Practice My Draft", "Test choices in a saved, repeatable snake draft."],
   changes: ["What Changed?", "Dated changes in the published FP/G projection board."],
+  rotation: ["Rotation & Opportunity", "Projected team minutes, rate context and roster competition from the published board."],
   method: ["Methodology", "What this public snapshot includes—and what remains local."],
 };
 
@@ -612,7 +614,46 @@ function drawTeams() {
     <header class="team-head"><h2>${team}</h2><span>${fmt(avg)}</span></header>
     <div class="team-meta"><div><small>Top-5 avg</small><strong>${fmt(avg)} FP/G</strong></div><div><small>Best rank</small><strong>#${top[0].rank}</strong></div><div><small>Players</small><strong>${rows.length}</strong></div></div>
     <div class="team-list">${top.map(row => `<div><span>#${row.rank} ${esc(row.PLAYER_NAME)}</span><b>${fmt(row.fpts_pg)}</b></div>`).join("")}</div>
+    <button class="button subtle-action team-rotation-link" data-open-rotation="${esc(team)}">View rotation</button>
   </article>`).join("");
+}
+
+function drawRotation() {
+  const data = state.rotation.data;
+  if (!data) return;
+  const team = data.teams.find(item => item.team === state.rotation.team) || data.teams[0];
+  if (!team) { $("#rotation-status").textContent = "No assigned NBA teams are available in this published snapshot."; return; }
+  state.rotation.team = team.team;
+  $("#rotation-team").innerHTML = data.teams.map(item => `<option value="${esc(item.team)}">${esc(item.team)}</option>`).join("");
+  $("#rotation-team").value = team.team;
+  $("#rotation-status").textContent = `Published board ${data.sourceBoardGeneratedAt} · ${team.count} assigned players · ${data.unassignedPlayers} unassigned across the board. Player MPG is conditional; summing a full roster does not produce a simultaneous five-player rotation. The 240-minute line is a diagnostic only.`;
+  $("#rotation-summary").innerHTML = [["Known projected MPG", `${fmt(team.projectedMinutes)} / 240`], ["Difference from 240", signed(team.gapTo240)], ["Players without MPG", team.missingMpg], ["Published rank", "FP/G ordinal"]]
+    .map(([label, value]) => `<article class="summary-card"><small>${esc(label)}</small><strong>${esc(value)}</strong></article>`).join("");
+  $("#rotation-rows").innerHTML = team.players.map(player => {
+    const peers = player.positions.length ? team.players.filter(other => other.id !== player.id && other.positions.some(position => player.positions.includes(position))).slice(0, 3) : [];
+    return `<article class="panel rotation-player"><header><div><button class="link-button" data-player="${player.id}">${esc(player.name)}</button><small>#${player.rank} FP/G rank · ${player.positions.length ? esc(player.positions.join("/")) : "eligibility unknown"}</small></div><b>${fmt(player.fpg)} FP/G</b></header>
+      <div class="rotation-metrics"><div><small>Projected MPG</small><strong>${fmt(player.mpg)}</strong></div><div><small>FP/min</small><strong>${fmt(player.fpPerMinute, 2)}</strong></div><div><small>Projected GP</small><strong>${fmt(player.gp, 0)}</strong></div></div>
+      <p><b>Recorded analyst action:</b> ${esc(player.analystAction && player.analystAction !== "none" ? player.analystAction : "none")} ${player.analystDate ? `· ${esc(player.analystDate)}` : ""}</p>
+      <p><b>Eligible-position peers:</b> ${player.positions.length ? (peers.length ? peers.map(item => `${esc(item.name)} ${fmt(item.mpg)} MPG`).join(" · ") : "none verified in the published map") : "unknown without cached eligibility"}</p>
+    </article>`;
+  }).join("");
+}
+
+async function loadRotation() {
+  if (state.rotation.data) { drawRotation(); return; }
+  if (state.rotation.loading) return;
+  state.rotation.loading = true;
+  $("#rotation-status").textContent = "Loading curated team summaries…";
+  try {
+    const response = await fetch("data/rotation.json", { cache: "no-store" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    if (data.schema !== 1 || data.rankedBy !== "FP/G ordinal" || data.sourceBoardGeneratedAt !== state.meta.generated_at || !Array.isArray(data.teams))
+      throw new Error("The team summary does not match this board snapshot");
+    state.rotation.data = data;
+    drawRotation();
+  } catch (error) { $("#rotation-status").textContent = `Team summary unavailable: ${error.message}`; }
+  finally { state.rotation.loading = false; }
 }
 
 function drawCompare() {
@@ -680,6 +721,7 @@ function setView(view, navigate = true) {
   if (view === "plan") drawPlan();
   if (view === "practice") drawPractice();
   if (view === "changes") loadChanges();
+  if (view === "rotation") loadRotation();
 }
 
 function populateFilters() {
@@ -700,6 +742,7 @@ let importPreview = null;
 function routeHash(shared = false) {
   const params = new URLSearchParams(Object.keys(BOARD_DEFAULTS).map(key => [key, String(shared && key === "radar" && state.radar === "Watchlist" ? "All" : state[key])]));
   if (state.view === "compare") params.set("ids", [...state.compare].join(","));
+  if (state.view === "rotation" && state.rotation.team) params.set("nbaTeam", state.rotation.team);
   if (state.playerId !== null) params.set("player", state.playerId);
   return `#${state.view}?${params}`;
 }
@@ -737,6 +780,11 @@ function applyRoute(force = false) {
     try { state.compare = new Set(parseIds(params.get("ids"))); }
     catch (error) { state.compare.clear(); invalid.push(error.message); }
   }
+  if (view === "rotation" && params.has("nbaTeam")) {
+    const team = params.get("nbaTeam");
+    if (state.rows.some(row => row.TEAM_ABBREVIATION === team)) state.rotation.team = team;
+    else invalid.push("NBA team");
+  }
   state.playerId = null;
   setView(view || "board", false);
   if (view && !Object.hasOwn(viewCopy, view)) invalid.push("page");
@@ -768,6 +816,7 @@ async function copyCurrentLink(button) {
 }
 
 function bindEvents() {
+  $("#rotation-team").addEventListener("change", event => { state.rotation.team = event.target.value; drawRotation(); writeRoute(); });
   $("#changes-view").addEventListener("change", event => { state.changes.view = event.target.value; loadChanges(); });
   $("#changes-team").addEventListener("change", event => { state.changes.team = event.target.value; drawChanges(); });
   $("#changes-baseline").addEventListener("change", event => { state.changes.baseline = event.target.value; loadChanges(); });
@@ -883,6 +932,8 @@ function bindEvents() {
     if (event.target.closest("[data-reset-filters]")) resetBoardFilters();
     const view = event.target.closest("[data-view], [data-go]");
     if (view) setView(view.dataset.view || view.dataset.go);
+    const rotationTeam = event.target.closest("[data-open-rotation]");
+    if (rotationTeam) { state.rotation.team = rotationTeam.dataset.openRotation; setView("rotation"); return; }
     const player = event.target.closest("[data-player]");
     if (player) openPlayer(player.dataset.player);
     const compare = event.target.closest("[data-compare]");
