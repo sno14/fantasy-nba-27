@@ -17,6 +17,7 @@ import PracticeDraft from "./views/PracticeDraft";
 import Power from "./views/Power";
 import Ros from "./views/Ros";
 import Trends from "./views/Trends";
+import Changes from "./views/Changes";
 import Trades from "./views/Trades";
 import Waivers from "./views/Waivers";
 import MyTeam from "./views/MyTeam";
@@ -139,6 +140,7 @@ const NAV = [
   { section: "Draft", to: "/power", label: "Power Rankings", icon: "M4 20V10M10 20V4M16 20v-8M22 20H2" },
   { section: "Season", to: "/ros", label: "ROS", icon: "M4 17l5-5 4 3 7-8M16 7h4v4" },
   { section: "Season", to: "/trends", label: "Trends", icon: "M3 17l6-6 4 4 8-9M14 6h7v7" },
+  { section: "Season", to: "/changes", label: "What Changed?", icon: "M4 5h16M4 10h16M4 15h11M4 20h8" },
   { section: "Season", to: "/trades", label: "Trade Targets", icon: "M4 7h13l-3-3M4 7l3 3M20 17H7l3-3M20 17l-3 3" },
   { section: "Season", to: "/waivers", label: "Waivers", icon: "M12 8v8M8 12h8M12 21a9 9 0 110-18 9 9 0 010 18z" },
   { section: "Season", to: "/myteam", label: "My Team", icon: "M12 11a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM5 20a7 7 0 0114 0M17 8l1.5 1.5L21 7" },
@@ -234,6 +236,7 @@ function Shell() {
               <Route path="/power" element={<Power />} />
               <Route path="/ros" element={<Ros />} />
               <Route path="/trends" element={<Trends />} />
+              <Route path="/changes" element={<Changes />} />
               <Route path="/trades" element={<Trades />} />
               <Route path="/waivers" element={<Waivers />} />
               <Route path="/myteam" element={<MyTeam />} />

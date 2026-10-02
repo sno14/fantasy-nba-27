@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#0b1118" />
     <title>Fantasy NBA 2026–27</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🏀%3C/text%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="style.css?v=10" />
+    <link rel="stylesheet" href="style.css?v=11" />
   </head>
   <body>
     <div class="shell">
@@ -19,6 +19,7 @@
         <nav aria-label="Main navigation">
           <button class="nav-item" data-view="plan"><span>◎</span> My Draft Plan</button>
           <button class="nav-item" data-view="practice"><span>◎</span> Practice My Draft</button>
+          <button class="nav-item" data-view="changes"><span>↕</span> What Changed?</button>
           <button class="nav-item active" data-view="board"><span>▤</span> Draft board</button>
           <button class="nav-item" data-view="mock"><span>◎</span> Mock draft <b id="mock-count"></b></button>
           <button class="nav-item" data-view="tiers"><span>≡</span> Tiers</button>
@@ -143,6 +144,18 @@
           <div class="panel practice-saved"><header><h2>Compare saved runs</h2><label class="button subtle-action">Import run<input id="practice-import" type="file" accept=".json,application/json" hidden /></label></header><div id="practice-runs"></div></div>
         </section>
 
+        <section id="view-changes" class="view" hidden>
+          <div class="panel changes-controls">
+            <label><span>View</span><select id="changes-view"><option value="all">All changes</option><option value="watched">Watched players</option><option value="team">Selected team</option><option value="since">Since last visit</option></select></label>
+            <label><span>NBA team</span><select id="changes-team"><option value="All">All teams</option></select></label>
+            <label><span>Compare from</span><select id="changes-baseline"></select></label>
+            <p>Published history compares like-for-like FP/G ranks and scoring. Notes and private watchlists stay in this browser.</p>
+          </div>
+          <p id="changes-status" class="status" role="status">Checking published history…</p>
+          <div id="changes-summary" class="summary-grid"></div>
+          <div id="changes-rows" class="changes-rows"></div>
+        </section>
+
         <section id="view-tiers" class="view" hidden><div id="tier-grid" class="tier-grid"></div></section>
         <section id="view-teams" class="view" hidden><div id="team-grid" class="team-grid"></div></section>
         <section id="view-compare" class="view" hidden><div id="compare-view"></div></section>
@@ -182,6 +195,6 @@
       <label><input type="radio" name="import-mode" value="replace" /> Replace — remove existing targets before importing.</label>
       <div class="target-actions"><button id="cancel-import" class="button subtle-action">Cancel</button><button id="confirm-import" class="button">Confirm import</button></div>
     </div></dialog>
-    <script type="module" src="app.js?v=11"></script>
+    <script type="module" src="app.js?v=12"></script>
   </body>
 </html>

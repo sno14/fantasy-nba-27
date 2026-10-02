@@ -342,6 +342,15 @@ date, so later board refreshes do not change recorded choices or results. Compar
 position mix, feasible starters, depth and projected season points, then export or
 import a versioned run file. Practice is separate from the manual mock and live room.
 
+**What Changed?** is at `#changes` on the public site and `/changes` locally.
+Compare dated FP/G, MPG and rank values for all changed players, your watched
+players, one NBA team or since your last visit. Arrivals and removals retain missing
+values; rank-only moves are labelled separately. The public history begins with the
+next export and needs two compatible exports before changes appear. Local comparisons
+use nightly ROS snapshots with recorded scoring and ranking provenance; older
+snapshots still appear in Trends. Public history retains the latest 30 redacted
+versions and loads selected details on demand. Private notes never enter the archive.
+
 To preview the public site locally, run
 `python -m http.server 8788 --bind 127.0.0.1 --directory static` from the repo root.
 The full app remains at port 8787 via `python scripts/serve.py`; rebuild its frontend
@@ -354,6 +363,9 @@ Optional browser verification: with both previews running, real local caches and
 Python Playwright/Chromium installed, run `python scripts/check_product_portability.py`
 and `python scripts/check_draft_plan.py`.
 For practice-draft browser checks, run `python scripts/check_practice_draft.py`.
+For change-history browser checks, run `python scripts/check_changes.py` with an
+updated local preview (use `--local-port 8797` if 8787 has an older process). The
+script uses synthetic, isolated versions.
 It uses isolated browser contexts and writes disposable results to `.tmp/ux-review/`.
 The completed tracker and next-session handoff are in
 [docs/product-experience-plan.md](docs/product-experience-plan.md).

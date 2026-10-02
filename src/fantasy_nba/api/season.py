@@ -20,6 +20,7 @@ explicit `has_*: false` with the command or calendar date that fills it — neve
 from __future__ import annotations
 
 import re
+import json
 from functools import lru_cache
 
 import pandas as pd
@@ -62,6 +63,58 @@ def load_ros(date: str) -> pd.DataFrame:
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date) or not (ROS_DIR / f"{date}.parquet").exists():
         raise HTTPException(404, f"no ROS snapshot for {date}")
     return _ros_cached(date)
+
+
+def _change_metadata(date: str) -> dict | None:
+    path = ROS_DIR / f"{date}.meta.json"
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if (not isinstance(data, dict) or data.get("schema") != 1 or data.get("rankedBy") != "ROS safe season value"
+            or not re.fullmatch(r"[0-9a-f]{16}", data.get("scoringKey", ""))
+            or not re.fullmatch(r"\d{4}-\d{2}", data.get("season", ""))):
+        return None
+    return data
+
+
+@router.get("/changes/versions")
+def change_versions() -> dict:
+    """Only snapshots with recorded scoring/ranking provenance are comparable."""
+    dates = ros_dates()
+    versions = []
+    for date in dates:
+        info = _change_metadata(date)
+        if info and info["season"] == boards.CURRENT_TARGET:
+            versions.append({"version": date, "asof": date, "season": info["season"],
+                             "rankedBy": info["rankedBy"], "scoringKey": info["scoringKey"],
+                             "source": "local"})
+    return {"schema": 1, "versions": versions, "legacyCount": len(dates) - len(versions)}
+
+
+@router.get("/changes/version/{date}")
+def change_version(date: str) -> dict:
+    if date not in ros_dates():
+        raise HTTPException(404, "No ROS snapshot for that date")
+    info = _change_metadata(date)
+    if not info or info["season"] != boards.CURRENT_TARGET:
+        raise HTTPException(404, "This snapshot has no verified comparison provenance")
+    frame = load_ros(date)
+    required = {"PLAYER_ID", "PLAYER_NAME", "rank", "fpts_pg"}
+    if not required <= set(frame.columns):
+        raise HTTPException(503, "ROS snapshot lacks required comparison fields")
+    columns = [column for column in ("PLAYER_ID", "PLAYER_NAME", "TEAM_ABBREVIATION", "rank",
+                                      "fpts_pg", "mpg", "analyst_action", "analyst_date")
+               if column in frame.columns]
+    rows = json.loads(frame[columns].to_json(orient="records", date_format="iso"))
+    for row in rows:
+        for key in ("TEAM_ABBREVIATION", "mpg", "analyst_action", "analyst_date"):
+            row.setdefault(key, None)
+    return {"schema": 1, "version": date, "asof": date, "season": info["season"],
+            "rankedBy": info["rankedBy"], "scoringKey": info["scoringKey"],
+            "source": "local", "rows": rows}
 
 
 def baseline_date(dates: list[str], latest: str, window_days: int) -> str | None:

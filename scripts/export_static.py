@@ -17,10 +17,12 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fantasy_nba.config import PROCESSED_DIR, ROOT
 from fantasy_nba.draft.radar import add_draft_radar
 from fantasy_nba.models.value import load_league
+from scripts.public_history import archive_public_board, scoring_key
 
 
 OUT = ROOT / "static" / "data" / "board.json"
@@ -145,6 +147,7 @@ def main(argv: list[str] | None = None) -> None:
         "source_board": source_board,
         "analyst_layer": True,
         "ranked_by": "fpts_pg",
+        "scoring_key": scoring_key(ROOT / "config" / "scoring.yaml"),
         "market_date": market_date,
         "market_source": market_source,
         "capabilities": ["board", "player_detail", "compare", "tiers", "teams", "mock_draft", "draft_radar"],
@@ -155,6 +158,7 @@ def main(argv: list[str] | None = None) -> None:
         "rows": rows,
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
+    archive_public_board(payload, OUT.parent / "history")
     OUT.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     print(f"Exported {len(rows)} Board B rows -> {OUT.relative_to(ROOT)}")
 

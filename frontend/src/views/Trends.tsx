@@ -2,7 +2,7 @@
 // Pure snapshot-vs-snapshot diffs; the sparkline is the trailing month of nightly boards.
 
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { TrendsResponse, useApi } from "../lib/api";
 import { f1, signed } from "../lib/format";
 import { Column, DataTable } from "../components/DataTable";
@@ -106,6 +106,7 @@ export default function Trends() {
 
   return (
     <div className="space-y-4">
+      <p className="text-xs text-ink-3">Want dated old/new values and rank changes? <Link to="/changes" className="text-accent underline">See What Changed?</Link></p>
       <div className="flex flex-wrap items-end gap-3">
         <Field label="Window">
           <Segmented

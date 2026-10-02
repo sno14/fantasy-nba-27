@@ -1,5 +1,6 @@
 import { downloadBackup, MAX_FILE_BYTES, normalizeTarget, parseIds, snakePicks, validateBackup } from "./workspace.mjs";
 import { choosePracticePlayer, createPracticeRun, MAX_RUNS, parsePracticeRuns, PRACTICE_KEY, practiceRounds, practiceSummary, practiceTeam, undoPracticePick, validatePracticeRun } from "./practice.mjs";
+import { compareSnapshots, validateChangeSnapshot } from "./changes.mjs";
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const fmt = (value, digits = 1) => value == null || !Number.isFinite(Number(value)) ? "—" : Number(value).toFixed(digits);
@@ -34,6 +35,7 @@ const state = {
   targets: {}, playerId: null, season: "",
   mock: { picks: [], myTeam: 1, query: "", radar: "All", limit: 60 },
   practice: { runs: [], selected: null, query: "" },
+  changes: { entries: [], events: [], baseline: null, view: "all", team: "All", visitBaseline: readStored("fantasy-nba-changes-last-seen-v1", null), latest: null, previous: null },
 };
 
 const TARGETS_KEY = "fantasy-nba-draft-targets-v1";
@@ -51,6 +53,7 @@ function loadTargets() {
 function saveTargets() {
   writeStored(TARGETS_KEY, state.targets);
   drawPlan();
+  if (state.view === "changes") drawChanges();
 }
 
 function isTarget(row) { return Boolean(state.targets[String(row.PLAYER_ID)]); }
@@ -102,6 +105,7 @@ const viewCopy = {
   compare: ["Player Compare", "Put up to four projections side by side."],
   plan: ["My Draft Plan", "Your targets, upcoming picks and roster needs."],
   practice: ["Practice My Draft", "Test choices in a saved, repeatable snake draft."],
+  changes: ["What Changed?", "Dated changes in the published FP/G projection board."],
   method: ["Methodology", "What this public snapshot includes—and what remains local."],
 };
 
@@ -250,6 +254,67 @@ function drawPractice() {
     return `<div class="practice-run"><div><strong>${esc(item.name)}</strong><small>${esc(item.snapshot.marketDate || "No ADP date")} · ${item.config.teams} teams · slot ${item.config.position} · ${view.own.length} of ${practiceRounds(item.config.roster)} picks · ${view.starters} starters at ${fmt(view.starterFpg)} FP/G · ${view.depth} depth · ${integer(view.seasonFp)} season FP${view.unknownSeasonTotal ? ` (${view.unknownSeasonTotal} totals missing)` : ""}</small><small>Position mix: ${Object.entries(view.positions).map(([slot, count]) => `${slot} ${count}`).join(" · ")}${view.unknownEligibility ? ` · ${view.unknownEligibility} eligibility unknown` : ""}</small></div><div class="practice-actions"><button class="button subtle-action" data-practice-open="${esc(item.id)}">Open</button><button class="button subtle-action" data-practice-delete="${esc(item.id)}">Delete</button></div></div>`;
   }).join("");
   $("#practice-form button[type=submit]").disabled = !state.rows.length || runs.length >= MAX_RUNS;
+}
+
+let changesRequest = 0;
+function drawChanges() {
+  const { events, view, team, latest, previous } = state.changes;
+  if (!latest || !previous) return;
+  const filtered = events.filter(event => view !== "watched" || state.targets[String(event.id)]).filter(event => view !== "team" || team === "All" || event.team === team);
+  const n = type => filtered.filter(event => event.kind === type).length;
+  $("#changes-summary").innerHTML = [["Changed players", filtered.length], ["New / removed", `${n("added")} / ${n("removed")}`], ["Rank only", n("rank-only")], ["FP/G changed", filtered.filter(event => event.fptsDelta !== null && event.fptsDelta !== 0).length]]
+    .map(([label, value]) => `<article class="summary-card"><small>${esc(label)}</small><strong>${esc(value)}</strong></article>`).join("");
+  $("#changes-rows").innerHTML = filtered.length ? filtered.map(event => {
+    const before = event.before;
+    const after = event.after;
+    const pair = (label, field, delta = null) => `<div><small>${label}</small><strong>${before?.[field] == null ? "—" : fmt(before[field])} → ${after?.[field] == null ? "—" : fmt(after[field])}</strong>${delta == null ? "" : `<em>${signed(delta)}</em>`}</div>`;
+    return `<article class="panel change-event"><header><div><strong>${esc(event.name)}</strong><small>${esc(event.team || "Team unknown")} · ${esc(event.kind.replace("-", " "))}</small></div><b>${event.fptsDelta == null ? "" : signed(event.fptsDelta)}${event.fptsDelta == null ? "" : " FP/G"}</b></header><div class="change-metrics">${pair("FP/G", "fpts_pg", event.fptsDelta)}${pair("MPG", "mpg", event.mpgDelta)}<div><small>Rank</small><strong>${before ? integer(before.rank) : "—"} → ${after ? integer(after.rank) : "—"}</strong>${event.rankDelta == null ? "" : `<em>${signed(event.rankDelta, 0)} places</em>`}</div></div><p>${esc(event.explanation)}</p>${before?.analyst_action !== after?.analyst_action || before?.analyst_date !== after?.analyst_date ? `<small>Recorded analyst action: ${esc(before?.analyst_action || "none")} → ${esc(after?.analyst_action || "none")} · date ${esc(before?.analyst_date || "—")} → ${esc(after?.analyst_date || "—")}</small>` : ""}</article>`;
+  }).join("") : `<div class="empty">No changes match this view between ${esc(previous.asof)} and ${esc(latest.asof)}.</div>`;
+}
+
+async function loadChanges() {
+  const request = ++changesRequest;
+  $("#changes-status").textContent = "Checking published history…";
+  $("#changes-summary").innerHTML = "";
+  $("#changes-rows").innerHTML = "";
+  try {
+    const response = await fetch("data/history/manifest.json", { cache: "no-store" });
+    if (!response.ok) throw new Error(`History manifest HTTP ${response.status}`);
+    const manifest = await response.json();
+    if (request !== changesRequest) return;
+    if (manifest.schema !== 1 || !Array.isArray(manifest.versions)) throw new Error("Invalid history manifest");
+    const entries = manifest.versions.filter(item => item && /^v-\d{8}T\d{6}Z-[0-9a-f]{10}\.json$/.test(item.file));
+    state.changes.entries = entries;
+    const latestEntry = entries.at(-1);
+    const compatible = entries.slice(0, -1).filter(item => latestEntry && item.season === latestEntry.season && item.rankedBy === latestEntry.rankedBy && item.scoringKey === latestEntry.scoringKey && item.source === latestEntry.source);
+    if (!latestEntry || !compatible.length) {
+      state.changes.latest = null; state.changes.previous = null; state.changes.events = [];
+      $("#changes-baseline").innerHTML = "";
+      $("#changes-status").textContent = "A comparison baseline is being collected. This page will show changes after two dated exports with the same scoring and ranking settings.";
+      return;
+    }
+    const visit = state.changes.visitBaseline;
+    const chosen = state.changes.view === "since" ? (visit === latestEntry.version ? latestEntry : compatible.find(item => item.version === visit) || compatible.at(-1)) :
+      compatible.find(item => item.version === state.changes.baseline) || compatible.at(-1);
+    state.changes.baseline = chosen.version;
+    $("#changes-baseline").innerHTML = (chosen === latestEntry ? [latestEntry, ...compatible] : compatible).map(item => `<option value="${esc(item.version)}">${esc(item.asof)}</option>`).join("");
+    $("#changes-baseline").value = chosen.version;
+    $("#changes-baseline").disabled = state.changes.view === "since";
+    const [latestResponse, baseResponse] = await Promise.all([fetch(`data/history/${latestEntry.file}`), fetch(`data/history/${chosen.file}`)]);
+    if (!latestResponse.ok || !baseResponse.ok) throw new Error("A published history version is unavailable");
+    const [latest, previous] = await Promise.all([latestResponse.json(), baseResponse.json()]);
+    if (request !== changesRequest) return;
+    state.changes.latest = validateChangeSnapshot(latest);
+    state.changes.previous = validateChangeSnapshot(previous);
+    state.changes.events = compareSnapshots(latest, previous);
+    const teams = [...new Set(state.changes.events.map(event => event.team).filter(Boolean))].sort();
+    $("#changes-team").innerHTML = `<option value="All">All teams</option>${teams.map(team => `<option value="${esc(team)}">${esc(team)}</option>`).join("")}`;
+    if (state.changes.team !== "All" && !teams.includes(state.changes.team)) state.changes.team = "All";
+    $("#changes-team").value = state.changes.team;
+    $("#changes-status").textContent = `${previous.asof} → ${latest.asof} · ${latest.rankedBy} · ${state.changes.events.length} changed players. Rank changes alone do not imply a role change.`;
+    drawChanges();
+    writeStored("fantasy-nba-changes-last-seen-v1", latest.version);
+  } catch (error) { if (request === changesRequest) $("#changes-status").textContent = `History unavailable: ${error.message}`; }
 }
 
 function draftPlayer(playerId) {
@@ -614,6 +679,7 @@ function setView(view, navigate = true) {
   if (view === "compare") drawCompare();
   if (view === "plan") drawPlan();
   if (view === "practice") drawPractice();
+  if (view === "changes") loadChanges();
 }
 
 function populateFilters() {
@@ -702,6 +768,9 @@ async function copyCurrentLink(button) {
 }
 
 function bindEvents() {
+  $("#changes-view").addEventListener("change", event => { state.changes.view = event.target.value; loadChanges(); });
+  $("#changes-team").addEventListener("change", event => { state.changes.team = event.target.value; drawChanges(); });
+  $("#changes-baseline").addEventListener("change", event => { state.changes.baseline = event.target.value; loadChanges(); });
   $("#export-watchlist").addEventListener("click", () => {
     try { downloadBackup(state.targets, state.season); $("#backup-status").textContent = "Backup downloaded, including your private notes."; }
     catch (error) { $("#backup-status").textContent = error.message; }

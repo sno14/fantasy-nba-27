@@ -1,6 +1,6 @@
 # Product experience implementation plan
 
-Created: 2026-09-29. Status: active; P1a–P3 implemented and verified locally.
+Created: 2026-09-29. Status: active; P1a–P4 implemented and verified locally.
 
 This is the execution plan for the experience and feature discussion of 2026-09-29.
 It extends the shipped views in [ui-views-plan.md](ui-views-plan.md), which remains
@@ -70,7 +70,7 @@ Each row ships independently with the acceptance checks below.
 | P1c | Shareable player/compare URLs and watchlist backup/restore | Both | Small–medium | P1a storage conventions | Complete locally, 2026-09-30 |
 | P2 | My Draft Plan workspace and useful draft summary cards | Both | Medium | P1c; existing targets and picks | Complete locally, 2026-09-30 |
 | P3 | Practice My Draft with saved runs | Public, then local | Medium | P2; existing snake/slot logic | Complete locally, 2026-10-02 |
-| P4 | What Changed: published history and watched-player changes | Both | Medium | P1c; dated exports | Planned |
+| P4 | What Changed: published history and watched-player changes | Both | Medium | P1c; dated exports | Complete locally, 2026-10-02; awaiting real baselines |
 | P5 | Rotation & Opportunity team detail | Local, curated public | Medium | Existing team/analyst data | Planned |
 | P6a | Feasible daily lineup and usable-production calculation | Local | Medium | Ownership, eligibility, schedule | Planned |
 | P6b | Personal Streaming Planner and add/drop scenarios | Local | Large | P6a; league acquisition rules | Planned |
@@ -78,7 +78,7 @@ Each row ships independently with the acceptance checks below.
 | P8 | Today home page evolving My Team | Local | Medium | P4 and P6 | Planned |
 | P9 | Player minutes scenario explorer | Local, then public | Medium | Verified decomposition inputs | Planned |
 
-P1a–P3 are complete locally. The next implementation is P4 What Changed?
+P1a–P4 are complete locally. The next implementation is P5 Rotation & Opportunity.
 The remaining rows are documented scope, not an assertion that they are implemented.
 
 ## 4. P1 — board usability and workspace foundations
@@ -260,6 +260,20 @@ current board. First run explicitly says that a baseline is being collected.
 Acceptance: unchanged exports produce no events; unavailable baseline gets a useful
 empty state; rank-only changes are distinguished; raw private text never enters exports;
 existing public export tests and deployment validation still pass.
+
+**Archive policy (set before rollout, 2026-10-02).** The public exporter writes an
+immutable version for each new export, identified by UTC timestamp and content hash.
+The manifest contains only version metadata and row count; the browser fetches the
+selected full snapshots on demand. Keep the latest 30 versions, pruning only matching
+archive filenames after an atomic manifest replacement. Each snapshot contains only
+player ID/name/team, ordinal FP/G rank, FP/G, MPG, analyst action and analyst date.
+No raw BBM text, analyst rationale, private note, roster or credential may enter it.
+The existing `board.json` is not converted into history. The first future export
+starts collection; a second compatible export enables comparisons. Local nightly ROS
+snapshots remain in the local processed cache, with a sidecar recording season,
+scoring fingerprint and ROS rank semantics. Older sidecar-free snapshots remain in
+Trends but do not become guessed comparison baselines. GitHub Pages validates the
+history allowlist before publishing.
 
 ## 8. P5 — Rotation & Opportunity
 
@@ -600,3 +614,32 @@ Next: P4 What Changed? (§7), after the scheduled October modelling and draft
 verification gates in `docs/implementation-plan.md` when those dates arrive. Keep
 the public archive redacted and use dated exports as real baselines. P3 requires no
 model experiment entry and changes no board values.
+
+## 17. P4 delivery and handoff — 2026-10-02
+
+What Changed? is implemented at public `#changes` and local `/changes`, linked from
+local Trends. The public exporter now records redacted, immutable snapshots and a
+30-version manifest; the committed manifest starts empty. No historical baseline
+was invented from the existing board. Future exports populate it, with a useful
+baseline-collecting state until two compatible versions exist. The nightly ROS
+workflow records a scoring/ranking provenance sidecar beside each local snapshot;
+older snapshots without one remain usable in Trends but are excluded here.
+
+The shared comparison checks season, scoring, source and ranking semantics. It
+separates arrivals, removals and rank-only moves from projection changes, retains
+unknown values as missing, and uses recorded analyst action/date as context without
+claiming causation. Both views offer all, watched, team and since-last-visit modes;
+the browser-local last-seen marker advances only after comparison data loads and
+renders. A later visit to the same latest version shows zero new changes.
+
+Verification: frontend production build; 27 focused backend/export/season tests;
+shared comparison contract; Pages archive allowlist validator; and isolated Chromium
+checks of both views, empty and synthetic two-version data, filters, last-seen and
+390px fit. The public board JSON was not regenerated or hand-edited. The local
+preview for P4 checks used port 8797 because an older 8787 process was already
+bound; the standard preview remains `python scripts/serve.py` at 8787.
+
+Next: P5 Rotation & Opportunity (§8), subject to the scheduled modelling and draft
+verification gates in `docs/implementation-plan.md`. Public archive content becomes
+visible only after future approved exports are committed and the Pages workflow
+succeeds. Product-only work requires no experiment ledger entry.

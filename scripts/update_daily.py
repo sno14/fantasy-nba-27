@@ -38,7 +38,9 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import hashlib
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
@@ -47,7 +49,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 import pandas as pd
 
-from fantasy_nba.config import PROCESSED_DIR
+from fantasy_nba.config import CONFIG_DIR, PROCESSED_DIR
 from fantasy_nba.data import storage
 from fantasy_nba.models import asof
 
@@ -382,6 +384,14 @@ def main() -> None:
 
     ROS_BOARD_DIR.mkdir(parents=True, exist_ok=True)
     board.to_parquet(out_path, index=False)
+    # P4: immutable comparison provenance alongside each nightly snapshot. Older
+    # snapshots without this file remain visible in Trends, but are not used in
+    # What Changed? because their scoring/ranking semantics cannot be verified.
+    out_path.with_suffix(".meta.json").write_text(json.dumps({
+        "schema": 1, "season": season, "rankedBy": "ROS safe season value",
+        "scoringKey": hashlib.sha256((CONFIG_DIR / "scoring.yaml").read_bytes()).hexdigest()[:16],
+        "generatedAt": dt.datetime.now(dt.UTC).replace(microsecond=0).isoformat(),
+    }), encoding="utf-8")
     print(f"\nSaved ROS board -> {out_path}")
     show = [c for c in ("rank", "PLAYER_NAME", "games_so_far", "gp", "mpg", "redist_mpg",
                         "fpts_pg", "fpts_total", "naive_fpts_pg", "naive_rank",
