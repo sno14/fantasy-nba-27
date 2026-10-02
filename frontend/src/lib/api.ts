@@ -541,7 +541,36 @@ export interface RosterWeekRow {
 export interface DayGridCell {
   day: string;
   games: number;
-  benched: number;
+  starts: number;
+  benched: number | null;
+}
+
+export interface LineupDay {
+  day: string;
+  games: number;
+  raw_points: number | null;
+  known_raw_points: number;
+  usable_points: number | null;
+  known_usable_points: number;
+  benched_points: number | null;
+  benched_games: number | null;
+  assignments: { slot: string; player_id: number; player_name: string; fpts_pg: number }[];
+  idle_slots: string[];
+  unknown_eligibility: number[];
+  unknown_projection: number[];
+  exact: boolean;
+}
+
+export interface LineupWeek {
+  has_schedule: boolean;
+  raw_points: number | null;
+  known_raw_points: number;
+  usable_points: number | null;
+  known_usable_points: number;
+  benched_points: number | null;
+  unknown_game_dates: number[];
+  exact: boolean;
+  days: LineupDay[];
 }
 
 export interface MyTeamResponse {
@@ -559,16 +588,20 @@ export interface MyTeamResponse {
   start?: string;
   end?: string;
   days?: string[];
-  weekly_total?: number;
+  weekly_total?: number | null;
+  lineup?: LineupWeek;
   day_grid?: DayGridCell[];
   n_out?: number;
   daily_slots?: number;
+  starting_slots?: Record<string, number>;
+  slot_source?: string;
   rows?: RosterWeekRow[];
 }
 
 export interface MatchupSide {
   team_id: number;
-  total: number;
+  total: number | null;
+  lineup: LineupWeek;
   rows: RosterWeekRow[];
   day_grid: DayGridCell[];
 }
@@ -588,7 +621,10 @@ export interface MatchupResponse {
   end?: string;
   days?: string[];
   daily_slots?: number;
+  starting_slots?: Record<string, number>;
+  slot_source?: string;
   me?: MatchupSide;
   opp?: MatchupSide;
   gap?: number;
+  usable_gap?: number | null;
 }

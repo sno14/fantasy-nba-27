@@ -245,7 +245,8 @@ separate, versioned browser-local runs. P4 What Changed? is complete locally on
 2026-10-02 across both surfaces; real comparisons await future dated exports and
 nightly ROS snapshots. P5 Rotation & Opportunity is complete locally on
 2026-10-02, with a local Board A/B and dated-preview view plus a curated public
-team detail from the published board. P6a feasible daily lineup arithmetic is next,
+team detail from the published board. P6a exact feasible daily lineup arithmetic is
+complete locally on 2026-10-02 in My Team and Matchup. P6b streaming scenarios are next,
 subject to the standing October modelling and draft-verification calendar.
 
 ### Stage 6 — Uncertainty / risk ranges  ← DONE 2026-07-10 (shipped: SD_PG spread — re-affirmed by EXP-021 — on the adopted (age × chronic) GP pools, EXP-015b)

@@ -9,6 +9,7 @@ import { MatchupResponse, RosterWeekRow, WeeksResponse, useApi } from "../lib/ap
 import { f1, signed } from "../lib/format";
 import { Column, DataTable } from "../components/DataTable";
 import { Card, Chip, EmptyNote, ErrorNote, Field, Select, Spinner } from "../components/ui";
+import { LineupDetail } from "../components/LineupDetail";
 
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const dow = (iso: string) => DOW[new Date(iso + "T00:00:00").getDay()];
@@ -38,7 +39,7 @@ function sideCols(hasSchedule: boolean): Column<RosterWeekRow>[] {
       label: "Week FP",
       align: "right",
       sortValue: (r) => r.weekly_fpts,
-      render: (r) => (hasSchedule ? <span className="font-semibold">{f1(r.weekly_fpts)}</span> : "—"),
+      render: (r) => (hasSchedule && !(r.fpts_pg == null && r.n_games > 0) ? <span className="font-semibold">{f1(r.weekly_fpts)}</span> : "—"),
     },
   ];
 }
@@ -111,7 +112,7 @@ export default function Matchup() {
             </Chip>
           )}
           <span>
-            projected totals = FP/G × games — <span className="font-medium">volume, not a win probability</span>
+            usable totals = best feasible daily starts · configured slots — <span className="font-medium">planning projection, not a win probability</span>
           </span>
         </div>
       </div>
@@ -119,13 +120,16 @@ export default function Matchup() {
       <div className="grid gap-3 sm:grid-cols-3">
         <Card>
           <div className="text-[11px] uppercase tracking-wide text-ink-3">My week (Team {data.my_team_id})</div>
-          <div className="mt-1 text-2xl font-bold tnum">{data.has_schedule ? f1(data.me.total) : "—"}</div>
+          <div className="mt-1 text-2xl font-bold tnum">{data.me.lineup.usable_points == null ? "—" : f1(data.me.lineup.usable_points)}</div>
+          <div className="text-[11px] text-ink-3">usable FP · raw scheduled {data.me.lineup.raw_points == null ? "—" : f1(data.me.lineup.raw_points)}</div>
+          {!data.me.lineup.exact && data.has_schedule && <div className="text-[11px] text-warn">Missing data · known floor {f1(data.me.lineup.known_usable_points)}</div>}
         </Card>
         <Card>
-          <div className="text-[11px] uppercase tracking-wide text-ink-3">Volume gap</div>
-          <div className={`mt-1 text-2xl font-bold tnum ${(data.gap ?? 0) > 0 ? "text-up" : (data.gap ?? 0) < 0 ? "text-down" : ""}`}>
-            {data.has_schedule && data.gap != null ? signed(data.gap) : "—"}
+          <div className="text-[11px] uppercase tracking-wide text-ink-3">Usable FP gap</div>
+          <div className={`mt-1 text-2xl font-bold tnum ${(data.usable_gap ?? 0) > 0 ? "text-up" : (data.usable_gap ?? 0) < 0 ? "text-down" : ""}`}>
+            {data.has_schedule && data.usable_gap != null ? signed(data.usable_gap) : "—"}
           </div>
+          <div className="text-[11px] text-ink-3">raw volume gap {data.has_schedule && data.gap != null ? signed(data.gap) : "—"}</div>
           {myQuietDays.length > 0 && (
             <div className="mt-1 text-[11px] text-ink-3">
               I'm idle while they play: {myQuietDays.map(dow).join(", ")} —{" "}
@@ -137,14 +141,16 @@ export default function Matchup() {
         </Card>
         <Card>
           <div className="text-[11px] uppercase tracking-wide text-ink-3">Opponent (Team {data.opp.team_id})</div>
-          <div className="mt-1 text-2xl font-bold tnum">{data.has_schedule ? f1(data.opp.total) : "—"}</div>
+          <div className="mt-1 text-2xl font-bold tnum">{data.opp.lineup.usable_points == null ? "—" : f1(data.opp.lineup.usable_points)}</div>
+          <div className="text-[11px] text-ink-3">usable FP · raw scheduled {data.opp.lineup.raw_points == null ? "—" : f1(data.opp.lineup.raw_points)}</div>
+          {!data.opp.lineup.exact && data.has_schedule && <div className="text-[11px] text-warn">Missing data · known floor {f1(data.opp.lineup.known_usable_points)}</div>}
         </Card>
       </div>
 
       {data.has_schedule && (
         <Card>
           <div className="mb-2 text-[11px] uppercase tracking-wide text-ink-3">
-            Games per day (cap {data.daily_slots} starts) — me <span className="text-accent">■</span> vs them{" "}
+            Games per day ({data.daily_slots} configured starts) — me <span className="text-accent">■</span> vs them{" "}
             <span className="text-ink-3">■</span>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -152,7 +158,7 @@ export default function Matchup() {
               const mine = data.me!.day_grid.find((g) => g.day === d);
               const theirs = data.opp!.day_grid.find((g) => g.day === d);
               return (
-                <div key={d} className="flex flex-col items-center gap-1" title={`${d}: me ${mine?.games ?? 0}, them ${theirs?.games ?? 0}`}>
+                <div key={d} className="flex flex-col items-center gap-1" title={`${d}: me ${mine?.starts ?? 0}/${mine?.games ?? 0} confirmed starts/games, them ${theirs?.starts ?? 0}/${theirs?.games ?? 0}`}>
                   <div className="flex h-16 items-end gap-1">
                     <div className="w-3.5 rounded-t bg-accent" style={{ height: `${((mine?.games ?? 0) / maxDay) * 100}%` }} />
                     <div className="w-3.5 rounded-t bg-baseline" style={{ height: `${((theirs?.games ?? 0) / maxDay) * 100}%` }} />
@@ -167,6 +173,11 @@ export default function Matchup() {
           </div>
         </Card>
       )}
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <LineupDetail lineup={data.me.lineup} title="My feasible starts" />
+        <LineupDetail lineup={data.opp.lineup} title="Opponent feasible starts" />
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div>

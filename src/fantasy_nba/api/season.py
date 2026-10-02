@@ -29,6 +29,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from ..config import CONFIG_DIR, PROCESSED_DIR, RAW_DIR
 from ..models.analyst import name_key
+from ..lineups import calculate_week
 from . import boards
 
 router = APIRouter(prefix="/api")
@@ -426,10 +427,8 @@ def waivers(week: int | None = Query(default=None),
 
 
 # ------------------------------------------------------------- my team + matchup (V4/V5)
-# ESPN default startable slots per day (PG/SG/SF/PF/C/G/F + 3×UTIL) — mirrors the
-# Weekly view's DAILY_SLOTS. Purely descriptive: more of your players playing on one
-# night than this means games you cannot start.
-DAILY_SLOTS = 10
+# Starting slots come from the configured league; legal daily starts are calculated
+# by the exact assignment helper shared by My Team, Matchup and future scenarios.
 
 
 def _board_lookup() -> dict[int, dict]:
@@ -491,26 +490,22 @@ def _roster_week_rows(pids: list[int], week: int | None, target: str) -> tuple[l
             "fpts_delta_14": trend_by_pid.get(pid),
             "spark": spark.get(pid, []),
             "games": games, "n_games": len(games),
+            "unknown_game_dates": bool(meta and not team and not status.startswith("out_for_season")),
             "weekly_fpts": round((fpg or 0.0) * len(games), 1),
         })
     return rows, meta
 
 
-def _day_grid(rows: list[dict], days: list[str]) -> list[dict]:
-    """Per-day game counts for a roster vs the startable-slot cap. Descriptive."""
-    out = []
-    for d in days:
-        n = sum(1 for r in rows if d in r["games"])
-        out.append({"day": d, "games": n, "benched": max(0, n - DAILY_SLOTS)})
-    return out
+def _day_grid(lineup: dict) -> list[dict]:
+    """Compatibility grid backed by eligible assignments rather than a count cap."""
+    return [{"day": d["day"], "games": d["games"], "benched": d["benched_games"],
+             "starts": len(d["assignments"])} for d in lineup["days"]]
 
 
 @router.get("/myteam")
 def myteam(week: int | None = Query(default=None),
            target: str = Query(default=None)) -> dict:
-    """V4 — my roster's dashboard: per-player ROS state + trend + this week's volume,
-    and the team block (weekly total, day grid vs startable slots, OUT count, unfilled
-    starting slots from the draft room's slot logic)."""
+    """V4 — roster state and exact daily feasible starts for the chosen week."""
     target = target or boards.CURRENT_TARGET
     from .draft import current_rosters
 
@@ -530,6 +525,7 @@ def myteam(week: int | None = Query(default=None),
     rows, meta = _roster_week_rows(mine, week, target)
     rows.sort(key=lambda r: (r["fpts_pg"] is None, -(r["fpts_pg"] or 0)))
     days = meta.get("days", [])
+    lineup = calculate_week(rows, own["positions"], own["starting_slots"], days)
     return {
         "has_team": True, "my_team_id": own["my_team_id"],
         "roster_source": own["roster_source"], "rosters_asof": own["rosters_asof"],
@@ -539,10 +535,12 @@ def myteam(week: int | None = Query(default=None),
         "has_schedule": bool(meta),
         **({k: meta[k] for k in ("week", "week_name", "start", "end", "days")} if meta
            else {"week": week}),
-        "weekly_total": round(sum(r["weekly_fpts"] for r in rows), 1),
-        "day_grid": _day_grid(rows, days),
+        "weekly_total": lineup["raw_points"],
+        "lineup": lineup,
+        "day_grid": _day_grid(lineup),
         "n_out": sum(1 for r in rows if r["status_override"]),
-        "daily_slots": DAILY_SLOTS,
+        "daily_slots": sum(own["starting_slots"].values()),
+        "starting_slots": own["starting_slots"], "slot_source": own["slot_source"],
         "rows": rows,
     }
 
@@ -551,10 +549,10 @@ def myteam(week: int | None = Query(default=None),
 def matchup(week: int | None = Query(default=None),
             opp: int | None = Query(default=None),
             target: str = Query(default=None)) -> dict:
-    """V5 — my week vs an opponent's, descriptively: FP/G × games totals and the
-    day-by-day volume grid. **No win probability, no simulation** — the H2H variance
-    layer was descoped (implementation-plan 19.4) and SD_PG must never become a weekly
-    sigma; this view states game counts and lets the human judge."""
+    """V5 — compare feasible daily starts and raw weekly volume, descriptively.
+
+    No win probability: SD_PG is not a weekly sigma (implementation-plan 19.4).
+    """
     target = target or boards.CURRENT_TARGET
     from .draft import current_rosters
 
@@ -580,20 +578,27 @@ def matchup(week: int | None = Query(default=None),
     for side in (my_rows, opp_rows):
         side.sort(key=lambda r: -r["weekly_fpts"])
     days = meta.get("days", [])
-    my_total = round(sum(r["weekly_fpts"] for r in my_rows), 1)
-    opp_total = round(sum(r["weekly_fpts"] for r in opp_rows), 1)
+    my_lineup = calculate_week(my_rows, own["positions"], own["starting_slots"], days)
+    opp_lineup = calculate_week(opp_rows, own["positions"], own["starting_slots"], days)
+    my_total = my_lineup["raw_points"]
+    opp_total = opp_lineup["raw_points"]
     return {
         "has_matchup": True, "my_team_id": me, "opp_team_id": opp, "opponents": others,
         "roster_source": own["roster_source"], "rosters_asof": own["rosters_asof"],
         "has_schedule": bool(meta),
         **({k: meta[k] for k in ("week", "week_name", "start", "end", "days")} if meta
            else {"week": week}),
-        "daily_slots": DAILY_SLOTS,
+        "daily_slots": sum(own["starting_slots"].values()),
+        "starting_slots": own["starting_slots"], "slot_source": own["slot_source"],
         "me": {"team_id": me, "total": my_total, "rows": my_rows,
-               "day_grid": _day_grid(my_rows, days)},
+               "lineup": my_lineup, "day_grid": _day_grid(my_lineup)},
         "opp": {"team_id": opp, "total": opp_total, "rows": opp_rows,
-                "day_grid": _day_grid(opp_rows, days)},
-        "gap": round(my_total - opp_total, 1),
+                "lineup": opp_lineup, "day_grid": _day_grid(opp_lineup)},
+        "gap": (round(my_lineup["raw_points"] - opp_lineup["raw_points"], 1)
+                if my_lineup["raw_points"] is not None and opp_lineup["raw_points"] is not None
+                else None),
+        "usable_gap": (round(my_lineup["usable_points"] - opp_lineup["usable_points"], 1)
+                       if my_lineup["exact"] and opp_lineup["exact"] else None),
     }
 
 

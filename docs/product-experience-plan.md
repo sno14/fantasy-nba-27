@@ -1,6 +1,6 @@
 # Product experience implementation plan
 
-Created: 2026-09-29. Status: active; P1a–P5 implemented and verified locally.
+Created: 2026-09-29. Status: active; P1a–P6a implemented and verified locally.
 
 This is the execution plan for the experience and feature discussion of 2026-09-29.
 It extends the shipped views in [ui-views-plan.md](ui-views-plan.md), which remains
@@ -72,13 +72,13 @@ Each row ships independently with the acceptance checks below.
 | P3 | Practice My Draft with saved runs | Public, then local | Medium | P2; existing snake/slot logic | Complete locally, 2026-10-02 |
 | P4 | What Changed: published history and watched-player changes | Both | Medium | P1c; dated exports | Complete locally, 2026-10-02; awaiting real baselines |
 | P5 | Rotation & Opportunity team detail | Local, curated public | Medium | Existing team/analyst data | Complete locally, 2026-10-02 |
-| P6a | Feasible daily lineup and usable-production calculation | Local | Medium | Ownership, eligibility, schedule | Planned |
+| P6a | Feasible daily lineup and usable-production calculation | Local | Medium | Ownership, eligibility, schedule | Complete locally, 2026-10-02 |
 | P6b | Personal Streaming Planner and add/drop scenarios | Local | Large | P6a; league acquisition rules | Planned |
 | P7 | Trade Sandbox with both sides and uneven trades | Local | Large | P6a; ownership and schedule | Planned |
 | P8 | Today home page evolving My Team | Local | Medium | P4 and P6 | Planned |
 | P9 | Player minutes scenario explorer | Local, then public | Medium | Verified decomposition inputs | Planned |
 
-P1a–P5 are complete locally. The next implementation is P6a feasible daily lineups.
+P1a–P6a are complete locally. The next implementation is P6b personal streaming scenarios.
 The remaining rows are documented scope, not an assertion that they are implemented.
 
 ## 4. P1 — board usability and workspace foundations
@@ -694,3 +694,41 @@ Next: P6a feasible daily lineup calculation (§9), before P6b streaming. Build t
 exact weighted slot assignment as a pure helper, test multi-eligibility and crowded
 days, then integrate it with My Team and Matchup. The scheduled mid-October data,
 draft verification, analyst re-review and dual freeze gates still take priority.
+
+## 19. P6a delivery and handoff — 2026-10-02
+
+The local My Team and Matchup views now use `src/fantasy_nba/lineups.py` to find the
+maximum projected FP/G assignment to the league's configured daily starting slots.
+Each player and slot can be used once per day; PG/SG/SF/PF/C, G, F and UTIL
+eligibility are respected, and bench/IR slots are excluded. The calculation reads
+the existing roster source, ESPN player map, availability-filtered game dates and
+ROS-or-board FP/G. It retains roster source and pull time, and reports raw scheduled
+FP, feasible usable FP, benched FP, chosen assignments, open slots and daily game
+counts. Matchup compares usable totals only when both sides are complete. These
+figures are planning projections, not submitted ESPN lineups or win probabilities.
+
+Missing schedule yields no weekly total. If a scheduled player lacks known
+eligibility, FP/G or NBA team, usable and benched totals remain unknown; the known-player
+optimum is displayed as a feasible floor and the missing player IDs appear in the
+day or week detail. Raw scheduled FP also remains unknown when FP/G or game dates
+are missing. The
+configured slot counts are labelled as such because league-specific ESPN slot
+settings have not been verified. The real local cache currently has roster data
+but no cached matchup schedule, so the live page correctly shows the empty state.
+
+Verification: exact-matching tests cover scarce and flexible positions, crowded
+and idle days, OUT return dates, unknown eligibility, FP/G and NBA team, no schedule and no duplicate
+assignments. Endpoint integration confirms My Team and Matchup share the same
+calculation and preserve roster provenance. Focused Python tests and the React
+production build passed; a fresh local API preview returned the honest no-schedule
+state. An isolated Chromium check covered both that state and synthetic scheduled-day
+details on My Team and Matchup at 390px without writing draft state. Public static
+assets and board values are unchanged; no modelling experiment
+entry is required.
+
+Next: P6b single-move Personal Streaming Planner (§9). Verify acquisition limits,
+waiver delay, lock rules, timezone and IR behavior before treating an add/drop as
+effective on a date. Reuse this exact lineup helper for before/after scenarios,
+rank by incremental usable FP, and keep raw volume and ROS quality separate.
+The standing mid-October modelling and draft-verification calendar still takes
+priority at its scheduled gates.

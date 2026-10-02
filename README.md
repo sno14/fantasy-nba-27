@@ -361,6 +361,13 @@ The latest nightly ROS availability and redistribution are shown only when a
 snapshot supplies them. The public page uses a generated, redacted team summary
 from the same dated Board B snapshot and contains no private preview text.
 
+**Feasible daily lineups** appear in local `/myteam` and `/matchup`. The app
+assigns eligible players to the configured starting slots each day for the
+highest projected FP/G total, then shows usable, raw scheduled and benched FP.
+Expand a day to inspect starts, open slots and missing eligibility or projections.
+Missing schedule leaves the total unknown; missing eligibility, FP/G or NBA team leaves a labelled
+known-player floor. These are planning projections, not submitted ESPN lineups.
+
 To preview the public site locally, run
 `python -m http.server 8788 --bind 127.0.0.1 --directory static` from the repo root.
 The full app remains at port 8787 via `python scripts/serve.py`; rebuild its frontend
@@ -380,6 +387,8 @@ For team-detail browser checks, run `python scripts/check_rotation.py` with both
 previews running; `--local-port` selects a fresh local server if needed. The
 practice and change scripts use isolated browser contexts. Disposable screenshots
 and downloads go to `.tmp/ux-review/`.
+For feasible-lineup arithmetic and endpoint checks, run
+`python -m pytest tests/test_lineups.py tests/test_season_api.py -q`.
 The completed tracker and next-session handoff are in
 [docs/product-experience-plan.md](docs/product-experience-plan.md).
 

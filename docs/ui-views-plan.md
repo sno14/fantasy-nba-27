@@ -37,10 +37,10 @@ projection edge converts to wins.
 Follow-up experience and new-feature work is tracked in
 [product-experience-plan.md](product-experience-plan.md) (2026-09-29). It builds on
 these shipped views; this document remains the V1–V6 implementation record.
-P1a–P5 are implemented locally as of 2026-10-02: public/local board usability,
+P1a–P6a are implemented locally as of 2026-10-02: public/local board usability,
 responsive navigation, shareable URLs, watchlist portability, My Draft Plan and
-Practice My Draft, What Changed? and Rotation & Opportunity. Next is P6a feasible
-daily lineups; resume from the product plan's latest handoff.
+Practice My Draft, What Changed?, Rotation & Opportunity, and local feasible
+daily lineups in V4/V5. Next is P6b streaming; resume from the product plan's latest handoff.
 
 | View | What | Backend | Frontend | Tests | Shipped |
 |---|---|---|---|---|---|
@@ -57,6 +57,12 @@ Build order: **A → V1 → V6 → V2 → V3 → V4 → V5.** V3–V5 share the 
 which ships with A; V4/V5 reuse V3's week-games join; V5 reuses V4's per-roster totals.
 
 ## Session hand-off notes (append, dated, newest first)
+
+- **2026-10-02: Feasible daily lineups complete locally (P6a).** V4/V5 now share an
+  exact weighted slot assignment, showing usable and benched projected FP alongside
+  raw scheduled volume. Missing schedule, eligibility or FP/G stays explicit; roster
+  provenance is retained. Focused tests and production build passed. P6b handoff:
+  [product-experience-plan.md](product-experience-plan.md).
 
 - **2026-10-02: Rotation & Opportunity complete locally (P5).** The local view
   separates current Board A/B, dated preview evidence and nightly ROS availability;

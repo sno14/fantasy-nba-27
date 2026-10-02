@@ -307,6 +307,8 @@ def current_rosters() -> dict:
         "rosters": rosters,
         "positions": {int(p): sorted(state.eligible_of.get(p, []))
                       for pids in rosters.values() for p in pids},
+        "starting_slots": _starting_slots(state.league),
+        "slot_source": "league_config",
         "unfilled": {int(t): remaining.get(t, {}) for t in rosters},
         "has_positions": bool(state.eligible_of),
     }

@@ -8,6 +8,7 @@ import { f1, signed } from "../lib/format";
 import { Column, DataTable } from "../components/DataTable";
 import { RangeStrip, RiskMeter, Sparkline } from "../components/charts";
 import { Card, Chip, EmptyNote, ErrorNote, Field, Select, Spinner } from "../components/ui";
+import { LineupDetail } from "../components/LineupDetail";
 
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const dow = (iso: string) => DOW[new Date(iso + "T00:00:00").getDay()];
@@ -108,7 +109,7 @@ export default function MyTeam() {
         label: "Week FP",
         align: "right",
         sortValue: (r) => r.weekly_fpts,
-        render: (r) => (data?.has_schedule ? <span className="font-semibold">{f1(r.weekly_fpts)}</span> : "—"),
+        render: (r) => (data?.has_schedule && !(r.fpts_pg == null && r.n_games > 0) ? <span className="font-semibold">{f1(r.weekly_fpts)}</span> : "—"),
       },
     ],
     [data, rangeMin, rangeMax],
@@ -159,9 +160,12 @@ export default function MyTeam() {
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <div className="text-[11px] uppercase tracking-wide text-ink-3">Projected week</div>
-          <div className="mt-1 text-2xl font-bold tnum">{data.has_schedule ? f1(data.weekly_total) : "—"}</div>
-          <div className="text-[11px] text-ink-3">FP/G × games{data.week_name ? ` · ${data.week_name}` : ""}</div>
+          <div className="text-[11px] uppercase tracking-wide text-ink-3">Usable week FP</div>
+          <div className="mt-1 text-2xl font-bold tnum">{data.lineup?.usable_points == null ? "—" : f1(data.lineup.usable_points)}</div>
+          <div className="text-[11px] text-ink-3">
+            Scheduled {data.lineup?.raw_points == null ? "—" : f1(data.lineup.raw_points)} · benched {data.lineup?.benched_points == null ? "—" : f1(data.lineup.benched_points)} FP
+          </div>
+          {data.has_schedule && !data.lineup?.exact && <div className="mt-1 text-[11px] text-warn">Missing eligibility or FP/G; known feasible floor {f1(data.lineup?.known_usable_points)}</div>}
         </Card>
         <Card>
           <div className="text-[11px] uppercase tracking-wide text-ink-3">Games by day</div>
@@ -170,19 +174,19 @@ export default function MyTeam() {
               {data.day_grid.map((g) => (
                 <span
                   key={g.day}
-                  title={`${g.day}: ${g.games} of your players play${g.benched ? ` — ${g.benched} can't start (cap ${data.daily_slots})` : ""}`}
+                  title={`${g.day}: ${g.games} games, ${g.starts} confirmed starts${g.benched != null ? `, ${g.benched} benched` : "; incomplete eligibility or FP/G"}`}
                   className={`rounded-md px-1.5 py-0.5 text-[11px] font-semibold tnum ${
                     g.benched ? "bg-warn/20 text-ink" : g.games === 0 ? "bg-surface-2 text-ink-3" : "bg-accent-soft text-accent"
                   }`}
                 >
-                  {dow(g.day)} {g.games}
+                  {dow(g.day)} {g.starts}/{g.games}
                 </span>
               ))}
             </div>
           ) : (
             <div className="mt-1 text-ink-3">no schedule</div>
           )}
-          <div className="mt-1 text-[11px] text-ink-3">{data.daily_slots} startable slots/day</div>
+          <div className="mt-1 text-[11px] text-ink-3">confirmed starts / games · {data.daily_slots} configured slots/day</div>
         </Card>
         <Card>
           <div className="text-[11px] uppercase tracking-wide text-ink-3">Flagged out</div>
@@ -208,6 +212,8 @@ export default function MyTeam() {
           )}
         </Card>
       </div>
+
+      {data.lineup && <LineupDetail lineup={data.lineup} />}
 
       <DataTable columns={cols} rows={rows} rowKey={(r) => r.PLAYER_ID} onRowClick={(r) => nav(`/players/${r.PLAYER_ID}`)} dense />
     </div>
