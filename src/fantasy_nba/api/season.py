@@ -21,7 +21,9 @@ from __future__ import annotations
 
 import re
 import json
+from datetime import datetime, timezone
 from functools import lru_cache
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import pandas as pd
 import yaml
@@ -43,6 +45,54 @@ TREND_WINDOWS = (7, 14, 30)
 SPARK_MAX_SNAPSHOTS = 30   # sparkline depth: the trailing month of nightly boards
 TREND_TOP = 250            # players carried into the trend/trade payloads
 TRADE_TOP = 200
+
+
+@router.get("/today/context")
+def today_context(target: str = Query(default=None)) -> dict:
+    """Source dates for the daily home. Never infer a league day without its timezone."""
+    from .draft import current_rosters
+
+    target = target or boards.CURRENT_TARGET
+    own = current_rosters()
+    league = (yaml.safe_load(LEAGUE_PATH.read_text(encoding="utf-8"))
+              if LEAGUE_PATH.exists() else {}) or {}
+    zone_name = league.get("timezone")
+    league_date = None
+    if isinstance(zone_name, str) and zone_name:
+        try:
+            league_date = datetime.now(ZoneInfo(zone_name)).date().isoformat()
+        except ZoneInfoNotFoundError:
+            zone_name = None
+    else:
+        zone_name = None
+    dates = ros_dates()
+    schedule_path = RAW_DIR / f"schedule_{target}.parquet"
+    schedule_asof = (datetime.fromtimestamp(schedule_path.stat().st_mtime, timezone.utc).isoformat()
+                     if schedule_path.exists() else None)
+    roster_age_hours = None
+    roster_freshness = "draft_only" if own["roster_source"] != "espn_live" else "stale_snapshot"
+    if own["roster_source"] == "espn_live" and own["rosters_asof"]:
+        try:
+            pulled = datetime.fromisoformat(own["rosters_asof"].replace("Z", "+00:00"))
+            if pulled.tzinfo is not None:
+                age = (datetime.now(timezone.utc) - pulled).total_seconds() / 3600
+                if age >= -0.1:
+                    roster_age_hours = max(0, round(age, 1))
+                    roster_freshness = "fresh_snapshot" if age <= 24 else "stale_snapshot"
+        except ValueError:
+            pass
+    return {
+        "league_date": league_date, "league_timezone": zone_name,
+        "board": {"source": "ros_snapshot" if dates else "preseason_live_model",
+                  "asof": dates[-1] if dates else None},
+        "rosters": {"source": own["roster_source"], "asof": own["rosters_asof"],
+                    "freshness": roster_freshness, "age_hours": roster_age_hours},
+        "schedule": {"source": "local_schedule_file" if schedule_asof else "missing",
+                     "asof": schedule_asof},
+        "status": {"source": "ros_snapshot" if dates else "unavailable",
+                   "asof": dates[-1] if dates else None},
+        "note": "Schedule as-of is the local file modification time; ROS date is a snapshot date, not a live status check.",
+    }
 
 
 # ------------------------------------------------------------------ ros_board archive

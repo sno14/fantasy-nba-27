@@ -15,8 +15,8 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 - `EXPERIMENTS.md` — the append-only results ledger; each experiment step here contains the
   exact entry stub to fill in.
 - `docs/product-experience-plan.md` — product/UI delivery across the public static site
-  and local React/FastAPI app. P1a–P7 and the P6b single-move MVP are implemented locally as
-  of 2026-10-02; P8 Today is next. Its session handoff owns product resumption; this
+  and local React/FastAPI app. P1a–P8 and the P6b single-move MVP are implemented locally as
+  of 2026-10-02; P9 minutes explorer is next. Its session handoff owns product resumption; this
   file's calendar retains priority.
 - **This file** — what to build, in what order, to what spec, with what accept/reject gate.
 
@@ -1560,10 +1560,11 @@ floor-adjusted on movers, updating nightly, benchmarked against the market — t
 > dated What Changed? views with redacted public history and local ROS provenance,
 > and Rotation & Opportunity with a local Board A/B read and curated public team
 > detail, exact feasible daily lineups in local My Team and Matchup, conditional
-> single-move streaming scenarios, and read-only two-sided local trade scenarios. Their
+> single-move streaming scenarios, read-only two-sided local trade scenarios,
+> and a local Today home with dated source context. Their
 > distinct ranking meanings are preserved. The detailed tracker,
 > verification and next-session handoff live in
-> [product-experience-plan.md](product-experience-plan.md). P8 Today
+> [product-experience-plan.md](product-experience-plan.md). P9 minutes explorer
 > are next. These changes do not change projection methods or experiment gates.
 
 ---

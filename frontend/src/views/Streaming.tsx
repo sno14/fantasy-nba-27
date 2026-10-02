@@ -2,15 +2,18 @@
 // every result is conditional on the manager's explicit timing and budget inputs.
 
 import { useEffect, useId, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { StreamingResponse, WeeksResponse, useApi } from "../lib/api";
 import { f1, signed } from "../lib/format";
 import { LineupDetail } from "../components/LineupDetail";
 import { Card, Chip, EmptyNote, ErrorNote, Field, Select, Spinner } from "../components/ui";
 
 export default function Streaming() {
+  const [params, setParams] = useSearchParams();
+  const linkedWeek = Number(params.get("week"));
+  const linkedDay = params.get("day");
   const weeks = useApi<WeeksResponse>("/api/weeks").data;
-  const [week, setWeek] = useState<number | null>(null);
+  const [week, setWeek] = useState<number | null>(() => Number.isInteger(linkedWeek) && linkedWeek > 0 ? linkedWeek : null);
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [effective, setEffective] = useState("");
@@ -35,10 +38,11 @@ export default function Streaming() {
   }, [setup.data, week]);
   useEffect(() => {
     if (!setup.data?.has_schedule) return;
-    setStart(setup.data.start ?? "");
-    setEnd(setup.data.end ?? "");
-    setEffective(setup.data.start ?? "");
-  }, [setup.data?.week, setup.data?.start, setup.data?.end]);
+    const day = linkedDay && setup.data.days?.includes(linkedDay) ? linkedDay : null;
+    setStart(day ?? setup.data.start ?? "");
+    setEnd(day ?? setup.data.end ?? "");
+    setEffective(day ?? setup.data.start ?? "");
+  }, [setup.data?.week, setup.data?.start, setup.data?.end, linkedDay]);
 
   const dayOptions = (setup.data?.days ?? []).map((d) => ({ value: d, label: d }));
   const roster = setup.data?.roster ?? [];
@@ -52,6 +56,7 @@ export default function Streaming() {
 
   function changeWeek(value: string) {
     setWeek(Number(value));
+    setParams(value ? { week: value } : {});
     setRunUrl(null);
     setSelected(null);
     setDrops([]);

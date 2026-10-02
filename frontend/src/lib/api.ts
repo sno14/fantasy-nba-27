@@ -372,7 +372,7 @@ export interface Loaded<T> {
 }
 
 /** Fetch `path` (cached); `null` path = idle. Stale responses are dropped. */
-export function useApi<T>(path: string | null): Loaded<T> {
+export function useApi<T>(path: string | null, freshOnMount = false): Loaded<T> {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(!!path);
@@ -389,7 +389,7 @@ export function useApi<T>(path: string | null): Loaded<T> {
     let stale = false;
     setLoading(true);
     setError(null);
-    get<T>(path, nonce > 0)
+    get<T>(path, freshOnMount || nonce > 0)
       .then((d) => {
         if (!stale && live.current === path) {
           setData(d);
@@ -405,7 +405,7 @@ export function useApi<T>(path: string | null): Loaded<T> {
     return () => {
       stale = true;
     };
-  }, [path, nonce]);
+  }, [path, nonce, freshOnMount]);
 
   return { data, error, loading, reload: () => setNonce((n) => n + 1) };
 }
@@ -629,6 +629,16 @@ export interface MatchupResponse {
   opp?: MatchupSide;
   gap?: number;
   usable_gap?: number | null;
+}
+
+export interface TodayContext {
+  league_date: string | null;
+  league_timezone: string | null;
+  board: { source: "ros_snapshot" | "preseason_live_model"; asof: string | null };
+  rosters: { source: RosterSource; asof: string | null; freshness: "draft_only" | "fresh_snapshot" | "stale_snapshot"; age_hours: number | null };
+  schedule: { source: "local_schedule_file" | "missing"; asof: string | null };
+  status: { source: "ros_snapshot" | "unavailable"; asof: string | null };
+  note: string;
 }
 
 export interface StreamingResult {

@@ -403,6 +403,8 @@ For single-move streaming scenarios, run
 `python -m pytest tests/test_streaming.py tests/test_lineups.py -q`.
 For two-sided trade scenarios, run
 `python -m pytest tests/test_trade_sandbox.py tests/test_lineups.py tests/test_season_api.py -q`.
+For the daily home source dates and fallback behaviour, run
+`python -m pytest tests/test_today.py tests/test_season_api.py tests/test_lineups.py -q`.
 The completed tracker and next-session handoff are in
 [docs/product-experience-plan.md](docs/product-experience-plan.md).
 
@@ -453,7 +455,14 @@ The completed tracker and next-session handoff are in
   `out_for_season` notes) — plus the opportunity chips: `redist_mpg` (inheriting an OUT
   teammate's minutes, EXP-030), `breakout_p`, and the 14-day trend. Backed by
   `/api/waivers`.
-- **My Team** — the daily home page for my roster (Draft Room picks): per player the
+- **Today** — the local daily home: separate board, roster, schedule and availability
+  source dates; known roster status and watched-player changes; feasible daily
+  lineup when the league timezone and schedule are known; crowded/open days with
+  a dated link into the conditional Streaming Planner; and targeted setup tasks.
+  Without a configured league timezone it withholds date-specific “today” claims.
+  The full roster remains in My Team. Backed by `/api/today/context`, My Team and
+  the dated What Changed? snapshots.
+- **My Team** — the full roster page (Draft Room picks or live ESPN roster snapshot): per player the
   ROS rank/FP-G, 14-day trend + sparkline, season floor→median→ceiling strip, risk,
   chronic/OUT/redistribution chips, and week volume; plus the team block — projected
   week total, games-by-day chips vs the 10 startable slots, flagged-out count, and

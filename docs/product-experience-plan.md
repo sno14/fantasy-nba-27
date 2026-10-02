@@ -1,6 +1,6 @@
 # Product experience implementation plan
 
-Created: 2026-09-29. Status: active; P1a–P7 are verified locally (P6b has a single-move MVP).
+Created: 2026-09-29. Status: active; P1a–P8 are verified locally (P6b has a single-move MVP).
 
 This is the execution plan for the experience and feature discussion of 2026-09-29.
 It extends the shipped views in [ui-views-plan.md](ui-views-plan.md), which remains
@@ -75,10 +75,10 @@ Each row ships independently with the acceptance checks below.
 | P6a | Feasible daily lineup and usable-production calculation | Local | Medium | Ownership, eligibility, schedule | Complete locally, 2026-10-02 |
 | P6b | Personal Streaming Planner and add/drop scenarios | Local | Large | P6a; league acquisition rules | Single-move MVP complete locally, 2026-10-02; multi-move follow-up |
 | P7 | Trade Sandbox with both sides and uneven trades | Local | Large | P6a; ownership and schedule | Complete locally, 2026-10-02; weekly/playoff views await schedule |
-| P8 | Today home page evolving My Team | Local | Medium | P4 and P6 | Planned |
+| P8 | Today home page evolving My Team | Local | Medium | P4 and P6 | Complete locally, 2026-10-02; league timezone and live dates remain unconfigured |
 | P9 | Player minutes scenario explorer | Local, then public | Medium | Verified decomposition inputs | Planned |
 
-P1a–P7 and P6b's single-move scope are complete locally. P8 Today is next; multi-move
+P1a–P8 and P6b's single-move scope are complete locally. P9 minutes explorer is next; multi-move
 streaming awaits verified transaction rules.
 The remaining rows are documented scope, not an assertion that they are implemented.
 
@@ -809,3 +809,36 @@ projection cache; subsequent trade calculations reuse it.
 Next: P8 Today (§11), subject to the standing calendar. Keep distinct board,
 roster, schedule and status timestamps, and preserve useful pre-draft empty states.
 P6b multi-move streaming remains gated on confirmed transaction rules.
+
+## 22. P8 delivery and handoff — 2026-10-02
+
+The new local `/today` page is a daily home linked from My Team; `/myteam` remains
+the full roster view. Today shows separate board, roster, schedule-file and
+availability source dates, including undated draft-pick ownership, stale ESPN
+roster snapshots and missing ROS status data. A lightweight context API reads
+these local sources without pulling external data. The league config has no
+timezone, so date-specific “today” assignments are withheld until one is
+configured; the weekly lineup and dated schedule views remain available.
+
+With a cached schedule and league date, Today selects that date's exact P6a
+feasible lineup. It shows crowded dates and potential open capacity, linking an
+open date into the conditional single-move Streaming Planner. Roster status
+flags are labelled with the ROS snapshot date and never described as live
+injury confirmation. The watched/roster change feed compares the latest two
+compatible dated ROS snapshots through the existing What Changed? engine,
+merges status and projection changes into one item per player, and links to
+player details. It does not persist synthetic “unread” alerts, so reloads do
+not create new events. Missing team, eligibility, schedule, watchlist and
+baseline each receive targeted planning links. The full roster remains one
+click away.
+
+Focused Today/season/lineup/streaming tests and the production frontend build
+passed. Isolated 390px Chromium checks covered the real pre-draft empty state,
+reload without phantom status, a dated synthetic roster and watched change,
+one-item deduplication, streaming date link and narrow-screen overflow. Public
+static assets, projections and modelling gates are unchanged; no experiment
+entry applies.
+
+Next: P9 minutes scenario explorer (§12), subject to the standing October
+calendar. Faithful Board-B rate decomposition and a verified public export
+schema are gates; do not rescale final adjusted FP/G directly.

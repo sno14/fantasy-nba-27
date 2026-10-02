@@ -248,7 +248,8 @@ nightly ROS snapshots. P5 Rotation & Opportunity is complete locally on
 team detail from the published board. P6a exact feasible daily lineup arithmetic is
 complete locally on 2026-10-02 in My Team and Matchup. P6b's conditional single-move
 streaming planner is complete locally on 2026-10-02. P7 read-only two-sided trade
-scenarios are complete locally on 2026-10-02; P8 Today is next,
+scenarios and the P8 Today daily home are complete locally on 2026-10-02;
+P9 minutes scenarios are next,
 subject to the standing October modelling and draft-verification calendar.
 
 ### Stage 6 — Uncertainty / risk ranges  ← DONE 2026-07-10 (shipped: SD_PG spread — re-affirmed by EXP-021 — on the adopted (age × chronic) GP pools, EXP-015b)

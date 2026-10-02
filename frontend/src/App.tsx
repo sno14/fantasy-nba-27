@@ -23,6 +23,7 @@ import Trades from "./views/Trades";
 import TradeSandbox from "./views/TradeSandbox";
 import Waivers from "./views/Waivers";
 import MyTeam from "./views/MyTeam";
+import Today from "./views/Today";
 import Matchup from "./views/Matchup";
 import Streaming from "./views/Streaming";
 import Schedule from "./views/Schedule";
@@ -149,6 +150,7 @@ const NAV = [
   { section: "Season", to: "/trade-sandbox", label: "Trade Sandbox", icon: "M4 7h16M4 17h16M8 4l-4 3 4 3M16 14l4 3-4 3" },
   { section: "Season", to: "/waivers", label: "Waivers", icon: "M12 8v8M8 12h8M12 21a9 9 0 110-18 9 9 0 010 18z" },
   { section: "Season", to: "/streaming", label: "Streaming Planner", icon: "M4 6h16M4 12h10M4 18h16M16 9l3 3-3 3" },
+  { section: "Season", to: "/today", label: "Today", icon: "M4 5h16v15H4zM4 9h16M8 13h3M8 17h8" },
   { section: "Season", to: "/myteam", label: "My Team", icon: "M12 11a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM5 20a7 7 0 0114 0M17 8l1.5 1.5L21 7" },
   { section: "Season", to: "/matchup", label: "Matchup", icon: "M7 12a3 3 0 100-6 3 3 0 000 6zM2 19a5 5 0 0110 0M17 12a3 3 0 100-6 3 3 0 000 6zM12 19a5 5 0 0110 0" },
   { section: "Season", to: "/weekly", label: "Weekly", icon: "M4 5h16v15H4zM4 9h16M8 3v4M16 3v4" },
@@ -248,6 +250,7 @@ function Shell() {
               <Route path="/trade-sandbox" element={<TradeSandbox />} />
               <Route path="/waivers" element={<Waivers />} />
               <Route path="/streaming" element={<Streaming />} />
+              <Route path="/today" element={<Today />} />
               <Route path="/myteam" element={<MyTeam />} />
               <Route path="/matchup" element={<Matchup />} />
               <Route path="/schedule" element={<Schedule />} />
