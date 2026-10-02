@@ -308,7 +308,9 @@ def current_rosters() -> dict:
         "positions": {int(p): sorted(state.eligible_of.get(p, []))
                       for pids in rosters.values() for p in pids},
         "starting_slots": _starting_slots(state.league),
-        "slot_source": "league_config",
+        "roster_slots": {str(slot).upper(): int(n) for slot, n in state.league["roster"].items()},
+        "slot_source": ("espn_settings" if _session.settings and _session.settings.get("size")
+                        and _session.settings.get("slot_counts") else "league_config"),
         "unfilled": {int(t): remaining.get(t, {}) for t in rosters},
         "has_positions": bool(state.eligible_of),
     }

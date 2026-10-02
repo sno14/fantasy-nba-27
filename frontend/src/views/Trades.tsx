@@ -4,7 +4,7 @@
 // like without a model), and the 14d trend. Deliberately no composite score.
 
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { TradeRow, TradeTargetsResponse, useApi } from "../lib/api";
 import { f1, signed } from "../lib/format";
 import { Column, DataTable } from "../components/DataTable";
@@ -128,6 +128,7 @@ export default function Trades() {
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2"><h1 className="text-xl font-bold">Trade Targets</h1><Link to="/trade-sandbox" className="rounded-lg border border-bdr px-3 py-2 text-[12px] font-semibold text-accent hover:bg-surface-2">Compare a trade for both teams →</Link></div>
       <div className="flex flex-wrap items-end gap-3">
         <Field label="Side">
           <Segmented

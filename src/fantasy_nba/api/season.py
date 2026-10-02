@@ -438,13 +438,14 @@ def _board_lookup() -> dict[int, dict]:
     if not boards.data_ready():
         return {}
     b = boards.ranked_board(boards.CURRENT_TARGET, "learned", "safe", True)
-    cols = [c for c in ("PLAYER_NAME", "TEAM_ABBREVIATION", "rank", "fpts_pg", "fpts_p10",
+    cols = [c for c in ("PLAYER_NAME", "TEAM_ABBREVIATION", "rank", "fpts_pg", "fpts_total", "fpts_p10",
                         "fpts_median", "fpts_p90", "risk", "inj_chronic_flag") if c in b.columns]
     return {int(r["PLAYER_ID"]): {c: (None if pd.isna(r[c]) else r[c]) for c in cols}
             for _, r in b[["PLAYER_ID"] + cols].iterrows()}
 
 
-def _roster_week_rows(pids: list[int], week: int | None, target: str) -> tuple[list[dict], dict]:
+def _roster_week_rows(pids: list[int], week: int | None, target: str,
+                      board_lookup: dict[int, dict] | None = None) -> tuple[list[dict], dict]:
     """Per-player weekly rows for one roster + the week meta — the shared V4/V5 core.
     ROS snapshot numbers when they exist (rank/FP-G/status/redist), board ranges/risk
     always, availability-aware week games (`games_while_active`)."""
@@ -453,7 +454,7 @@ def _roster_week_rows(pids: list[int], week: int | None, target: str) -> tuple[l
     if dates:
         snap = _ros_cached(dates[-1])
         ros = {int(r.PLAYER_ID): r for r in snap.itertuples(index=False)}
-    board = _board_lookup()
+    board = board_lookup if board_lookup is not None else _board_lookup()
     meta, by_team = week_games_by_team(target, week) if week is not None else ({}, {})
 
     trend_by_pid: dict[int, float] = {}
@@ -480,6 +481,9 @@ def _roster_week_rows(pids: list[int], week: int | None, target: str) -> tuple[l
             "rank": int(s.rank) if s is not None else
                     (int(b["rank"]) if b.get("rank") is not None else None),
             "fpts_pg": fpg,
+            "fpts_total": (_f(getattr(s, "fpts_total", None)) if s is not None
+                           else _f(b.get("fpts_total"))),
+            "projection_source": "ros" if s is not None else "preseason" if b else "missing",
             "fpts_p10": _f(b.get("fpts_p10")), "fpts_median": _f(b.get("fpts_median")),
             "fpts_p90": _f(b.get("fpts_p90")),
             "risk": None if b.get("risk") is None or pd.isna(b.get("risk"))

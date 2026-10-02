@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useCompare } from "../App";
 import { PlayerDetail, get } from "../lib/api";
 import { f0, f1, parseAction } from "../lib/format";
@@ -55,6 +55,7 @@ export default function Compare() {
     return (
       <div className="space-y-4">
         <h1 className="text-lg font-bold tracking-tight">Compare</h1>
+        <Link to="/trade-sandbox" className="inline-block text-sm font-medium text-accent hover:underline">Compare a trade for both teams →</Link>
         {linkError && <ErrorNote message={linkError} />}
         {unavailable}
         <EmptyNote>
@@ -66,7 +67,7 @@ export default function Compare() {
     );
 
   if (loading) return <Spinner label="Loading players…" />;
-  if (players.length < 2) return <div className="space-y-4"><h1 className="font-bold">Compare</h1>{unavailable}<EmptyNote>Choose at least two available players on the <button className="text-accent" onClick={() => nav("/")}>Draft Board</button>.</EmptyNote></div>;
+  if (players.length < 2) return <div className="space-y-4"><h1 className="font-bold">Compare</h1><Link to="/trade-sandbox" className="text-sm text-accent hover:underline">Compare a trade for both teams →</Link>{unavailable}<EmptyNote>Choose at least two available players on the <button className="text-accent" onClick={() => nav("/")}>Draft Board</button>.</EmptyNote></div>;
 
   const rangeLo = Math.min(...players.map((p) => p.projection.fpts_p10 as number)) * 0.95;
   const rangeHi = Math.max(...players.map((p) => p.projection.fpts_p90 as number)) * 1.03;
@@ -93,6 +94,7 @@ export default function Compare() {
         <div>
           <h1 className="text-lg font-bold tracking-tight">Compare</h1>
           <p className="text-[13px] text-ink-2">Side-by-side 2026-27 projections (board B) and career trajectories.</p>
+          <Link to="/trade-sandbox" className="mt-1 inline-block text-[12px] font-medium text-accent hover:underline">Compare a trade for both teams →</Link>
         </div>
         <div className="flex flex-wrap items-center gap-3"><CopyLink /><button onClick={clear} className="text-xs font-medium text-ink-3 hover:text-ink-2">Clear all</button></div>
       </header>

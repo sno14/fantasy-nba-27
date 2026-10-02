@@ -524,6 +524,8 @@ export interface RosterWeekRow {
   TEAM_ABBREVIATION: string | null;
   rank: number | null;
   fpts_pg: number | null;
+  fpts_total: number | null;
+  projection_source: "ros" | "preseason" | "missing";
   fpts_p10: number | null;
   fpts_median: number | null;
   fpts_p90: number | null;
@@ -685,4 +687,78 @@ export interface StreamingResponse {
   evaluated_count?: number;
   unknown_count?: number;
   truncated?: boolean;
+}
+
+export interface TradeRosterRow extends RosterWeekRow {
+  consensus_rank: number | null;
+  market_gap: number | null;
+}
+
+export interface TradeSummary {
+  n_players: number;
+  fpts_pg_total: number | null;
+  fpts_pg_avg: number | null;
+  season_total: number | null;
+  season_total_common_source: boolean;
+  starter_fpts_pg: number | null;
+  known_starter_fpts_pg: number;
+  starter_exact: boolean;
+  starter_assignments: LineupDay["assignments"];
+  open_slots: string[];
+  depth_above_wire: number | null;
+  wire_fpts_pg: number | null;
+  week: LineupWeek;
+  risk_players: { player_id: number; name: string; risk: number | null; fpts_p10: number | null; fpts_p90: number | null }[];
+}
+
+export interface TradeScenarioSide {
+  before: TradeSummary;
+  after: TradeSummary;
+  rows_after: TradeRosterRow[];
+  roster_delta: number;
+}
+
+export interface TradeSandboxResponse {
+  has_teams: boolean;
+  note?: string;
+  team_a?: number;
+  team_b?: number;
+  my_team_id?: number;
+  teams?: { team_id: number; n_players: number }[];
+  a_roster?: TradeRosterRow[];
+  b_roster?: TradeRosterRow[];
+  available?: { player_id: number; name: string; team: string | null; fpts_pg: number | null; status: string }[];
+  roster_source?: RosterSource;
+  rosters_asof?: string | null;
+  ownership_status?: "draft_only" | "fresh_snapshot" | "stale_snapshot";
+  ownership_age_hours?: number | null;
+  projection_source?: "ros" | "preseason";
+  projection_asof?: string | null;
+  market_date?: string | null;
+  wire_fpts_pg?: number | null;
+  starting_slots?: Record<string, number>;
+  slot_source?: string;
+  standard_roster_capacity?: number;
+  ir_slots?: number;
+  ir_assignments_known?: boolean;
+  has_schedule?: boolean;
+  week?: number | null;
+  week_name?: string | null;
+  start?: string | null;
+  end?: string | null;
+  days?: string[];
+  scenario?: {
+    out_a: number[]; out_b: number[];
+    drop_a: number[]; drop_b: number[];
+    pickup_a: number[]; pickup_b: number[];
+    a_after_ids: number[]; b_after_ids: number[];
+    released_ids: number[]; acquired_ids: number[];
+    a: TradeScenarioSide; b: TradeScenarioSide;
+    capacity: { standard: number; ir_slots: number; a_after_over_standard: boolean; b_after_over_standard: boolean; status: string };
+    playoff_volume: {
+      weeks: number[]; metric: string;
+      a_before: Record<string, number | null>; a_after: Record<string, number | null>;
+      b_before: Record<string, number | null>; b_after: Record<string, number | null>;
+    } | null;
+  } | null;
 }

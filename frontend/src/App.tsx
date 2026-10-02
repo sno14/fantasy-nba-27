@@ -20,6 +20,7 @@ import Trends from "./views/Trends";
 import Changes from "./views/Changes";
 import Rotation from "./views/Rotation";
 import Trades from "./views/Trades";
+import TradeSandbox from "./views/TradeSandbox";
 import Waivers from "./views/Waivers";
 import MyTeam from "./views/MyTeam";
 import Matchup from "./views/Matchup";
@@ -145,6 +146,7 @@ const NAV = [
   { section: "Season", to: "/changes", label: "What Changed?", icon: "M4 5h16M4 10h16M4 15h11M4 20h8" },
   { section: "Season", to: "/rotation", label: "Rotation & Opportunity", icon: "M4 20h16M7 16V9M12 16V4M17 16v-6" },
   { section: "Season", to: "/trades", label: "Trade Targets", icon: "M4 7h13l-3-3M4 7l3 3M20 17H7l3-3M20 17l-3 3" },
+  { section: "Season", to: "/trade-sandbox", label: "Trade Sandbox", icon: "M4 7h16M4 17h16M8 4l-4 3 4 3M16 14l4 3-4 3" },
   { section: "Season", to: "/waivers", label: "Waivers", icon: "M12 8v8M8 12h8M12 21a9 9 0 110-18 9 9 0 010 18z" },
   { section: "Season", to: "/streaming", label: "Streaming Planner", icon: "M4 6h16M4 12h10M4 18h16M16 9l3 3-3 3" },
   { section: "Season", to: "/myteam", label: "My Team", icon: "M12 11a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM5 20a7 7 0 0114 0M17 8l1.5 1.5L21 7" },
@@ -243,6 +245,7 @@ function Shell() {
               <Route path="/changes" element={<Changes />} />
               <Route path="/rotation" element={<Rotation />} />
               <Route path="/trades" element={<Trades />} />
+              <Route path="/trade-sandbox" element={<TradeSandbox />} />
               <Route path="/waivers" element={<Waivers />} />
               <Route path="/streaming" element={<Streaming />} />
               <Route path="/myteam" element={<MyTeam />} />

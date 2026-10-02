@@ -1,6 +1,6 @@
 # Product experience implementation plan
 
-Created: 2026-09-29. Status: active; P1a–P6a and the P6b single-move MVP are verified locally.
+Created: 2026-09-29. Status: active; P1a–P7 are verified locally (P6b has a single-move MVP).
 
 This is the execution plan for the experience and feature discussion of 2026-09-29.
 It extends the shipped views in [ui-views-plan.md](ui-views-plan.md), which remains
@@ -74,11 +74,11 @@ Each row ships independently with the acceptance checks below.
 | P5 | Rotation & Opportunity team detail | Local, curated public | Medium | Existing team/analyst data | Complete locally, 2026-10-02 |
 | P6a | Feasible daily lineup and usable-production calculation | Local | Medium | Ownership, eligibility, schedule | Complete locally, 2026-10-02 |
 | P6b | Personal Streaming Planner and add/drop scenarios | Local | Large | P6a; league acquisition rules | Single-move MVP complete locally, 2026-10-02; multi-move follow-up |
-| P7 | Trade Sandbox with both sides and uneven trades | Local | Large | P6a; ownership and schedule | Planned |
+| P7 | Trade Sandbox with both sides and uneven trades | Local | Large | P6a; ownership and schedule | Complete locally, 2026-10-02; weekly/playoff views await schedule |
 | P8 | Today home page evolving My Team | Local | Medium | P4 and P6 | Planned |
 | P9 | Player minutes scenario explorer | Local, then public | Medium | Verified decomposition inputs | Planned |
 
-P1a–P6a and P6b's single-move scope are complete locally. P7 Trade Sandbox is next; multi-move
+P1a–P7 and P6b's single-move scope are complete locally. P8 Today is next; multi-move
 streaming awaits verified transaction rules.
 The remaining rows are documented scope, not an assertion that they are implemented.
 
@@ -776,3 +776,36 @@ Next: P7 Trade Sandbox (§10), after the standing calendar's scheduled gates.
 Multi-move streaming sequences and weekly acquisition-budget planning remain a
 P6b follow-up once the league's transaction rules are verified. Preserve roster
 freshness and eligibility uncertainty in P7 before comparing team gains.
+
+## 21. P7 delivery and handoff — 2026-10-02
+
+The local `/trade-sandbox` page is linked from Trade Targets and Compare. It reads
+current league team IDs and roster ownership, accepts outgoing players from both
+sides, requires the receiving side's explicit drop for an uneven trade, and allows
+the other side to fill vacated spots with an unrostered pickup. Invalid ownership,
+duplicates, missing sends and unbalanced drops are rejected. The read-only API
+reconciles both after-rosters without writing to ESPN or saved draft state.
+
+Both teams show before/after roster FP/G, eligible starter FP/G, open slots,
+depth above the current top-unrostered FP/G benchmark and projected season totals
+only when every player has a common projection source/horizon. Individual risk
+ranges remain per player. When a schedule is cached, the same selected dates and
+P6a exact daily assignment provide raw and usable weekly FP; confirmed fantasy
+playoff weeks alone unlock raw playoff roster-game comparisons. The current local
+cache has no matchup schedule, so the page shows season/roster comparisons and
+an explicit weekly empty state. Standard roster capacity, unknown IR placement,
+roster source/freshness, projection and market dates, and unverified ESPN trade
+approval are visible. Market gaps are price references, with no fairness grade or
+win probability. URLs store only scenario IDs and revalidate against current
+ownership when reopened; no roster snapshot or personal notes are published.
+
+Focused trade, lineup and season API tests passed (37); the production frontend
+build passed. Isolated 390px Chromium checks covered no-schedule, even and uneven
+trades, shareable reload, and horizontal overflow. The public static site,
+board values and model methods are unchanged; no modelling experiment entry
+applies. The first local board request still warms the existing in-process
+projection cache; subsequent trade calculations reuse it.
+
+Next: P8 Today (§11), subject to the standing calendar. Keep distinct board,
+roster, schedule and status timestamps, and preserve useful pre-draft empty states.
+P6b multi-move streaming remains gated on confirmed transaction rules.

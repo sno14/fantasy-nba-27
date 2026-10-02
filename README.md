@@ -401,6 +401,8 @@ For feasible-lineup arithmetic and endpoint checks, run
 `python -m pytest tests/test_lineups.py tests/test_season_api.py -q`.
 For single-move streaming scenarios, run
 `python -m pytest tests/test_streaming.py tests/test_lineups.py -q`.
+For two-sided trade scenarios, run
+`python -m pytest tests/test_trade_sandbox.py tests/test_lineups.py tests/test_season_api.py -q`.
 The completed tracker and next-session handoff are in
 [docs/product-experience-plan.md](docs/product-experience-plan.md).
 
@@ -437,6 +439,13 @@ The completed tracker and next-session handoff are in
   naive-vs-model heat gap (hot streaks the model discounts / cold streaks it looks
   through), and the 14-day trend, side by side with owner chips from the Draft Room
   picks. No composite score on purpose. Backed by `/api/trade-targets`.
+- **Trade Sandbox** — read-only, two-sided roster comparisons using current local
+  ownership: send players from both teams, specify required drops for uneven trades,
+  and optionally fill open spots from the unrostered pool. It shows FP/G, eligible
+  starters, depth and common-horizon season totals for both sides; feasible weekly
+  points appear when the schedule is cached. IR placement and trade approval remain
+  unverified. The shareable URL stores IDs and rechecks ownership. Backed by
+  `/api/trade-sandbox`.
 - **Waivers** — the pickup list: unrostered players (Draft Room picks mark ownership, or
   **live ESPN rosters** via the "↻ ESPN rosters" button — V3b, which follows in-season
   adds/drops the picks miss) ranked by ROS FP/G × games in the
