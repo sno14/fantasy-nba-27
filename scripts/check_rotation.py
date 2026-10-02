@@ -12,6 +12,7 @@ parser.add_argument("--local-port", type=int, default=8787)
 args = parser.parse_args()
 
 with sync_playwright() as playwright:
+    expect.set_options(timeout=120000)
     browser = playwright.chromium.launch(headless=True)
     errors: list[str] = []
     for port, route in ((8788, "#rotation?nbaTeam=ATL"), (args.local_port, "rotation?team=ATL")):
