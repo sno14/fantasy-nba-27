@@ -30,6 +30,7 @@ from fastapi import APIRouter, HTTPException, Query
 from ..config import CONFIG_DIR, PROCESSED_DIR, RAW_DIR
 from ..models.analyst import name_key
 from ..lineups import calculate_week
+from ..streaming import evaluate_move, prepare_drop, quick_move_score, scenario_days
 from . import boards
 
 router = APIRouter(prefix="/api")
@@ -600,6 +601,172 @@ def matchup(week: int | None = Query(default=None),
         "usable_gap": (round(my_lineup["usable_points"] - opp_lineup["usable_points"], 1)
                        if my_lineup["exact"] and opp_lineup["exact"] else None),
     }
+
+
+def _id_list(value: str) -> list[int]:
+    if not value:
+        return []
+    try:
+        result = [int(part.strip()) for part in value.split(",")]
+    except ValueError as exc:
+        raise HTTPException(422, "Player IDs must be comma-separated integers") from exc
+    if len(result) != len(set(result)) or len(result) > 30:
+        raise HTTPException(422, "Player IDs must be unique, with at most 30 selections")
+    return result
+
+
+@router.get("/streaming")
+def streaming(
+    week: int | None = Query(default=None), start: str | None = Query(default=None),
+    end: str | None = Query(default=None), effective_date: str | None = Query(default=None),
+    lock_rule: str = Query(default="before_games"), drops: str = Query(default=""),
+    keep: str = Query(default=""), acquisitions_used: int | None = Query(default=None),
+    acquisition_limit: int | None = Query(default=None),
+    rules_confirmed: bool = Query(default=False), pickup_id: int | None = Query(default=None),
+    target: str = Query(default=None),
+) -> dict:
+    """One assumed add/drop, ranked by incremental *feasible* FP over a date range.
+
+    No ESPN transaction is sent. Acquisition, waiver, lock, timezone and IR rules
+    are not in the saved draft settings; the chosen effective date is conditional.
+    """
+    from datetime import date, datetime, timezone
+    from .draft import current_rosters, player_positions
+
+    target = target or boards.CURRENT_TARGET
+    own = current_rosters()
+    projection_dates = ros_dates()
+    mine = own["rosters"].get(own["my_team_id"], [])
+    if not mine:
+        return {"has_team": False, "note": "Set My Team and load its roster in the Draft Room first."}
+    if week is None:
+        week = default_week(_week_ends(target), projection_dates[-1] if projection_dates else None)
+    roster_rows, meta = _roster_week_rows(mine, week, target)
+    positions = player_positions() | own["positions"]
+    rostered = {int(pid) for pids in own["rosters"].values() for pid in pids}
+    ownership_age_hours = None
+    if own["roster_source"] == "espn_live" and own["rosters_asof"]:
+        try:
+            pulled = datetime.fromisoformat(own["rosters_asof"].replace("Z", "+00:00"))
+            if pulled.tzinfo is not None:
+                ownership_age_hours = max(0, round((datetime.now(timezone.utc) - pulled).total_seconds() / 3600, 1))
+        except ValueError:
+            pass
+    ownership_status = ("fresh_snapshot" if ownership_age_hours is not None and ownership_age_hours <= 24
+                        else "stale_snapshot" if own["roster_source"] == "espn_live"
+                        else "draft_only")
+    picked_drops, kept = _id_list(drops), _id_list(keep)
+    if any(pid not in mine for pid in picked_drops + kept):
+        raise HTTPException(422, "Drop and keep choices must belong to My Team")
+    if set(picked_drops) & set(kept):
+        raise HTTPException(422, "A kept player cannot also be a drop candidate")
+    if lock_rule not in {"before_games", "after_games"}:
+        raise HTTPException(422, "lock_rule must be before_games or after_games")
+    if acquisitions_used is not None and acquisitions_used < 0:
+        raise HTTPException(422, "acquisitions_used must be non-negative")
+    if acquisition_limit is not None and acquisition_limit < 0:
+        raise HTTPException(422, "acquisition_limit must be non-negative")
+    budget_status = ("unknown" if acquisitions_used is None or acquisition_limit is None else
+                     "blocked" if acquisitions_used >= acquisition_limit else "under_assumed_limit")
+    rules = {
+        "source": "user_assumption" if rules_confirmed else "unverified",
+        "unverified": ["acquisition limit", "waiver processing", "daily/weekly locks",
+                       "league timezone", "IR transaction treatment"],
+        "budget_status": budget_status, "acquisitions_used": acquisitions_used,
+        "acquisition_limit": acquisition_limit,
+        "note": "Effective date and lock timing are scenario assumptions, not verified ESPN transaction rules.",
+    }
+    base = {
+        "has_team": True, "has_schedule": bool(meta), "my_team_id": own["my_team_id"],
+        "projection_source": "ros" if projection_dates else "preseason",
+        "projection_asof": projection_dates[-1] if projection_dates else None,
+        "roster_source": own["roster_source"], "rosters_asof": own["rosters_asof"],
+        "ownership_status": ownership_status, "ownership_age_hours": ownership_age_hours,
+        "rules": rules, "roster": roster_rows, "selected_drops": picked_drops,
+        "keep": kept, "starting_slots": own["starting_slots"],
+        "week": week, "candidate_choices": [], "results": [], "evaluated_count": 0,
+    }
+    if not meta:
+        return {**base, "note": "No cached schedule for this week; run the scheduled local schedule update before comparing moves."}
+    start, end = start or meta["start"], end or meta["end"]
+    effective_date = effective_date or start
+    try:
+        for value in (start, end, effective_date):
+            if date.fromisoformat(value).isoformat() != value:
+                raise ValueError(value)
+    except ValueError as exc:
+        raise HTTPException(422, "Dates must be valid YYYY-MM-DD values") from exc
+    if start < meta["start"] or end > meta["end"] or start > end:
+        raise HTTPException(422, "Date range must be within the selected week")
+    if not start <= effective_date <= end:
+        raise HTTPException(422, "Effective date must be within the selected range")
+    days = scenario_days(meta["days"], start, end)
+    before = calculate_week(roster_rows, positions, own["starting_slots"], days)
+    base.update({"week_name": meta["week_name"], "start": start, "end": end,
+                 "days": days, "effective_date": effective_date, "lock_rule": lock_rule,
+                 "before": before})
+    if not days:
+        return {**base, "note": "No NBA games fall in the selected date range."}
+    if budget_status == "blocked":
+        return {**base, "note": "Acquisition count meets or exceeds the assumed limit; no move is available."}
+    if projection_dates:
+        ids = [int(pid) for pid in _ros_cached(projection_dates[-1])["PLAYER_ID"].tolist()]
+    else:
+        ids = list(_board_lookup())
+    candidate_ids = [pid for pid in dict.fromkeys(ids) if pid not in rostered]
+    candidates, _ = _roster_week_rows(candidate_ids, week, target)
+    base["candidate_choices"] = [
+        {"player_id": row["PLAYER_ID"], "name": row["PLAYER_NAME"],
+         "team": row["TEAM_ABBREVIATION"], "fpts_pg": row["fpts_pg"],
+         "status": row["status_override"]} for row in candidates]
+    if not picked_drops:
+        return {**base, "note": "Select one or more players you would consider dropping."}
+    if pickup_id is not None:
+        if pickup_id in rostered:
+            raise HTTPException(422, "Selected pickup is already rostered")
+        if pickup_id not in candidate_ids:
+            raise HTTPException(404, "Selected pickup is absent from the current board")
+        candidates = [row for row in candidates if row["PLAYER_ID"] == pickup_id]
+    # A player with no games in the selected range cannot add production. Keep
+    # injured/no-game candidates only for a direct lookup, where the zero is useful.
+    if pickup_id is None:
+        candidates = [row for row in candidates if any(day in days for day in row["games"])
+                      or row.get("unknown_game_dates")]
+    scored = []
+    by_drop = {row["PLAYER_ID"]: row for row in roster_rows}
+    for drop_id in picked_drops:
+        prepared = prepare_drop(roster_rows, drop_id, positions, own["starting_slots"],
+                                days, effective_date, lock_rule)
+        for candidate in candidates:
+            usable_delta, raw_delta = quick_move_score(
+                prepared, before, by_drop[drop_id], candidate, positions,
+                days, effective_date, lock_rule)
+            scored.append({"drop_id": drop_id, "candidate": candidate,
+                           "usable_delta": usable_delta, "raw_delta": raw_delta})
+    scored.sort(key=lambda row: (row["usable_delta"] is None,
+                                 -(row["usable_delta"] if row["usable_delta"] is not None else -1e9),
+                                 -(row["raw_delta"] if row["raw_delta"] is not None else -1e9),
+                                 row["candidate"]["PLAYER_NAME"], row["drop_id"]))
+    results = []
+    for item in scored[:50]:
+        drop_id, candidate = item["drop_id"], item["candidate"]
+        move = evaluate_move(roster_rows, candidate, drop_id, positions,
+                             own["starting_slots"], days, effective_date, lock_rule, before)
+        if move["usable_delta"] != item["usable_delta"] or move["raw_delta"] != item["raw_delta"]:
+            raise RuntimeError("Streaming quick score disagrees with exact lineup result")
+        results.append({
+                **move, "pickup_name": candidate["PLAYER_NAME"],
+                "drop_name": by_drop[drop_id]["PLAYER_NAME"],
+                "pickup_team": candidate["TEAM_ABBREVIATION"],
+                "pickup_fpts_pg": candidate["fpts_pg"],
+                "pickup_status": candidate["status_override"],
+                "pickup_positions": positions.get(candidate["PLAYER_ID"], []),
+                "ownership_status": ownership_status,
+            })
+    return {**base, "results": results, "evaluated_count": len(scored),
+            "unknown_count": sum(row["usable_delta"] is None for row in scored),
+            "truncated": len(scored) > 50,
+            "note": "All results are conditional on your effective-date, lock and league-rule assumptions."}
 
 
 # ------------------------------------------------------------------ schedule strength

@@ -628,3 +628,61 @@ export interface MatchupResponse {
   gap?: number;
   usable_gap?: number | null;
 }
+
+export interface StreamingResult {
+  drop_id: number;
+  drop_name: string;
+  pickup_id: number;
+  pickup_name: string;
+  pickup_team: string | null;
+  pickup_fpts_pg: number | null;
+  pickup_status: string;
+  pickup_positions: string[];
+  usable_delta: number | null;
+  raw_delta: number | null;
+  drop_lost_starter_points: number | null;
+  pickup_used_points: number | null;
+  pickup_raw_points: number | null;
+  pickup_start_dates: string[];
+  pickup_benched_dates: string[];
+  pickup_eligible_game_dates: string[];
+  after: LineupWeek;
+}
+
+export interface StreamingResponse {
+  has_team: boolean;
+  has_schedule?: boolean;
+  note?: string;
+  my_team_id?: number;
+  projection_source?: "ros" | "preseason";
+  projection_asof?: string | null;
+  roster_source?: RosterSource;
+  rosters_asof?: string | null;
+  ownership_status?: "draft_only" | "fresh_snapshot" | "stale_snapshot";
+  ownership_age_hours?: number | null;
+  rules?: {
+    source: "unverified" | "user_assumption";
+    unverified: string[];
+    budget_status: "unknown" | "blocked" | "under_assumed_limit";
+    acquisitions_used: number | null;
+    acquisition_limit: number | null;
+    note: string;
+  };
+  week?: number | null;
+  week_name?: string;
+  start?: string;
+  end?: string;
+  days?: string[];
+  effective_date?: string;
+  lock_rule?: "before_games" | "after_games";
+  roster?: RosterWeekRow[];
+  candidate_choices?: { player_id: number; name: string; team: string | null; fpts_pg: number | null; status: string }[];
+  selected_drops?: number[];
+  keep?: number[];
+  starting_slots?: Record<string, number>;
+  before?: LineupWeek;
+  results?: StreamingResult[];
+  evaluated_count?: number;
+  unknown_count?: number;
+  truncated?: boolean;
+}

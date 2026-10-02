@@ -24,6 +24,7 @@ Before changing the project, read the documentation in the order given by
 - Follow the standing calendar and active tracker in
   `docs/implementation-plan.md`; it takes precedence at its scheduled dates.
 - For product/UI work, read `docs/product-experience-plan.md` and its latest
-  session handoff. P1a–P6a are implemented locally; P6b streaming scenarios are next. Keep the
+  session handoff. P1a–P6a and the P6b single-move MVP are implemented locally;
+  P7 trade scenarios are next. Keep the
   public static site and local React/FastAPI app in scope, preserve their distinct
   rank semantics, and update the product tracker in the implementation commit.

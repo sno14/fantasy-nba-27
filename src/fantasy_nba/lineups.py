@@ -38,6 +38,74 @@ def _slots(starting: Mapping[str, int]) -> list[tuple[str, int, str]]:
     return slots
 
 
+def _day_states(
+    playing: Sequence[dict], positions: Mapping[int | str, Sequence[str]],
+    slots: list[tuple[str, int, str]],
+) -> tuple[dict[int, tuple[float, tuple[int | None, ...]]], list[int], list[int], float]:
+    """All best partial matchings, keyed by occupied-slot mask."""
+    unknown_eligibility = []
+    unknown_projection = []
+    candidates = []
+    known_raw = 0.0
+    for row in playing:
+        pid = int(row["PLAYER_ID"])
+        value = row.get("fpts_pg")
+        if (value is None or isinstance(value, bool) or not isinstance(value, (int, float))
+                or not math.isfinite(value) or value < 0):
+            unknown_projection.append(pid)
+        else:
+            known_raw += float(value)
+        eligible = {str(p).upper() for p in (positions.get(pid) or positions.get(str(pid)) or [])} & CORE
+        if not eligible:
+            unknown_eligibility.append(pid)
+        if eligible and pid not in unknown_projection:
+            candidates.append((row, eligible, float(value)))
+
+    empty = (None,) * len(slots)
+    states: dict[int, tuple[float, tuple[int | None, ...]]] = {0: (0.0, empty)}
+    for row, eligible, value in candidates:
+        pid = int(row["PLAYER_ID"])
+        next_states = states.copy()
+        for mask, (score, assigned) in states.items():
+            for i, (slot, _, _) in enumerate(slots):
+                bit = 1 << i
+                if mask & bit or not _eligible(slot, eligible):
+                    continue
+                new_mask, new_score = mask | bit, score + value
+                old = next_states.get(new_mask)
+                if old is None or new_score > old[0] + 1e-9:
+                    seat = list(assigned)
+                    seat[i] = pid
+                    next_states[new_mask] = (new_score, tuple(seat))
+        states = next_states
+    return states, unknown_eligibility, unknown_projection, known_raw
+
+
+def prepared_day_scores(
+    rows: Sequence[dict], positions: Mapping[int | str, Sequence[str]],
+    starting: Mapping[str, int], days: Sequence[str],
+) -> dict:
+    """Reusable exact day states for scoring many possible single-player additions.
+
+    For each slot, ``free_slot_best`` is the strongest existing lineup that leaves
+    it open. Adding one player can occupy exactly one such slot, so this gives the
+    exact post-add score in O(number of eligible slots) per candidate/day.
+    """
+    slots = _slots(starting)
+    out = []
+    for day in days:
+        playing = sorted((r for r in rows if day in r["games"]), key=lambda r: int(r["PLAYER_ID"]))
+        states, missing_pos, missing_fpg, _ = _day_states(playing, positions, slots)
+        base_score = max(score for score, _ in states.values())
+        free = [max(score for mask, (score, _) in states.items() if not mask & (1 << i))
+                for i in range(len(slots))]
+        out.append({"day": day, "base_score": base_score, "free_slot_best": free,
+                    "exact": not missing_pos and not missing_fpg})
+    return {"slots": [slot for slot, _, _ in slots], "days": out,
+            "exact": not any(row.get("unknown_game_dates") for row in rows) and
+                     all(day["exact"] for day in out)}
+
+
 def calculate_week(
     rows: Sequence[dict], positions: Mapping[int | str, Sequence[str]],
     starting: Mapping[str, int], days: Sequence[str],
@@ -60,43 +128,8 @@ def calculate_week(
     daily = []
     for day in days:
         playing = sorted((r for r in rows if day in r["games"]), key=lambda r: int(r["PLAYER_ID"]))
-        unknown_eligibility = []
-        unknown_projection = []
-        candidates = []
-        known_raw = 0.0
-        for row in playing:
-            pid = int(row["PLAYER_ID"])
-            value = row.get("fpts_pg")
-            if (value is None or isinstance(value, bool) or not isinstance(value, (int, float))
-                    or not math.isfinite(value) or value < 0):
-                unknown_projection.append(pid)
-            else:
-                known_raw += float(value)
-            eligible = {str(p).upper() for p in (positions.get(pid) or positions.get(str(pid)) or [])} & CORE
-            if not eligible:
-                unknown_eligibility.append(pid)
-            if eligible and pid not in unknown_projection:
-                candidates.append((row, eligible, float(value)))
-
-        # Bitmask DP: every transition consumes one player and one slot. With ten
-        # starting slots this is small, exact and deterministic for tied values.
-        empty = (None,) * len(slots)
-        states: dict[int, tuple[float, tuple[int | None, ...]]] = {0: (0.0, empty)}
-        for row, eligible, value in candidates:
-            pid = int(row["PLAYER_ID"])
-            next_states = states.copy()  # skipping this player is always allowed
-            for mask, (score, assigned) in states.items():
-                for i, (slot, _, _) in enumerate(slots):
-                    bit = 1 << i
-                    if mask & bit or not _eligible(slot, eligible):
-                        continue
-                    new_mask, new_score = mask | bit, score + value
-                    old = next_states.get(new_mask)
-                    if old is None or new_score > old[0] + 1e-9:
-                        seat = list(assigned)
-                        seat[i] = pid
-                        next_states[new_mask] = (new_score, tuple(seat))
-            states = next_states
+        states, unknown_eligibility, unknown_projection, known_raw = _day_states(
+            playing, positions, slots)
         # If points tie (for example a zero-FP/G player), prefer a legal start
         # over an idle slot so the assignment and benched-game count stay useful.
         _, (usable, assignment) = max(states.items(),

@@ -155,6 +155,7 @@ export default function MyTeam() {
           <Link className="text-accent hover:underline" to="/waivers">
             Waivers →
           </Link>
+          <Link className="text-accent hover:underline" to="/streaming">Streaming Planner →</Link>
         </div>
       </div>
 

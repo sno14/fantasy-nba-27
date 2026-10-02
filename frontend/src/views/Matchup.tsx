@@ -134,10 +134,11 @@ export default function Matchup() {
             <div className="mt-1 text-[11px] text-ink-3">
               I'm idle while they play: {myQuietDays.map(dow).join(", ")} —{" "}
               <Link className="text-accent hover:underline" to="/waivers">
-                stream those days →
+                Waivers →
               </Link>
             </div>
           )}
+          <Link className="mt-1 block text-[11px] text-accent hover:underline" to="/streaming">Compare add/drop scenarios →</Link>
         </Card>
         <Card>
           <div className="text-[11px] uppercase tracking-wide text-ink-3">Opponent (Team {data.opp.team_id})</div>

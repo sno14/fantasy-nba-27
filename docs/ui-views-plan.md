@@ -37,10 +37,11 @@ projection edge converts to wins.
 Follow-up experience and new-feature work is tracked in
 [product-experience-plan.md](product-experience-plan.md) (2026-09-29). It builds on
 these shipped views; this document remains the V1–V6 implementation record.
-P1a–P6a are implemented locally as of 2026-10-02: public/local board usability,
+P1a–P6a and the P6b single-move MVP are implemented locally as of 2026-10-02: public/local board usability,
 responsive navigation, shareable URLs, watchlist portability, My Draft Plan and
 Practice My Draft, What Changed?, Rotation & Opportunity, and local feasible
-daily lineups in V4/V5. Next is P6b streaming; resume from the product plan's latest handoff.
+daily lineups in V4/V5 and the local Streaming Planner. Next is P7 trades; resume
+from the product plan's latest handoff.
 
 | View | What | Backend | Frontend | Tests | Shipped |
 |---|---|---|---|---|---|
@@ -57,6 +58,13 @@ Build order: **A → V1 → V6 → V2 → V3 → V4 → V5.** V3–V5 share the 
 which ships with A; V4/V5 reuse V3's week-games join; V5 reuses V4's per-roster totals.
 
 ## Session hand-off notes (append, dated, newest first)
+
+- **2026-10-02: Single-move Streaming Planner complete locally (P6b MVP).** The
+  planner ranks assumed add/drop scenarios by exact incremental usable FP and
+  separates raw volume and source-labelled FP/G. Missing league transaction rules and
+  roster freshness remain visible; no ESPN transaction is sent. Tests, build and
+  phone-width browser checks passed. P7 handoff:
+  [product-experience-plan.md](product-experience-plan.md).
 
 - **2026-10-02: Feasible daily lineups complete locally (P6a).** V4/V5 now share an
   exact weighted slot assignment, showing usable and benched projected FP alongside

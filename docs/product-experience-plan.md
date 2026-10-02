@@ -1,6 +1,6 @@
 # Product experience implementation plan
 
-Created: 2026-09-29. Status: active; P1a–P6a implemented and verified locally.
+Created: 2026-09-29. Status: active; P1a–P6a and the P6b single-move MVP are verified locally.
 
 This is the execution plan for the experience and feature discussion of 2026-09-29.
 It extends the shipped views in [ui-views-plan.md](ui-views-plan.md), which remains
@@ -73,12 +73,13 @@ Each row ships independently with the acceptance checks below.
 | P4 | What Changed: published history and watched-player changes | Both | Medium | P1c; dated exports | Complete locally, 2026-10-02; awaiting real baselines |
 | P5 | Rotation & Opportunity team detail | Local, curated public | Medium | Existing team/analyst data | Complete locally, 2026-10-02 |
 | P6a | Feasible daily lineup and usable-production calculation | Local | Medium | Ownership, eligibility, schedule | Complete locally, 2026-10-02 |
-| P6b | Personal Streaming Planner and add/drop scenarios | Local | Large | P6a; league acquisition rules | Planned |
+| P6b | Personal Streaming Planner and add/drop scenarios | Local | Large | P6a; league acquisition rules | Single-move MVP complete locally, 2026-10-02; multi-move follow-up |
 | P7 | Trade Sandbox with both sides and uneven trades | Local | Large | P6a; ownership and schedule | Planned |
 | P8 | Today home page evolving My Team | Local | Medium | P4 and P6 | Planned |
 | P9 | Player minutes scenario explorer | Local, then public | Medium | Verified decomposition inputs | Planned |
 
-P1a–P6a are complete locally. The next implementation is P6b personal streaming scenarios.
+P1a–P6a and P6b's single-move scope are complete locally. P7 Trade Sandbox is next; multi-move
+streaming awaits verified transaction rules.
 The remaining rows are documented scope, not an assertion that they are implemented.
 
 ## 4. P1 — board usability and workspace foundations
@@ -732,3 +733,46 @@ effective on a date. Reuse this exact lineup helper for before/after scenarios,
 rank by incremental usable FP, and keep raw volume and ROS quality separate.
 The standing mid-October modelling and draft-verification calendar still takes
 priority at its scheduled gates.
+
+## 20. P6b single-move delivery and handoff — 2026-10-02
+
+The local `/streaming` page is linked from Waivers, Weekly, My Team and Matchup.
+Managers choose a matchup week, date range, effective date, before/after-game lock
+assumption, one or more possible drops, optional keep list and acquisition count
+and limit. They can rank the unrostered pool or inspect a specific player. The
+backend compares one add/drop at a time using the P6a exact daily assignment.
+The dropped player remains available before the assumed move date; a pickup's
+games only count after the selected lock point. The ranking uses incremental
+usable FP, with raw scheduled volume and source-labelled nightly ROS or preseason
+board FP/G shown separately. Each detailed
+result explains usable pickup dates, crowded-day bench dates, pickup production
+that reaches the lineup and the dropped player's prior starter contribution.
+Injured players retain their availability-filtered game dates; rostered players
+cannot appear as pickups.
+
+The saved ESPN settings do not establish acquisition caps, waiver processing,
+game locks, league timezone or IR transaction treatment. The page identifies
+these missing rules and labels all effective dates as assumptions. Entering an
+acquisition limit blocks scenarios at the cap. A confirmation checkbox records
+the manager's assumption, never a claim that ESPN verified or accepted a move.
+Draft-pick ownership and old/undated live roster snapshots receive explicit
+freshness warnings. No transaction POST exists. The real local cache has no
+matchup schedule yet, so the page shows its no-schedule state until a scheduled
+local update supplies game dates.
+
+Candidate ranking is exact: cached slot-mask states for each drop/date score one
+new player across every possible open starting slot. Full P6a assignments are
+recomputed for the top 50 results and checked against the fast scores. A direct
+player inspection bypasses that display cutoff. Tests cover four scheduled games
+with only two starts losing to three usable games; lock timing, retained pre-move
+drop games, acquisition blocking, rostered and OUT candidates, multiple drop
+choices, keep protection, unknown eligibility, no schedule and randomized
+fast-vs-full agreement. The frontend build and isolated 390px Chromium checks
+of no-schedule and scheduled-day flows passed. A synthetic 500-candidate/50-detail
+run took about three seconds on the local development machine. Public static
+assets, board values and model methods are unchanged; no experiment entry applies.
+
+Next: P7 Trade Sandbox (§10), after the standing calendar's scheduled gates.
+Multi-move streaming sequences and weekly acquisition-budget planning remain a
+P6b follow-up once the league's transaction rules are verified. Preserve roster
+freshness and eligibility uncertainty in P7 before comparing team gains.

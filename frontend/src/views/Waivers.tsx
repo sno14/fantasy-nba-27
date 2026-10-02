@@ -4,7 +4,7 @@
 // the 14d trend, and OUT status. Ownership comes from the Draft Room's picks.
 
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { WaiversResponse, WeeksResponse, invalidate, post, useApi } from "../lib/api";
 import { f1, signed } from "../lib/format";
 import { Column, DataTable } from "../components/DataTable";
@@ -148,6 +148,7 @@ export default function Waivers() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
+        <Link to="/streaming" className="rounded-lg border border-bdr px-3 py-2 text-[12px] font-semibold text-accent hover:bg-surface-2">Plan a stream →</Link>
         <Field label="Week">
           <Select
             value={week != null ? String(week) : ""}

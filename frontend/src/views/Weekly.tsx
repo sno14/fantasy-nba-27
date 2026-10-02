@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useMeta } from "../App";
 import { WeeklyResponse, WeeksResponse, useApi } from "../lib/api";
 import { f1 } from "../lib/format";
@@ -199,8 +199,8 @@ export default function Weekly() {
         <div>
           <h1 className="text-lg font-bold tracking-tight">Weekly Planner</h1>
           <p className="text-[13px] text-ink-2">
-            Who scores most <b>this week</b>: projected FP/G × games scheduled. Four games at 25
-            (100) beats three at 30 (90) — this is where waiver-wire volume wins.
+            Raw scheduled volume: projected FP/G × games. Your usable lineup can be lower on crowded days.
+            {" "}<Link to="/streaming" className="text-accent underline">Compare feasible add/drop scenarios →</Link>
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2.5">

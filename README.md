@@ -368,6 +368,16 @@ Expand a day to inspect starts, open slots and missing eligibility or projection
 Missing schedule leaves the total unknown; missing eligibility, FP/G or NBA team leaves a labelled
 known-player floor. These are planning projections, not submitted ESPN lineups.
 
+**Personal Streaming Planner** is at `/streaming` in the local app. Select a week,
+date range, assumed move date and game lock, then choose one or more drop
+candidates; optional keeps stay protected. Rank available pickups by incremental
+feasible lineup FP or inspect a specific player. Results separate raw scheduled
+volume and source-labelled ROS or preseason board FP/G, and show which pickup games reach the lineup. Acquisition
+limits, waiver timing, locks, timezone and IR transaction rules are not verified
+by the saved ESPN settings, so every result is conditional on your assumptions.
+The page blocks moves at an entered acquisition cap and never sends an ESPN
+transaction. Without a cached matchup schedule it shows no rankings.
+
 To preview the public site locally, run
 `python -m http.server 8788 --bind 127.0.0.1 --directory static` from the repo root.
 The full app remains at port 8787 via `python scripts/serve.py`; rebuild its frontend
@@ -389,6 +399,8 @@ practice and change scripts use isolated browser contexts. Disposable screenshot
 and downloads go to `.tmp/ux-review/`.
 For feasible-lineup arithmetic and endpoint checks, run
 `python -m pytest tests/test_lineups.py tests/test_season_api.py -q`.
+For single-move streaming scenarios, run
+`python -m pytest tests/test_streaming.py tests/test_lineups.py -q`.
 The completed tracker and next-session handoff are in
 [docs/product-experience-plan.md](docs/product-experience-plan.md).
 

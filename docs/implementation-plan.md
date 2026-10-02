@@ -15,8 +15,8 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 - `EXPERIMENTS.md` — the append-only results ledger; each experiment step here contains the
   exact entry stub to fill in.
 - `docs/product-experience-plan.md` — product/UI delivery across the public static site
-  and local React/FastAPI app. P1a–P6a are implemented locally as of 2026-10-02;
-  P6b streaming scenarios are next. Its session handoff owns product resumption; this
+  and local React/FastAPI app. P1a–P6a and the P6b single-move MVP are implemented locally as
+  of 2026-10-02; P7 trade scenarios are next. Its session handoff owns product resumption; this
   file's calendar retains priority.
 - **This file** — what to build, in what order, to what spec, with what accept/reject gate.
 
@@ -1554,16 +1554,17 @@ floor-adjusted on movers, updating nightly, benchmarked against the market — t
 > needs a two-round gap plus an explicit projected-growth, analyst-role, or downside-risk mechanism.
 > Personal priority targets, take-by picks, and notes remain browser-local.
 
-> **2026-10-02 product addendum:** P1a–P6a add column presets, mobile cards, saved
+> **2026-10-02 product addendum:** P1a–P6b add column presets, mobile cards, saved
 > preferences, touch/keyboard explanations, local navigation parity, shareable URLs,
 > versioned watchlist import/export, My Draft Plan, isolated Practice My Draft runs,
 > dated What Changed? views with redacted public history and local ROS provenance,
 > and Rotation & Opportunity with a local Board A/B read and curated public team
-> detail, and exact feasible daily lineups in local My Team and Matchup. Their
+> detail, exact feasible daily lineups in local My Team and Matchup, and conditional
+> single-move streaming scenarios. Their
 > distinct ranking meanings are preserved. The detailed tracker,
 > verification and next-session handoff live in
-> [product-experience-plan.md](product-experience-plan.md). P6b streaming
-> scenarios are next. These changes do not change projection methods or experiment gates.
+> [product-experience-plan.md](product-experience-plan.md). P7 trade scenarios
+> are next. These changes do not change projection methods or experiment gates.
 
 ---
 
