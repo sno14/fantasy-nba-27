@@ -611,6 +611,11 @@ makes `picks_until_next()` return `None` honestly. Re-verification is on the sta
 (`docs/implementation-plan.md` 19.1b, mid-Oct, before the dual freeze — a league resize
 re-prices the whole board through replacement level).
 
+Run `python scripts/pre_draft_preflight.py --as-of 2026-10-14` for a read-only
+mid-October cache and ESPN-settings readiness report. A successful ESPN Connect
+records when league settings were actually read; modifying the saved draft session
+later does not refresh that timestamp. The report does not pull data or freeze a board.
+
 ```python
 from fantasy_nba.draft import EspnPollFeed, build_player_map, DraftState
 from fantasy_nba.draft.live import live_board

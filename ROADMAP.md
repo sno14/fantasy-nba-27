@@ -286,6 +286,12 @@ and draft-verification calendar retains priority.
 
 ### Stage 7 — Catching risers & fallers (the discontinuity frontier)  ← BUILD COMPLETE 2026-07-11 (every buildable step of docs/implementation-plan.md ran and is logged, Steps 0–17 incl. Phase 5; the analyst layer is live as workflow v2 — living entries via proposals→approval any time; **Step 19 (the live draft room, implementation-plan Phase 7) SHIPPED 2026-07-16** — ESPN feed + ID join + dynamic replacement + the `/room` UI, verified against the real league; its H2H-simulator half (19.4–19.6) was **descoped by the user** the same day, so the room reports composition and a human decides. **Step 18 BUILT 2026-07-16** (analyst-delta staleness flag live in the nightly run + `--analyst-decay` off-by-default; its acceptance spot-checks + decay validation gate run once real in-season snapshots exist — tracker row 18). Step 19's remaining calendar item is the **mid-Oct 19.1b re-verification sweep + mock draft** (league id / teams / order all drift; polling latency still unproven). The rest is calendar-locked: mid-Aug schedule pull → Sept market pulls → mid-Oct analyst re-review + dual freeze (EXP-029) → opening-night cron → April 2027 scoring + EXP-020/021 re-arms)
 
+**2026-10-14 calendar check:** a read-only [pre-draft preflight](docs/implementation-plan.md)
+now checks source vintages, build order and the last actual ESPN Connect time.
+The target preseason logs, draft class and schedule are missing locally; injuries,
+Hashtag trigger consensus and ESPN settings need a fresh read. The dual freeze
+and mock-draft latency test remain open. The October calendar order is unchanged.
+
 **The problem statement (user, 2026-07):** we project the stable core well but **miss the risers
 and fallers** — and capitalising on those is the entire edge of a projection system. This stage
 is the response. It is deliberately researched and sequenced *before* committing to any build;

@@ -124,7 +124,8 @@ def test_session_roundtrip_survives_restart(tmp_path, monkeypatch):
     monkeypatch.setattr(d, "SESSION_PATH", tmp_path / "draft_session.json")
     saved = d.Session(source="espn", league_id="507458037", season=2027, my_team_id=3,
                       picks=[Pick(overall=1, team_id=3, espn_player_id=4066, round_id=1)],
-                      team_ids=[1, 3, 7], pick_order=[3, 7, 1])
+                      team_ids=[1, 3, 7], pick_order=[3, 7, 1],
+                      settings_connected_at="2026-10-14T00:00:00+00:00")
     monkeypatch.setattr(d, "_session", saved)
     d._save_session()
 
@@ -133,6 +134,7 @@ def test_session_roundtrip_survives_restart(tmp_path, monkeypatch):
     d._load_session()
     assert fresh.my_team_id == 3 and fresh.source == "espn"
     assert fresh.team_ids == [1, 3, 7] and fresh.pick_order == [3, 7, 1]
+    assert fresh.settings_connected_at == saved.settings_connected_at
     assert len(fresh.picks) == 1 and fresh.picks[0] == saved.picks[0]
 
 
@@ -194,6 +196,8 @@ def test_connect_and_watch_configures_mock_room_atomically(tmp_path, monkeypatch
     assert result["source"] == "espn" and result["my_team_id"] == 8
     assert result["n_picks"] == 1
     assert d._session.league_id == "19350273" and d._session.settings["size"] == 12
+    assert result["settings_connected_at"] == d._session.settings_connected_at
+    assert result["settings_connected_at"] and "T" in result["settings_connected_at"]
     assert d._session.picks[0].espn_player_id == 9001
 
 

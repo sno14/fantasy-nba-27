@@ -1985,6 +1985,24 @@ stale order returns confident nonsense all night.
 5. Run an ESPN **mock draft** — the only thing that answers the polling-latency question
    (rung 3 of the ladder). Record payloads to `tests/fixtures/` (cookies scrubbed).
 
+> **2026-10-14 preflight addendum:** `python scripts/pre_draft_preflight.py --as-of
+> 2026-10-14` is a read-only gate check. It inspects the target-season cache rows,
+> cache refresh dates, board/sheet/trigger build order, and a timestamp and season
+> recorded by a successful ESPN Connect. A saved draft-session file modified by manual picks
+> is not evidence of a fresh settings read. The check exits 2 while data gates are
+> blocked; even a passing check means only *ready for human review*, not a freeze.
+> Today's local cache has no 2026-27 preseason logs, 2026 draft class, or 2026-27
+> schedule; injury history has not been refreshed since July. Transactions were
+> refreshed October 13. The FantasyPros ADP vintage is September 23, but the
+> Hashtag consensus file read by `analyst_triggers.py` is still from July 9;
+> the October 13 external projection archive is a separate source. The target
+> `learned_ps` board is absent, the draft sheet and triggers predate their
+> required inputs, and no dated ESPN Connect is recorded.
+> Do not build or freeze from these stale inputs. Refresh the caches in the order
+> above from an authorized local session, run the preflight again, perform the
+> live ESPN/mock verification and analyst re-review, then commit both freezes
+> before opening night. No live pull, mock, re-review or freeze ran in this pass.
+
 ### 19.2 ID join + slot eligibility
 
 ESPN player IDs ≠ NBA stats `PLAYER_ID`. Join on name via the existing alias-hardened path

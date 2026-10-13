@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query
@@ -63,6 +64,7 @@ class Session:
     team_ids: list[int] = field(default_factory=list)
     pick_order: list[int] = field(default_factory=list)
     settings: dict | None = None
+    settings_connected_at: str | None = None
     pmap: PlayerMap | None = None
     espn_error: str | None = None      # surfaced to the UI rather than raised — never block
     browser_sync_asof: str | None = None
@@ -104,6 +106,7 @@ def _save_session() -> None:
             "picks": [p.__dict__ for p in s.picks],
             "team_ids": s.team_ids, "pick_order": s.pick_order,
             "settings": s.settings,
+            "settings_connected_at": s.settings_connected_at,
             "browser_sync_asof": s.browser_sync_asof,
             "live_rosters": ({str(t): v for t, v in s.live_rosters.items()}
                              if s.live_rosters else None),
@@ -128,6 +131,7 @@ def _load_session() -> None:
         s.team_ids = [int(t) for t in d.get("team_ids", [])]
         s.pick_order = [int(t) for t in d.get("pick_order", [])]
         s.settings = d.get("settings")
+        s.settings_connected_at = d.get("settings_connected_at")
         s.browser_sync_asof = d.get("browser_sync_asof")
         lr = d.get("live_rosters")
         s.live_rosters = ({int(t): [int(x) for x in v] for t, v in lr.items()} if lr else None)
@@ -433,6 +437,7 @@ def draft_state(top: int = Query(default=120, le=400)) -> dict:
         "my_team_id": s.my_team_id,
         "team_ids": state.all_team_ids,
         "settings": s.settings,
+        "settings_connected_at": s.settings_connected_at,
         "roster_slots": _league_cfg()["roster"],
         "espn_error": s.espn_error,
         "browser_sync_asof": s.browser_sync_asof,
@@ -556,6 +561,7 @@ def connect(
         s.team_ids = team_ids
         s.pick_order = settings.pick_order
         s.settings = next_settings
+        s.settings_connected_at = datetime.now(UTC).replace(microsecond=0).isoformat()
         s.pmap = pmap
         if my_team_id:
             s.my_team_id = my_team_id
@@ -571,7 +577,8 @@ def connect(
     except EspnApiError as e:
         s.espn_error = str(e)
         raise HTTPException(502, str(e))
-    return {"ok": True, "settings": s.settings, "team_ids": s.team_ids,
+    return {"ok": True, "settings": s.settings,
+            "settings_connected_at": s.settings_connected_at, "team_ids": s.team_ids,
             "source": s.source, "my_team_id": s.my_team_id, "n_picks": len(s.picks),
             "match_rate": round(s.pmap.match_rate, 3), "n_unmatched": len(s.pmap.unmatched)}
 
