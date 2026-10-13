@@ -615,6 +615,11 @@ Run `python scripts/pre_draft_preflight.py --as-of 2026-10-14` for a read-only
 mid-October cache and ESPN-settings readiness report. A successful ESPN Connect
 records when league settings were actually read; modifying the saved draft session
 later does not refresh that timestamp. The report does not pull data or freeze a board.
+Once its gates and the analyst/mock reviews pass, `python scripts/freeze_preseason.py`
+previews the rationale-free EXP-029 board pair. The write command requires
+`--write --reviewed --mock-verified` and refuses to overwrite an existing freeze.
+Review the resulting model/analyst Parquet files and manifest before force-adding
+those three exact `data/processed/frozen_*` files; other processed files remain local.
 
 ```python
 from fantasy_nba.draft import EspnPollFeed, build_player_map, DraftState

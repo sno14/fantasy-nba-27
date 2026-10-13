@@ -1207,6 +1207,23 @@ toggle (2026-07-13).
 `…_analyst.parquet` (B: A + overrides) — plus a dated ledger note. Git timestamps are the
 no-hindsight proof.
 
+> **2026-10-14 freeze preparation:** `scripts/freeze_preseason.py` now assembles
+> the pair only after the read-only pre-draft preflight passes. Preview with
+> `python scripts/freeze_preseason.py --as-of YYYY-MM-DD`; writing also requires
+> `--write --reviewed --mock-verified`, which records the operator's completed
+> analyst re-review and mock-draft check. It applies the existing approved
+> arithmetic to the fresh `learned_ps` board, preserves each player's local
+> model rank, and publishes only a strict projection/audit column allowlist.
+> `analyst_rationale` and any new unreviewed column are rejected from the
+> committable pair. The source, overrides, scoring and output SHA-256 hashes go
+> in a separate manifest; existing freeze outputs cannot be overwritten.
+> Model-less external-only players cannot enter an A/B comparison and remain
+> outside this pair. These local safe ranks are distinct from public FP/G ranks.
+> After the real data, ESPN mock and analyst gates pass, inspect the artifacts,
+> append the dated EXP-029 ledger note, and force-add only the three exact frozen
+> files (the rest of `data/processed/` remains a local cache). The script does
+> not stage, commit or publish anything. No freeze was created on October 14.
+
 **D2.4 Scoring (April 2027, the other half of the experiment):** one eval run, both boards,
 standard metrics (top-150 level MAE, mover buckets, big-riser recall, ranking Spearman) +
 a **per-adjustment attribution table**: for each override — model rank, adjusted rank,
