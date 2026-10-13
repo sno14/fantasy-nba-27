@@ -112,8 +112,11 @@ def parse_projection_export(path: str | Path) -> pd.DataFrame:
         records.append(record)
 
     df = pd.DataFrame(records)
-    if df["external_rank"].tolist() != list(range(1, len(df) + 1)):
-        raise ValueError("External projection ranks must be unique, ordered, and contiguous from 1")
+    if sorted(df["external_rank"].tolist()) != list(range(1, len(df) + 1)):
+        raise ValueError("External projection ranks must be unique and contiguous from 1")
+    # A copied table can contain adjacent rows out of order. Preserve the source
+    # ranks and values, and canonicalize row order only after validating the set.
+    df = df.sort_values("external_rank", kind="stable").reset_index(drop=True)
     if df["player"].duplicated().any():
         dupes = df.loc[df["player"].duplicated(False), "player"].tolist()
         raise ValueError(f"Duplicate players in external projection export: {dupes}")

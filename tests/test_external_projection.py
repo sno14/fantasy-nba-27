@@ -72,3 +72,19 @@ def test_board_only_ids_are_stable() -> None:
     second = overlay_external_projection(board, external, stats).iloc[0]["PLAYER_ID"]
     assert first == second
     assert first < 0
+
+
+def test_archived_short_name_does_not_create_duplicate_holland() -> None:
+    board = pd.DataFrame({
+        "PLAYER_ID": [1641842], "PLAYER_NAME": ["Ronald Holland II"],
+        "TEAM_ABBREVIATION": ["DET"], "fpts_pg": [20.0],
+    })
+    external = pd.DataFrame({
+        "player": ["Ron Holland II"], "name_key": ["ron holland"],
+        "team": ["DET"], "external_fpts_pg": [18.1],
+        "adp": [250.0], "gp": [70], "mpg": [21.2],
+    })
+    got = overlay_external_projection(board, external, pd.DataFrame())
+    assert len(got) == 1
+    assert got.iloc[0]["PLAYER_ID"] == 1641842
+    assert got.iloc[0]["fpts_pg"] == 20.0

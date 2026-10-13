@@ -70,6 +70,8 @@ ALIASES: dict[str, str] = {
     # 2026-07-09 — market sources (Step 9): full given names vs our stats' short forms
     "alexandre sarr": "alex sarr",
     "nicolas claxton": "nic claxton",
+    # 2026-10-14 — Hashtag short form; NBA id 1641842 is Ronald Holland II.
+    "ron holland": "ronald holland",
 }
 
 # Append-only, dated list of *known-unresolvable* collisions: (name_key, team, season-start yr)

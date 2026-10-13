@@ -871,3 +871,18 @@ arithmetic using adopted model behavior, so no modelling experiment entry applie
 Next: resume the standing October calendar. P6b multi-move streaming remains
 gated on verified league transaction rules; no unverified acquisition policy
 should be inferred from the current ESPN settings.
+
+## 24. Approved projection refresh — 2026-10-14
+
+Steven approved the 25-player Hashtag/Josh reconciliation. The local saved Board B
+and public snapshot now use those approved values; the public export has 599 rows,
+including 13 explicitly flagged external-only projections. Source notes and
+override histories remain private. Public FP/G ranks and local source ranks keep
+their existing distinct meanings. P1a–P9 delivery status is unchanged.
+
+The public minutes artifact now displays the approved baseline at the same
+two-decimal precision as the board. Canonical scenario calculations retain full
+precision. A fractional-residual regression test covers the publishing mismatch
+found during this refresh; the board, change-history, rotation and minutes
+artifacts are validated before push. The next work remains the standing October
+calendar and the existing P6b transaction-rules gate.

@@ -25,3 +25,16 @@ def test_exported_grid_matches_local_scenarios_and_excludes_missing_lines():
     for mpg in (0.5, 30.0, 36.0, 40.0, 42.0):
         assert curve["values"][GRID.index(mpg)] == minutes_scenario(board.iloc[0].to_dict(), mpg, cfg)["assumed_fpts_pg"]
     assert "private" not in str(artifact)
+
+
+def test_fractional_analyst_residual_uses_public_board_baseline_precision():
+    cfg = ScoringConfig("points", {"pts": 1})
+    row = {"PLAYER_ID": 1, "PLAYER_NAME": "Projected", "mpg": 35.4,
+           "pts": 57.57, "fpts_pg": 62.0177, "analyst_action": "fpts_delta:+4.4477"}
+    artifact = build_public_minutes(pd.DataFrame([row]), cfg,
+                                    generated_at="2026-10-14T00:00:00+00:00", scoring_key="abc")
+    curve = artifact["rows"]["1"]
+    assert curve["approved_fpts_pg"] == 62.02
+    assert abs(curve["scored_current_fpts_pg"] + curve["retained_rate_residual"] - 62.02) < 1e-8
+    for mpg in (30.0, 35.5, 42.0):
+        assert curve["values"][GRID.index(mpg)] == minutes_scenario(row, mpg, cfg)["assumed_fpts_pg"]

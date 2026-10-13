@@ -45,7 +45,12 @@ def latest_mtime() -> float:
 
 def load_latest() -> pd.DataFrame:
     path = latest_path()
-    return pd.read_parquet(path) if path else pd.DataFrame()
+    if path is None:
+        return pd.DataFrame()
+    external = pd.read_parquet(path)
+    # Reconcile aliases added after an immutable source snapshot was imported.
+    external["name_key"] = external["player"].map(name_key)
+    return external
 
 
 def canonical_team(team: object) -> object:
@@ -84,7 +89,9 @@ def overlay_external_projection(
         raise ValueError(f"External projection is missing required columns: {sorted(missing)}")
 
     out = board.copy()
-    ext = external.drop_duplicates("name_key", keep="first").copy()
+    ext = external.copy()
+    ext["name_key"] = ext["player"].map(name_key)
+    ext = ext.drop_duplicates("name_key", keep="first")
     ext["team"] = ext["team"].map(canonical_team)
     ext_by_key = ext.set_index("name_key")
     board_keys = out["PLAYER_NAME"].map(name_key)

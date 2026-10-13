@@ -90,3 +90,22 @@ def test_parse_projection_export_with_full_stat_line(tmp_path: Path) -> None:
     assert got.loc[0, "tov"] == 3.0
     assert got.loc[0, "scored_fpts_pg"] == pytest.approx(43.7)
     assert got.loc[0, "source_fpts_rounding_gap"] == pytest.approx(-0.1)
+
+
+@pytest.mark.parametrize("first_rank", [2, 1])
+def test_copied_row_order_preserves_values_but_duplicate_ranks_fail(tmp_path: Path, first_rank: int) -> None:
+    source = tmp_path / "reordered.tsv"
+    source.write_text(
+        "R#\tADP\tPLAYER\tAVG\tPOS\tTEAM\tGP\tMPG\n"
+        f"{first_rank}\t5.6\tGiannis Antetokounmpo\t58.3\t\nPF\nC\nMIA\t69\t34.2\n"
+        "1\t1.7\tNikola Jokic\t67.4\t\nC\nDEN\t72\t35.1\n",
+        encoding="utf-8",
+    )
+    if first_rank == 1:
+        with pytest.raises(ValueError, match="unique"):
+            IMPORTER.parse_projection_export(source)
+    else:
+        got = IMPORTER.parse_projection_export(source)
+        assert got["player"].tolist() == ["Nikola Jokic", "Giannis Antetokounmpo"]
+        assert got["external_fpts_pg"].tolist() == [67.4, 58.3]
+        assert got["mpg"].tolist() == [35.1, 34.2]

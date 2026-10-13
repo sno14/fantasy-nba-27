@@ -1465,3 +1465,89 @@ Step 19's one open calendar item is the **mid-Oct 19.1b sweep + mock draft**
 Otherwise everything waits on the standing calendar
 (mid-Aug schedule → Sept market → mid-Oct analyst re-review + dual freeze →
 opening-night cron → April 2027 scoring + re-arms)._
+
+### EXP-029 addendum — 2026-10-13 transcript catch-up (review pending)
+
+Processed 19 newly retrieved relevant sources dated October 1–13 (Australia/Sydney)
+and two previously unprocessed September 30 previews. One additional selected
+source remains unavailable because its public caption endpoint blocked retrieval.
+The private research layer now contains 417 appended fact notes, 15 full rotation
+ledgers (236 rows), 66 topic-player reviews, 40 availability review items, and
+14 `status: proposed` actions in Batch 26. No actions were promoted and no live
+projection or availability override was changed. The incremental transaction
+refresh reached October 11. The cached preseason logs still end in 2025, so this
+does not complete the scheduled 2026 preseason-informed rebuild or dual freeze.
+
+Validation: `python scripts/apply_proposals.py --status proposed` reports that all
+14 sizing blocks reconcile. An isolated preview through the production override
+function preserves GP; existing notes/proposal prefixes and live board/override
+hashes were checked. No new model fit, backtest or rejected experiment was rerun.
+Skeptic pass: source dates and episode selection are recorded; full rotations
+make player-selection omissions visible; no external ranks or future outcomes
+were imported. Application is deterministic, so there is no seed-dependent
+result. Small-sample rate diagnostics do not re-anchor on healthy seasons, and
+minutes changes use the standing ×1.0 rule. Availability and unresolved returnee
+or rookie bases remain separate review items. Await specific proposal approval
+under the existing BBM review gate before promotion.
+
+### EXP-029 addendum — 2026-10-14 updated Hashtag reconciliation (review pending)
+
+Imported the user-supplied October 13 snapshot as the latest dated external
+projection, preserving the exact source bytes and older archives. Coverage rises
+from 200 to 300 players; 13 overlapping players change FP/G or minutes. Recomputed
+comparisons in the league's ESPN scoring and screened all 300, prioritizing the
+union of source and approved-board top 200 by per-game points. After resolving the
+documented Ron/Ronald Holland identity, 287 players match the learned model and 13
+remain explicitly flagged external-only seeds. No missing model base was fabricated.
+
+Batch 27 contains 25 proposed actions: the 14 pending Batch 26 actions re-reviewed
+against Hashtag (including a smaller Shai assist cut), plus 11 additions. Batch 26
+retains its numerical history and is marked rejected solely as an administrative
+supersession, not as a user rejection. All earlier decisions are unchanged. The
+full private review records holds and unresolved disagreements, especially Davis;
+it does not treat an unchanged Hashtag row as independent fresh evidence when the
+existing approval already used that source. The missing Golden State preview is
+still disclosed. No fresh October 14 transcript coverage is claimed.
+
+Validation: all 25 sizing blocks reconcile via `apply_proposals.py --status proposed`.
+An isolated production-function preview preserves GP and protected live board,
+analyst-override and availability-override hashes. Source/archive identity, 300-row
+review coverage, 13 source-only seeds, no duplicate Holland, preserved prior queue
+decisions and required small-sample diagnostics passed explicit checks. Nine focused
+importer/overlay tests pass. The importer now accepts valid contiguous source ranks
+whose pasted rows are out of order while still rejecting duplicate ranks. Archived
+name keys are reconciled through current aliases when loaded, leaving source files
+immutable. These are input/identity fixes, not a model refit.
+
+Skeptic pass: no future outcomes, fit, backtest, rejected experiment, or seed search.
+Application is deterministic. Agreements, disagreements and source-only rows are
+recorded, reducing selective reporting. New source minutes are labeled as Hashtag
+season estimates rather than invented BBM quotes or closed 240-minute allocations.
+No healthy-season rate re-anchor, 0.85 minutes fade, category-rank target, or added
+injury-only season premium. Availability remains separate. Proposals remain pending
+specific user approval under the BBM skill; no promotion or freeze was performed.
+
+### EXP-029 addendum — 2026-10-14 Batch 27 approved and applied
+
+Steven explicitly approved all 25 proposals shown in chat and requested a push.
+The standard promoter appended exactly those 25 entries and skipped the 307
+previously promoted entries. Board B was rebuilt from the unchanged learned
+Board A. Availability overrides remain unchanged; the separate availability
+candidates were not part of this numeric approval. The prior pending-review
+entries above describe the historical state, not the current approval status.
+
+All projection values match the reviewed candidate. Local ranks are recomputed
+from the complete override history: the isolated review had concatenated parsed
+lists with reset file positions, which affected rank insertion order but no
+projection values. No rank was proposed or targeted. Public ranks remain ordinal
+FP/G ranks. The export contains 599 players, including 13 explicit external-only
+seeds, and 586 verified minutes curves. Private source material and override
+histories remain local under the established publication boundary.
+
+The deployment check caught a public minutes artifact precision mismatch for
+four-decimal analyst residuals. The artifact now rounds its displayed approved
+baseline to the board's two decimals while retaining canonical precision for
+scenario calculations. The regression test checks fractional residuals and
+scenario parity. This is a publication fix, not a change to player beliefs.
+No model fit, seed search, new availability action, or dual freeze was performed;
+the reconciliation's leakage and selection skeptic pass remains applicable.

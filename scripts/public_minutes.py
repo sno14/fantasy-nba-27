@@ -36,7 +36,10 @@ def build_public_minutes(board: pd.DataFrame, cfg: ScoringConfig,
         values = [round(approved + (float(value) - scored), 2)
                   for value in frame["fpts_pg"].tolist()]
         rows[str(row["PLAYER_ID"])] = {
-            "current_mpg": baseline["current_mpg"], "approved_fpts_pg": approved,
+            # Match the board export's two-decimal display precision. Keep the
+            # unrounded approved value above for canonical scenario arithmetic.
+            "current_mpg": round(baseline["current_mpg"], 2),
+            "approved_fpts_pg": round(approved, 2),
             "scored_current_fpts_pg": scored,
             "retained_rate_residual": baseline["retained_rate_residual"],
             "values": values,
