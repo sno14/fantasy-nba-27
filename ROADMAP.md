@@ -290,9 +290,18 @@ and draft-verification calendar retains priority.
 now checks source vintages, build order and the last actual ESPN Connect time.
 The target preseason logs, draft class and schedule are missing locally; injuries,
 Hashtag trigger consensus and ESPN settings need a fresh read. The dual freeze
-and mock-draft latency test remain open. The October calendar order is unchanged.
-The guarded freeze script is prepared and redacts private analyst rationale;
-it cannot write a freeze while the preflight or human review gates remain open.
+and mock-draft latency test were open at this check. The guarded freeze script
+was prepared but created no artifacts.
+
+**2026-10-14 user hold (supersedes the projection portion of the calendar above):**
+Steven is happy with the current 2026-27 projections and rankings. Pause the
+preseason data-driven rebuild, analyst promotion/re-review, draft-sheet and trigger
+regeneration, public board export, and dual freeze. Do not treat missing October
+cache inputs as a request to change the accepted board. Final projection review
+belongs in a separate, explicitly requested session; only that decision can resume
+the projection path. Draft-room verification may proceed independently without
+projection writes.
+Do not start the opening-night projection cron while this hold is unresolved.
 
 **The problem statement (user, 2026-07):** we project the stable core well but **miss the risers
 and fallers** — and capitalising on those is the entire edge of a projection system. This stage

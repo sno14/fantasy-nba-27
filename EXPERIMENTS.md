@@ -1551,3 +1551,16 @@ scenario calculations. The regression test checks fractional residuals and
 scenario parity. This is a publication fix, not a change to player beliefs.
 No model fit, seed search, new availability action, or dual freeze was performed;
 the reconciliation's leakage and selection skeptic pass remains applicable.
+
+### EXP-029 addendum — 2026-10-14 user pause after approved projections
+
+Steven confirmed that the current 2026-27 projections and rankings are satisfactory
+for now. The previously scheduled mid-October preseason-informed rebuild,
+analyst re-review/promotion, draft-sheet and trigger regeneration, public export,
+and A/B dual freeze are paused. A separate user-requested session will handle
+final projection review and decide whether any of those steps resume. The
+opening-night projection update job is also held until that decision. This is
+a workflow change, not a new model experiment or a reversal of earlier measured
+results. No projections, rankings, overrides, or frozen boards were changed for
+this addendum. April A/B scoring requires an actual approved and dated freeze;
+the earlier target date alone does not supply one.

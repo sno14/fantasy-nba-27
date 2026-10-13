@@ -1,7 +1,9 @@
-"""Read-only mid-October readiness check before the D2.3 dual freeze.
+"""Read-only diagnostic for the deferred D2.3 preseason freeze path.
 
 This inspects local cache vintages and the last *dated* ESPN Connect. It never
 fetches data, regenerates a board, writes an override, or performs a freeze.
+The 2026-10-14 user hold means blocked checks are informational until a
+separately requested final projection review.
 """
 
 from __future__ import annotations
@@ -137,11 +139,12 @@ def audit(root: Path, as_of: date, league: dict) -> dict:
         _generated_after(processed / f"analyst_triggers_{target}.parquet", [sheet, hashtag], "analyst_triggers"),
     ]
     checks.extend(_espn_session(processed / "draft_session.json", as_of, league, target))
-    return {"as_of": as_of.isoformat(), "target": target, "ready_for_human_review":
+    return {"as_of": as_of.isoformat(), "target": target, "projection_workflow_paused": True,
+            "ready_for_human_review":
             all(item["status"] == "ready" for item in checks), "checks": checks,
-            "manual_gates": ["Re-read ESPN settings and pick order on draft day.",
-                             "Run a real ESPN mock draft and measure poll latency; keep manual entry available.",
-                             "Re-review effective analyst entries, then approve and commit the dual freeze before opening night."]}
+            "manual_gates": ["Current projections are on hold; do not rebuild, promote, export or freeze as routine work.",
+                             "ESPN draft-room checks can be performed independently without changing rankings.",
+                             "Only a separately requested final-review session may resume the projection path."]}
 
 
 def main() -> int:
@@ -153,7 +156,7 @@ def main() -> int:
     if args.json:
         print(json.dumps(report, indent=2))
     else:
-        print(f"Pre-draft preflight {report['as_of']} ({report['target']})")
+        print(f"Pre-draft preflight {report['as_of']} ({report['target']}; projection workflow paused)")
         for check in report["checks"]:
             print(f"  {check['status'].upper():7} {check['key']}: {check['detail']}")
         print("  Human gates: " + " ".join(report["manual_gates"]))

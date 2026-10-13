@@ -6,7 +6,10 @@ This is the execution plan for the experience and feature discussion of 2026-09-
 It extends the shipped views in [ui-views-plan.md](ui-views-plan.md), which remains
 the record of V1–V6. Model work and the standing calendar remain owned by
 [implementation-plan.md](implementation-plan.md); scheduled draft verification,
-analyst re-review, dual freeze and opening-night updates take precedence.
+analyst re-review, dual freeze and opening-night updates were formerly scheduled
+there; the 2026-10-14 user hold now pauses all projection-writing work until a
+separate final-review session. Product changes may continue against the accepted
+board without changing its values or rank semantics.
 
 ## 1. Outcome and current observations
 
@@ -886,3 +889,15 @@ precision. A fractional-residual regression test covers the publishing mismatch
 found during this refresh; the board, change-history, rotation and minutes
 artifacts are validated before push. The next work remains the standing October
 calendar and the existing P6b transaction-rules gate.
+
+## 25. Projection hold and handoff — 2026-10-14
+
+Steven is happy with the current local Board B and published 599-player projection
+snapshot. A separate, explicitly requested session will perform the final
+projection review. Until then, do not refresh or rebuild 2026-27 projection
+boards, promote analyst proposals, regenerate the draft sheet or triggers,
+publish a new board snapshot, create a dual freeze, or start nightly projection
+updates. The prior October modelling calendar no longer authorizes those writes.
+Read-only product work may continue on both surfaces using the existing values.
+Preserve public ordinal FP/G rank and local safe rank as distinct semantics.
+P6b multi-move streaming remains gated on verified league transaction rules.

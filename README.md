@@ -205,6 +205,10 @@ tests/             unit tests: scoring, model arithmetic, as-of engine, absorpti
 
 ## Quick start
 
+The commands below document the model pipeline. During the 2026-10-14
+projection hold, do not run the pull/project commands to replace the accepted
+2026-27 board; use the existing board for app inspection and product work.
+
 ```bash
 # Pull recent seasons of player data (cached to data/raw/)
 # datasets: player_season_stats, player_game_logs, preseason_game_logs, team_game_logs,
@@ -607,19 +611,22 @@ s.order_is_placeholder          # True = ESPN's sorted default; the order is not
 
 Pick order is the sharp edge: ESPN seeds it with sorted team ids and randomizes shortly before
 the draft, so **never cache it** — a stale order returns confident nonsense, whereas no order
-makes `picks_until_next()` return `None` honestly. Re-verification is on the standing calendar
-(`docs/implementation-plan.md` 19.1b, mid-Oct, before the dual freeze — a league resize
-re-prices the whole board through replacement level).
+makes `picks_until_next()` return `None` honestly. Re-verification was placed on the
+October calendar (`docs/implementation-plan.md` 19.1b); the projection-writing
+portion is paused as described below. A league resize would change replacement-
+level prices, so record any settings difference for the separate final review.
 
-Run `python scripts/pre_draft_preflight.py --as-of 2026-10-14` for a read-only
-mid-October cache and ESPN-settings readiness report. A successful ESPN Connect
-records when league settings were actually read; modifying the saved draft session
-later does not refresh that timestamp. The report does not pull data or freeze a board.
-Once its gates and the analyst/mock reviews pass, `python scripts/freeze_preseason.py`
-previews the rationale-free EXP-029 board pair. The write command requires
-`--write --reviewed --mock-verified` and refuses to overwrite an existing freeze.
-Review the resulting model/analyst Parquet files and manifest before force-adding
-those three exact `data/processed/frozen_*` files; other processed files remain local.
+**Projection hold (user direction, 2026-10-14):** the current 2026-27 projections
+and rankings are accepted for now. The previous mid-October data-refresh,
+`learned_ps` rebuild, analyst re-review, draft-sheet regeneration and dual-freeze
+sequence is paused. Do not run projection-writing commands or republish the board
+as part of routine readiness work. A separate, explicitly requested session will
+handle final projection review and decide whether to resume any of those steps.
+The ESPN draft-room settings/mock check can be handled independently and must not
+recompute VOR or rankings under this hold. `pre_draft_preflight.py` remains a
+read-only diagnostic for the deferred projection path, not a to-do list for this
+session. `freeze_preseason.py` now requires `--final-review-authorized` even for a
+preview; writing still requires its human review flags and never overwrites a freeze.
 
 ```python
 from fantasy_nba.draft import EspnPollFeed, build_player_map, DraftState

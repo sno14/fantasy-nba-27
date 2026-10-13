@@ -5,6 +5,18 @@ Status: **the execution source of truth** (2026-07). This turns
 **strictly linear sequence of steps** that can be followed mechanically. Work top to bottom.
 Do not start a step before the previous step's **Done when** box is fully satisfied.
 
+> **Active user direction — 2026-10-14 (supersedes the projection-writing October
+> calendar and D2.3 instructions below):** The existing 2026-27 projections and
+> rankings are accepted for now. Routine work must not refresh/rebuild model or
+> analyst boards, promote proposals, regenerate the draft sheet or triggers,
+> re-export the public board, create a dual freeze, or start the opening-night
+> projection cron. Missing local preseason inputs are informational, not a task
+> to fetch them for this workflow. Final projection review will happen in a
+> separate session only when the user explicitly requests it. Read-only checks,
+> independent ESPN draft-room verification, and product work preserving the
+> accepted projection values may continue. Historical results and rejected
+> experiments below remain unchanged.
+
 **Relationship to the other docs**
 - `docs/breakthrough-plan.md` — the diagnosis and phase rationale. Read once; don't edit
   except to mark phases complete.
@@ -104,7 +116,7 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 | 9c | 2 | Coach changes + preseason-October logs (+ win totals) | EXP-027 | ☑ | ☑ (a coach rejected · b `learned_ps` adopted-Oct, big-riser capture +9pp · c waived) |
 | 9d | 2 | Rookie model (draft slot × landing spot) | EXP-028 | ☑ | ☑ (rejected — pick-order unbeaten; D1.5 market seed stands alone) |
 | D1 | 2.5 | Decision layer: league config, VOR, schedule, rookie seed | — (product) | ◐ D1.1 ✅ · D1.2 VOR ✅ · D1.3 script ✅ (2026-27 schedule publishes ~mid-Aug) · D1.4 VOR+ADP ✅ (playoff cols await ESPN calendar) · D1.5 mechanism ✅ (extended 2026-07-17: returning-vet seed live — Kyrie/Haliburton/Beasley/Lillard, now MODEL-PROJECTED not just ADP-seeded per D1.6/EXP-032 2026-07-25; 2026 rookies hit the market pulls ~Sept) | ◐ (see D1 notes, 2026-07-10 + 2026-07-17) |
-| D2 | 2.5 | Analyst pass + dual-board freeze | EXP-029 | ☑ (overrides schema + `apply_analyst.py` + trigger generator, tested 2026-07-10; **workflow v2 2026-07-12**: proposals flow + nightly in-season hook live; explorer board-B toggle 2026-07-13; **sizing contract corrected 2026-07-25** — EXP-033 withdrew "re-anchor a small-sample base on the last healthy season" (inflates +3.34/+5.56 fpts/g) and EXP-034 withdrew the ×0.85 per-36 fade (directionally wrong); magnitude is now decomposition with a machine-checked `sizing:` block, retro-filled onto 58 standing entries, Sabonis +4.0 → +1.0 promoted; **second VERB added same day** — `target_mpg` (absolute minutes, rescales the stat line at held rates and re-derives fpts, self-limiting so no Step-18 decay) alongside `fpts_delta` (rate residual), one per factor of the model's minutes × rate; 33 entries re-expressed, WAS team minutes 312.9 → 244 vs the 240 budget) | ◐ pending (living entries any time via proposals→approval; mid-Oct = re-review + dual freeze; Apr 2027 scoring now *calibrates* — amended gate, Appendix A) |
+| D2 | 2.5 | Analyst pass + dual-board freeze | EXP-029 | ☑ (overrides schema + `apply_analyst.py` + trigger generator, tested 2026-07-10; **workflow v2 2026-07-12**: proposals flow + nightly in-season hook live; explorer board-B toggle 2026-07-13; **sizing contract corrected 2026-07-25** — EXP-033 withdrew "re-anchor a small-sample base on the last healthy season" (inflates +3.34/+5.56 fpts/g) and EXP-034 withdrew the ×0.85 per-36 fade (directionally wrong); magnitude is now decomposition with a machine-checked `sizing:` block, retro-filled onto 58 standing entries, Sabonis +4.0 → +1.0 promoted; **second VERB added same day** — `target_mpg` (absolute minutes, rescales the stat line at held rates and re-derives fpts, self-limiting so no Step-18 decay) alongside `fpts_delta` (rate residual), one per factor of the model's minutes × rate; 33 entries re-expressed, WAS team minutes 312.9 → 244 vs the 240 budget) | paused by user 2026-10-14 (accepted current projections; separate final-review session required before promotion, rebuild or freeze; April scoring only if a dated freeze is later approved) |
 | 10 | 3 | As-of-date projection function | EXP-018 | ☑ | ☑ (foundation adopted; naive gate parked) |
 | 11 | 3 | In-season eval + lead-time metric | EXP-019 | ☑ (`eval_asof.py --exp019`; half-lives frozen) | ☑ (adopted diagnostics: +30d reducible gap ≈ 0 · riser-recall 51.7% · lead 52d @ 99% detect vs naive 70% · league-horizon flips 2/12 → both views) |
 | 12 | 3 | Nightly update pipeline + status overrides | — | ☑ (`update_daily.py` + `overrides.yaml` + `refresh_season`; naive line per addendum 5) | ☑ off-season dry-run clean 2026-07-10 (`--offline --asof 2026-03-01`); goes live opening night |
@@ -197,6 +209,15 @@ too — it is the only answer to the polling-latency question;** **opening night
 `update_daily.py`; **April 2027** =
 score EXP-029 A-vs-B + the rule-10a freeze, and EXP-020 arms when its archives reach ≥ 1 season.
 Step 13 stays archive-gated — do not log it early.
+
+**Current execution status (2026-10-14):** the mid-October projection rebuild,
+sheet/triggers regeneration, analyst re-review and dual freeze in the historical
+calendar above are **paused by the user**. Do not run their data pulls or writes
+as calendar work. The draft-room settings and mock check can proceed separately
+without recomputing projection values, VOR or ranks. The opening-night nightly
+projection job also stays off until the separate final-review session resolves
+the hold. EXP-029 scoring in April needs an actually approved, dated freeze;
+do not claim one exists merely because the former calendar called for it.
 
 > **Why the transaction refresh is load-bearing (note 2026-07-13):** `preseason_roster_map`
 > (Step 8 / EXP-016) assigns every player to a team as *prior-season primary team + PST
@@ -1224,6 +1245,13 @@ no-hindsight proof.
 > files (the rest of `data/processed/` remains a local cache). The script does
 > not stage, commit or publish anything. No freeze was created on October 14.
 
+> **Later user direction on 2026-10-14:** D2.3 is suspended, including its
+> before-opening-night deadline. `freeze_preseason.py` is retained as a guarded
+> utility for a separately requested final-review session, not a standing
+> workflow step. Do not preview or write a pair, apply more analyst overrides,
+> regenerate the boards, or infer consent from a passing preflight. The current
+> accepted board and both rank semantics stay as published until that review.
+
 **D2.4 Scoring (April 2027, the other half of the experiment):** one eval run, both boards,
 standard metrics (top-150 level MAE, mover buckets, big-riser recall, ranking Spearman) +
 a **per-adjustment attribution table**: for each override — model rank, adjusted rank,
@@ -2002,6 +2030,12 @@ stale order returns confident nonsense all night.
 5. Run an ESPN **mock draft** — the only thing that answers the polling-latency question
    (rung 3 of the ladder). Record payloads to `tests/fixtures/` (cookies scrubbed).
 
+**Current hold:** steps 1, 3–5 may be used for draft-room verification that
+does not modify projections.
+If step 2 finds changed league settings, record the difference for the separate
+final-review session; do not update `league.yaml`, recompute VOR, or reorder the
+accepted projection board in this workflow.
+
 > **2026-10-14 preflight addendum:** `python scripts/pre_draft_preflight.py --as-of
 > 2026-10-14` is a read-only gate check. It inspects the target-season cache rows,
 > cache refresh dates, board/sheet/trigger build order, and a timestamp and season
@@ -2019,6 +2053,13 @@ stale order returns confident nonsense all night.
 > above from an authorized local session, run the preflight again, perform the
 > live ESPN/mock verification and analyst re-review, then commit both freezes
 > before opening night. No live pull, mock, re-review or freeze ran in this pass.
+
+> **Superseding hold (user, 2026-10-14):** the final two sentences above describe
+> the prior plan, not the current instruction. The missing cache inputs do not
+> authorize a projection rebuild, re-review, export or freeze. Keep the current
+> projections and rankings unchanged. The final projection review is a separate
+> user-initiated session. ESPN draft-room checks may be done independently,
+> without changing scoring configuration, VOR or projection order.
 
 ### 19.2 ID join + slot eligibility
 

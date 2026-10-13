@@ -22,7 +22,14 @@ Before changing the project, read the documentation in the order given by
 - Use `scripts/update_daily.py` for the in-season nightly workflow. Put concrete
   availability timelines in `config/overrides.yaml`, not the analyst layer.
 - Follow the standing calendar and active tracker in
-  `docs/implementation-plan.md`; it takes precedence at its scheduled dates.
+  `docs/implementation-plan.md`, subject to the 2026-10-14 projection hold below.
+- **2026-10-14 user direction:** the current 2026-27 projections and rankings are
+  accepted for now. Do not refresh/rebuild their model or analyst boards, regenerate
+  the draft sheet or triggers, promote analyst proposals, re-export the public board,
+  or run the preseason dual freeze as routine calendar work. A separate session
+  explicitly requested by the user will handle final projection review. Read-only
+  checks and product work that preserves existing values can continue. Do not start
+  the opening-night projection update job before that review resolves the hold.
 - For product/UI work, read `docs/product-experience-plan.md` and its latest
   session handoff. P1a–P9 and the P6b single-move MVP are implemented locally;
   multi-move streaming awaits verified transaction rules. Keep the

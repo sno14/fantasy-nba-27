@@ -33,6 +33,8 @@ def test_missing_target_data_and_undated_connect_block_review(tmp_path):
     processed.mkdir(parents=True)
     (processed / "draft_session.json").write_text(json.dumps({"settings": {"size": 12}, "team_ids": list(range(12))}), encoding="utf-8")
     report = audit(tmp_path, AS_OF, LEAGUE)
+    assert report["projection_workflow_paused"]
+    assert "do not rebuild" in report["manual_gates"][0]
     assert not report["ready_for_human_review"]
     for key in ("target_preseason_logs", "target_draft_class", "target_schedule", "espn_live_settings"):
         assert _status(report, key) == "blocked"

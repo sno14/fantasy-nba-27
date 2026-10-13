@@ -1,8 +1,10 @@
 """Prepare the immutable, rationale-free EXP-029 preseason board pair.
 
-This script refuses to freeze until the local preflight passes and the operator
-attests to the ESPN mock verification and analyst re-review. It never pulls data,
-edits overrides, updates the live board, or stages/commits the frozen outputs.
+The 2026-10-14 user hold removes this from the routine calendar. Even a preview
+requires explicit final-review authorization in a separately requested session.
+Writing also requires the local preflight and operator attestations for the ESPN
+mock verification and analyst re-review. It never pulls data, edits overrides,
+updates the live board, or stages/commits the frozen outputs.
 """
 
 from __future__ import annotations
@@ -118,10 +120,16 @@ def write_pair(model: pd.DataFrame, analyst: pd.DataFrame, model_out: Path,
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--as-of", default=date.today().isoformat())
+    parser.add_argument("--final-review-authorized", action="store_true",
+                        help="Use only in the separate final-review session explicitly requested by the user.")
     parser.add_argument("--write", action="store_true", help="Write the immutable board pair after all gates pass.")
     parser.add_argument("--reviewed", action="store_true", help="Attest that every effective analyst entry was re-reviewed.")
     parser.add_argument("--mock-verified", action="store_true", help="Attest that ESPN mock latency and manual fallback were verified.")
     args = parser.parse_args()
+    if not args.final_review_authorized:
+        print("Projection freeze is paused by the 2026-10-14 user direction. "
+              "Use --final-review-authorized only in a separately requested final-review session.")
+        return 2
     as_of = date.fromisoformat(args.as_of)
     report = audit(ROOT, as_of, load_league())
     if not report["ready_for_human_review"]:
@@ -139,7 +147,8 @@ def main() -> int:
     model, analyst = build_freeze_pair(pd.read_parquet(source), load_overrides(overrides))
     print(f"Validated {len(model)} model/analyst players; private rationale removed from the freeze pair.")
     if not args.write:
-        print("Preview only. Complete human gates and use --write --reviewed --mock-verified to freeze.")
+        print("Preview only. In the authorized final-review session, complete human gates "
+              "and use --write --reviewed --mock-verified to freeze.")
         return 0
     stem = ROOT / "data/processed" / f"frozen_{target}_preseason"
     model_out = stem.with_name(stem.name + "_model.parquet")

@@ -1,11 +1,13 @@
 """The frozen EXP-029 pair must preserve arithmetic without private rationale."""
 
 from datetime import date
+import sys
 
 import pandas as pd
 import pytest
 
 from fantasy_nba.models.analyst import name_key
+from scripts import freeze_preseason
 from scripts.freeze_preseason import build_freeze_pair, write_pair
 
 
@@ -23,6 +25,13 @@ def _entries():
              "category": "role", "kind": "fpts_delta", "value": 3.0,
              "target_mpg": None, "fpts_delta": 3.0, "rank_delta": None,
              "rationale": "PRIVATE BBM details must not enter the repository", "_pos": 0}]
+
+
+def test_cli_requires_separate_final_review_before_preflight(monkeypatch, capsys):
+    monkeypatch.setattr(sys, "argv", ["freeze_preseason.py", "--as-of", "2026-10-14", "--write"])
+    monkeypatch.setattr(freeze_preseason, "audit", lambda *_: pytest.fail("preflight ran during hold"))
+    assert freeze_preseason.main() == 2
+    assert "paused by the 2026-10-14 user direction" in capsys.readouterr().out
 
 
 def test_frozen_pair_reuses_approved_arithmetic_and_redacts_rationale():
