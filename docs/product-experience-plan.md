@@ -901,3 +901,35 @@ updates. The prior October modelling calendar no longer authorizes those writes.
 Read-only product work may continue on both surfaces using the existing values.
 Preserve public ordinal FP/G rank and local safe rank as distinct semantics.
 P6b multi-move streaming remains gated on verified league transaction rules.
+
+## 26. Next-session execution handoff — 2026-10-14
+
+The next session should work on **draft readiness and product experience using the
+accepted board**, not perform the separate final projection review. Begin with
+`git status`, this section, and implementation-plan §19.1b's current-hold note.
+No October cache refresh or preflight failure should trigger a projection rebuild.
+
+1. Inspect the existing draft-room flow. If authenticated ESPN access is available,
+   verify this season's league ID, team IDs/count, roster slots and whether pick
+   order is still a placeholder. Run a real mock to measure polling latency and
+   confirm the manual fallback. Save only scrubbed fixtures and draft-session
+   state. If access is unavailable, record exactly what is missing and move on;
+   do not guess settings or cache a placeholder pick order. If settings differ,
+   record the difference for the later projection-review session rather than
+   changing `league.yaml`, VOR, board values or ranks now.
+2. Inspect the public static site and local React/FastAPI app with the accepted
+   board. Fix a concrete draft-readiness or usability issue that does not change
+   projection values, rank semantics or published board artifacts. Validate both
+   affected surfaces and update this tracker/handoff in the implementation commit.
+   P6b multi-move streaming remains blocked until the league's acquisition rules
+   are verified; do not infer them from generic ESPN behavior.
+3. End by comparing the board artifact hashes below and reporting any difference.
+   The separate final projection review has **not** been requested by this handoff.
+
+Accepted-artifact SHA-256 baselines, checked 2026-10-14 after the hold commit:
+
+| Artifact | SHA-256 |
+|---|---|
+| `data/processed/learned_2026-27.parquet` (local model A) | `49ef4c2f290de25e3f228c85231eeaf91d81d922f60c191ce1ab95df7b6cd1dd` |
+| `data/processed/learned_2026-27_analyst.parquet` (local board B) | `a769b82ca11f08a894c52906605d9a674f1b9e8642cdf090215d78c98849e7b1` |
+| `static/data/board.json` (public FP/G ranks) | `80578ca4ea1ae2069bc0b69cffe775701400f6a2a46dcea2b8d7a0f02363eaa5` |

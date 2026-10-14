@@ -35,3 +35,21 @@ Before changing the project, read the documentation in the order given by
   multi-move streaming awaits verified transaction rules. Keep the
   public static site and local React/FastAPI app in scope, preserve their distinct
   rank semantics, and update the product tracker in the implementation commit.
+
+## Next-session handoff (2026-10-14)
+
+- Start from `docs/product-experience-plan.md` §26. The next active work is draft-room
+  readiness on the **existing** board: inspect ESPN league ID, team count/IDs,
+  roster slots and pick-order status, and test a real mock's polling latency when
+  authenticated access is available. Record changed settings for the separate
+  final projection review; do not update `league.yaml`, recompute VOR or rerank.
+  Draft-session state and scrubbed mock fixtures may be saved without changing
+  projection artifacts. Never treat a placeholder order as a real draft order.
+- If live ESPN access is unavailable, record the precise blocker and continue
+  product/UI improvements against the fixed board on both the public static site
+  and local React/FastAPI app. P6b multi-move streaming still requires verified
+  acquisition rules; do not invent them. Update the product handoff with results.
+- This is **not** the final projection-review session. Do not use the missing
+  preseason caches or a passing preflight to resume the paused projection path.
+  Confirm the local model board, analyst board and public board remain unchanged
+  after product work; their 2026-10-14 SHA-256 baselines are in §26.
