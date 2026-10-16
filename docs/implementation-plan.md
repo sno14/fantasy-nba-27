@@ -18,6 +18,14 @@ Do not start a step before the previous step's **Done when** box is fully satisf
 > experiments below remain unchanged.
 
 **Relationship to the other docs**
+**Scoped user approval — 2026-10-17:** Batch 28's 137 player changes are now
+approved and applied (60 firm plus all 77 alternatives except Wembanyama and
+Amen Thompson). Proposal promotion refreshes the accepted B snapshot and public
+artifacts from saved model/source inputs, without a fit. GP, model A, roster
+assignments and league/availability configuration are unchanged. The remaining
+projection-writing calendar, draft-sheet rebuild, dual freeze and nightly job
+stay paused. New baselines and the handoff are in product-experience-plan §31.
+
 - `docs/breakthrough-plan.md` — the diagnosis and phase rationale. Read once; don't edit
   except to mark phases complete.
 - `docs/design-critique.md` — the standing senior-review of the design (hidden assumptions,

@@ -205,6 +205,18 @@ tests/             unit tests: scoring, model arithmetic, as-of engine, absorpti
 
 ## Quick start
 
+**Approved review, 2026-10-17:** Batch 28 applied 137 user-approved player changes
+to saved analyst Board B and the public artifacts. Model A is unchanged. Normal
+reads/exports still use accepted snapshots. Explicit proposal promotion now
+refreshes saved B and its dependent ranges/ranks without fitting a model;
+`python scripts/export_static.py --refresh-approved` retries that refresh after
+an interrupted promotion. Ordinary `export_static.py` does not apply pending
+proposals. The draft sheet, league configuration, freeze and nightly job remain
+on hold. See [the current handoff](docs/product-experience-plan.md#31-approved-player-review--2026-10-17).
+The default proposal preview includes original external-only seeds when an
+approved player has no learned-model row; it never uses their adjusted B value
+as the baseline.
+
 The commands below document the model pipeline. During the 2026-10-14
 projection hold, do not run the pull/project commands to replace the accepted
 2026-27 board; use the existing board for app inspection and product work.

@@ -115,7 +115,11 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Export Board B for the static GitHub Pages companion.")
     parser.add_argument("--board", default=None,
                         help="Board A parquet (default: data/processed/learned_2026-27.parquet).")
+    parser.add_argument("--refresh-approved", action="store_true",
+                        help="Apply explicitly approved overrides to saved inputs without fitting a model.")
     args = parser.parse_args(argv)
+    if args.board and args.refresh_approved:
+        parser.error("--board and --refresh-approved cannot be combined")
     if args.board:
         board_path = Path(args.board).resolve()
         if not board_path.exists():
@@ -130,7 +134,11 @@ def main(argv: list[str] | None = None) -> None:
         # map and applies the effective analyst layer, keeping static and live boards aligned.
         from fantasy_nba.api import boards
 
-        board = boards.ranked_board("2026-27", "learned", "safe", apply_analyst=True)
+        if args.refresh_approved:
+            from scripts.approved_board import refresh_approved_snapshot
+            board = refresh_approved_snapshot()
+        else:
+            board = boards.ranked_board("2026-27", "learned", "safe", apply_analyst=True)
         source_board = "live API Board B (2026-27 learned/safe)"
         title = "Fantasy NBA 2026-27 — Board B"
     league = load_league()

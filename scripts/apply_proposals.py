@@ -39,6 +39,8 @@ import yaml
 from fantasy_nba.config import CONFIG_DIR, PROCESSED_DIR, ROOT
 from fantasy_nba.models.analyst import apply_overrides, name_key, parse_overrides
 
+sys.path.insert(0, str(ROOT))
+
 PROPOSAL_ONLY_FIELDS = ("status", "triangulation", "preview", "sizing")
 ENTRY_FIELDS = ("name", "date", "category", "action", "rationale")
 _DATA_LINE = re.compile(r"^\s*(\[\]|-\s)")
@@ -110,6 +112,24 @@ def check_sizing(proposals: list[dict], universe: list[dict] | None = None,
         delta = float(act.get("fpts_delta", 0.0))
         if "target_mpg" in act:
             rescaled = float(s["base_fpts"]) * float(act["target_mpg"]) / float(s["base_mpg"])
+            # New reviews may retain the complete base stat line. Re-score the
+            # rounded minutes rescale exactly as application does; multiplying
+            # FP/G alone can differ by more than the legacy rounding tolerance.
+            if "base_stats" in s:
+                from fantasy_nba.models._core import COUNTING, rescale_to_minutes
+                from fantasy_nba.scoring import load_scoring, score_frame
+                stats = s["base_stats"]
+                if not isinstance(stats, dict) or set(COUNTING) - set(stats):
+                    problems.append(f"{who}: base_stats needs the complete canonical stat line")
+                    continue
+                frame = pd.DataFrame([{**stats, "mpg": float(s["base_mpg"]),
+                                       "fpts_pg": float(s["base_fpts"])}])
+                cfg = load_scoring()
+                if abs(float(score_frame(frame, cfg).iloc[0]) - float(s["base_fpts"])) > SIZING_TOL:
+                    problems.append(f"{who}: base_stats do not score to base_fpts")
+                    continue
+                rescale_to_minutes(frame, pd.Series([True]), float(act["target_mpg"]), cfg)
+                rescaled = float(frame.loc[0, "fpts_pg"])
             remainder = float(s["target_fpts"]) - rescaled
             label = f"target_fpts - rescaled base ({rescaled:.2f})"
         else:
@@ -173,6 +193,15 @@ def preview(proposals: list[dict], status: str | None, board_path: Path) -> None
     if not board_path.exists():
         raise SystemExit(f"board {board_path} not found — pass --board or generate it first.")
     board = pd.read_parquet(board_path)
+    # Explicitly approved source-only players have no learned row. The normal
+    # preview uses their original dated seed, just as accepted-snapshot refresh
+    # does, rather than dropping them or applying the adjustment to Board B.
+    missing_names = {name_key(p["name"]) for p in sel} - set(board["PLAYER_NAME"].map(name_key))
+    if missing_names and board_path.resolve() == (PROCESSED_DIR / "learned_2026-27.parquet").resolve():
+        from fantasy_nba.api.boards import accepted_board
+        from fantasy_nba.models.external_projection import load_latest
+        from scripts.approved_board import proposal_base
+        board = proposal_base(board, accepted_board(True), load_latest())
 
     entries = parse_overrides([strip_to_entry(p) for p in sel], source="proposals")
     after = apply_overrides(board, entries).set_index("PLAYER_ID")
@@ -265,7 +294,7 @@ def promote(proposals: list[dict], overrides_path: Path) -> None:
     if overrides_path.resolve() == (CONFIG_DIR / "analyst_overrides.yaml").resolve():
         exporter = Path(__file__).with_name("export_static.py")
         result = subprocess.run(
-            [sys.executable, str(exporter)], cwd=ROOT, text=True,
+            [sys.executable, str(exporter), "--refresh-approved"], cwd=ROOT, text=True,
             capture_output=True, encoding="utf-8", errors="replace",
         )
         if result.returncode:

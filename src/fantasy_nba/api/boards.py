@@ -11,11 +11,13 @@ a 2023-24 backtest board).
 from __future__ import annotations
 
 from functools import lru_cache
+import json
 
 import numpy as np
 import pandas as pd
+from fastapi import HTTPException
 
-from ..config import CONFIG_DIR, PROCESSED_DIR
+from ..config import CONFIG_DIR, PROCESSED_DIR, ROOT
 from ..data import storage
 from ..models._core import _season_start
 from ..models.aging import build_aging_curves
@@ -120,6 +122,11 @@ def compute_board(target: str, model: str, apply_analyst: bool,
     ``ovr_mtime`` is a cache key only: editing config/analyst_overrides.yaml (or promoting
     proposals) busts the cache on the next request.
     """
+    if target == CURRENT_TARGET:
+        if model != "learned":
+            raise HTTPException(409, "The current projection board is on hold. Select learned; "
+                                "new current-season model runs require final projection review.")
+        return accepted_board(apply_analyst)
     ss, bio = _raw("player_season_stats"), _raw("player_bio")
     cfg = load_scoring()
     ty = _season_start(target)
@@ -259,6 +266,16 @@ def add_tiers(board: pd.DataFrame) -> pd.DataFrame:
 
 
 def ranked_board(target: str, model: str, stance: str, apply_analyst: bool) -> pd.DataFrame:
+    if target == CURRENT_TARGET and model == "learned":
+        board = accepted_board(apply_analyst)
+        # The published audit fields retain the accepted local safe order and tiers.
+        # A different display stance is calculated only from these fixed inputs.
+        if stance == "safe":
+            return board.sort_values("rank", kind="stable").reset_index(drop=True)
+        from ..draft.radar import add_draft_radar
+        from ..models.value import load_league
+        return add_draft_radar(add_tiers(rank_board(board, method=stance)),
+                              teams=int(load_league().get("teams", 12)))
     board = compute_board(target, model, apply_analyst, overrides_mtime())
     ranked = add_tiers(rank_board(board, method=stance))
     if target == CURRENT_TARGET:
@@ -266,6 +283,86 @@ def ranked_board(target: str, model: str, stance: str, apply_analyst: bool) -> p
         from ..models.value import load_league
         ranked = add_draft_radar(ranked, teams=int(load_league().get("teams", 12)))
     return ranked
+
+
+def accepted_board(apply_analyst: bool) -> pd.DataFrame:
+    """Read the accepted October snapshots, without fitting or applying overrides.
+
+    Board B's published source ranks/ranges are the accepted local API display;
+    its parquet supplies full-precision stat lines and private provenance. Public
+    ordinal FP/G ranks never become local safe ranks. Board A keeps its saved ranks.
+    Missing snapshots fail closed instead of silently starting a projection run.
+    """
+    suffix = "_analyst" if apply_analyst else ""
+    path = PROCESSED_DIR / f"learned_{CURRENT_TARGET}{suffix}.parquet"
+    public_path = ROOT / "static" / "data" / "board.json"
+    try:
+        saved = pd.read_parquet(path)
+        payload = json.loads(public_path.read_text(encoding="utf-8"))
+        if payload.get("season") != CURRENT_TARGET:
+            raise ValueError("Published snapshot is for another season")
+        published = pd.DataFrame(payload["rows"])
+        if not {"PLAYER_ID", "source_rank", "fpts_pg"} <= set(published.columns):
+            raise ValueError("Published snapshot has no local rank audit")
+        if (published["PLAYER_ID"].duplicated().any() or published["source_rank"].isna().any()
+                or published["source_rank"].duplicated().any()
+                or not set(saved["PLAYER_ID"]) <= set(published["PLAYER_ID"])):
+            raise ValueError("Accepted snapshot identities or local ranks are inconsistent")
+    except (OSError, ValueError, KeyError) as exc:
+        raise HTTPException(503, "Accepted board snapshots are unavailable. Restore them; "
+                            "projection rebuilding remains paused.") from exc
+
+    context = [c for c in ("TEAM_ABBREVIATION", "adp", "vor", "vor_rank", "market_priced",
+                          "seed_class", "previous_fpts_pg", "fpts_pg_change", "positions")
+               if c in published]
+    if apply_analyst:
+        out = published.copy()
+        out["rank"] = out["source_rank"]
+        out["tier"] = out.get("source_tier", np.nan)
+        out["model_rank"] = out.get("model_source_rank", np.nan)
+        # Keep model arithmetic at parquet precision; risk ranges and safe ranking
+        # remain exactly those already accepted in the API/public audit snapshot.
+        private = [c for c in saved if c not in out or c in {
+            "gp", "mpg", "fpts_pg", "fpts_total", "pts", "reb", "ast", "stl", "blk",
+            "fg3m", "tov", "analyst_action", "analyst_category", "analyst_date",
+        }]
+        by_id = saved.set_index("PLAYER_ID")
+        for column in private:
+            if column == "PLAYER_ID":
+                continue
+            values = out["PLAYER_ID"].map(by_id[column])
+            out[column] = values.where(out["PLAYER_ID"].isin(by_id.index), out[column]) if column in out else values
+    else:
+        out = saved.merge(published[["PLAYER_ID"] + [c for c in context if c not in saved]],
+                          on="PLAYER_ID", how="left")
+        extras = published[~published["PLAYER_ID"].isin(saved["PLAYER_ID"])].copy()
+        # A source-only player can now have an explicitly approved B adjustment.
+        # The model toggle must show the original external seed, not that B value.
+        adjusted = extras.get("analyst_action", pd.Series("", index=extras.index)).fillna("").ne("")
+        if adjusted.any():
+            from ..models.analyst import name_key
+            source = load_external_projection()
+            if source.empty:
+                raise HTTPException(503, "Original external seeds are unavailable for Board A.")
+            source = source.assign(name_key=source["player"].map(name_key)).set_index("name_key")
+            for index in extras.index[adjusted]:
+                key = name_key(extras.at[index, "PLAYER_NAME"])
+                if key not in source.index:
+                    raise HTTPException(503, "An adjusted external player has no original source.")
+                for column, field in (("fpts_pg", "external_fpts_pg"), ("gp", "gp"), ("mpg", "mpg")):
+                    extras.at[index, column] = float(source.loc[key, field])
+                extras.at[index, "fpts_total"] = extras.at[index, "fpts_pg"] * extras.at[index, "gp"]
+                for column in ("analyst_action", "analyst_category", "analyst_date"):
+                    extras.at[index, column] = ""
+        extras["rank"] = extras["source_rank"]
+        out = pd.concat([out, extras], ignore_index=True, sort=False)
+        if "previous_fpts_pg" in out:
+            out["fpts_pg_change"] = (out["fpts_pg"] - out["previous_fpts_pg"]).round(2)
+        out = add_tiers(out.sort_values("rank", kind="stable"))
+        from ..draft.radar import add_draft_radar
+        from ..models.value import load_league
+        out = add_draft_radar(out, teams=int(load_league().get("teams", 12)))
+    return out
 
 
 # ------------------------------------------------------------------------------- schedule

@@ -1564,3 +1564,55 @@ a workflow change, not a new model experiment or a reversal of earlier measured
 results. No projections, rankings, overrides, or frozen boards were changed for
 this addendum. April A/B scoring requires an actual approved and dated freeze;
 the earlier target date alone does not supply one.
+
+### EXP-029 addendum — 2026-10-17 Batch 28 approved and applied
+
+Steven supplied the October 16 consolidated review and requested its proposals
+be approved for both the static board and local app. After reviewing the list
+of conditional alternatives in chat, he explicitly retained Wembanyama and Amen
+Thompson and approved everyone else: 60 firm changes plus 77 alternatives, 137
+total. The standard promoter appended exactly those 137 entries and skipped 332
+already present. All prior proposal/override records and the notes prefix are
+preserved. Each new action replaces the complete previous action, with minutes
+applied first and only the replacement rate residual afterward. Complete base
+stats allow exact reconciliation against the canonical rounded minutes rescore;
+no cents are hidden by increasing the sizing tolerance.
+
+An approval-only delivery path now updates saved B as well as public artifacts;
+ordinary API reads/exports still read accepted snapshots. Pure model A is
+unchanged. Changed model players' dependent ranges use the existing simulator
+with fixed seed 0 and stable player-ID order; unchanged players retain accepted
+ranges. Safe ranks/tiers and public ordinal FP/G ranks/tiers remain distinct.
+The saved B contains 599 identities, including 13 explicitly external-only seeds.
+VanVleet's 31.5 FP/G replaces the original external 29.5 seed; no model row,
+shooting components or risk ranges were invented for him. The A toggle retains
+his original source value. No healthy-season re-anchor was performed; available
+small-sample rate_held diagnostics remain explanatory rather than a sizing rule.
+
+Validation: 102 focused tests pass, including replacement/idempotency, stable
+row ordering, exact scoring, external seed separation and held snapshot reads.
+Live HTTP/public parity passes across 599 rows at public precision. All 137
+approved FP/G and MPG targets are exact; the other 462 FP/G values and all GP
+values are unchanged. Model A, league.yaml and availability override hashes
+remain unchanged. Public history, 30 rotation summaries and 586 minutes curves
+pass publication validation. The source and private before/after audit are
+archived locally. Static artifacts were regenerated; no deployment was run.
+
+Skeptic pass: these are explicit user judgments, including conditional cases now
+accepted as central targets; numerical correctness is not evidence of predictive
+calibration. No new learned method, seed search, backtest, future outcomes or
+previously rejected experiment was run. Source coverage and both retained cases
+are recorded, so alternatives were not selectively reported as measured wins.
+The existing simulator is deterministic at its fixed seed; no cross-seed accuracy
+gain is claimed and no model gate is being re-evaluated. The transaction pull
+failed at browser startup (WinError 5); cached max is October 11, all affected
+proposals disclose that flag, and team assignments were held fixed. No fresh
+news/roster verification or closed team budget is claimed. GP and availability
+were not adjusted. Model refits, draft-sheet/trigger rebuild, dual freeze and
+nightly projection updates remain paused outside this scoped approval.
+
+Batch 28 validation follow-up, 2026-10-17: the normal CLI preview also now loads
+original external-only seeds when needed, matching the approval refresh and
+local review panel. Its regression brings the focused suite to **103 passing
+tests**. A read-only repeat of the complete 599-row approval refresh reproduces
+all FP/G, MPG, GP, totals, safe ranks, ranges, risk and draft-value fields exactly.

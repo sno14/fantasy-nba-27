@@ -933,3 +933,63 @@ Accepted-artifact SHA-256 baselines, checked 2026-10-14 after the hold commit:
 | `data/processed/learned_2026-27.parquet` (local model A) | `49ef4c2f290de25e3f228c85231eeaf91d81d922f60c191ce1ab95df7b6cd1dd` |
 | `data/processed/learned_2026-27_analyst.parquet` (local board B) | `a769b82ca11f08a894c52906605d9a674f1b9e8642cdf090215d78c98849e7b1` |
 | `static/data/board.json` (public FP/G ranks) | `80578ca4ea1ae2069bc0b69cffe775701400f6a2a46dcea2b8d7a0f02363eaa5` |
+
+## 31. Approved player review — 2026-10-17
+
+Steven supplied the October 16 consolidated review and explicitly requested
+proposal creation, approval and application on both surfaces. He then approved
+all conditional alternatives except **Victor Wembanyama and Amen Thompson**.
+Batch 28 therefore contains **137 approved entries: 60 firm + 77 alternatives**.
+The source, 137 appended notes, queue entries, backups and detailed before/after
+report remain private under the established publication boundary. Proposals and
+override history preserve all earlier entries. Wembanyama remains 62.00 FP/G at
+32.5 MPG; Amen remains 40.31 at 36.2. Their ordinal ranks can change as others move.
+
+**Delivery:** promotion appended exactly 137 overrides and skipped 332 existing
+entries. A new approval-only refresh path regenerates saved Board B from unchanged
+model A and the original external seeds, applies the complete effective override
+history once, recomputes changed model players' ranges with the existing seeded
+simulator, and derives local safe ranks/tiers. Unchanged players retain their
+accepted ranges. Public export separately derives ordinal FP/G ranks/tiers,
+Radar, minutes curves, rotation summaries and redacted history. Normal reads and
+exports remain snapshot-only. No learned-model fit occurs.
+
+Fred VanVleet has no learned-model row: the original external 29.5 FP/G seed is
+the explicit base for his approved 31.5. The saved B snapshot now carries all
+599 published identities, including the 13 flagged external-only rows. Those
+rows retain missing statistical/risk fields; no shooting line or uncertainty
+distribution was fabricated. The app's A toggle restores the original external
+seed rather than inheriting B. Proposal sizing may now carry complete `base_stats`
+so minutes actions reconcile against the canonical rounded/rescored stat line,
+including Justin Edwards's seven-cent discrepancy from FP/G-ratio arithmetic.
+
+**Verification:** 103 focused Python tests passed. Live HTTP Board B and the
+public artifact agree for all 599 rows at public precision; every approved FP/G
+and MPG target matches exactly, all 462 other FP/G values and every GP remain
+unchanged. Public history, all 30 rotation summaries and 586 minutes curves pass
+their publication validators. Historical queue/override entries and notes prefix
+were preserved. Model A and league/availability configuration hashes are unchanged.
+Private audit: `data/processed/projection_review_2026-10-17/approved_changes.md`.
+The local app runs at `http://127.0.0.1:8787`. No commit, push or deployment was
+performed; the regenerated static artifacts are ready for publication.
+
+**Data flag:** the incremental transaction refresh was attempted and failed at
+Playwright startup with `PermissionError: [WinError 5] Access is denied`. Cache
+max remains October 11. Every new proposal records this; the supplied numerical
+decisions were applied against fixed team assignments, without a new roster map
+or invented closed team budget. No fresh external-news verification is claimed.
+
+Accepted-artifact SHA-256 baselines after this explicit approval:
+
+| Artifact | SHA-256 |
+|---|---|
+| `data/processed/learned_2026-27.parquet` (model A, unchanged) | `49ef4c2f290de25e3f228c85231eeaf91d81d922f60c191ce1ab95df7b6cd1dd` |
+| `data/processed/learned_2026-27_analyst.parquet` (approved B) | `469c61b4f173e7bc5b91837cf5d157604237919598019a58bab5c1826a048c41` |
+| `static/data/board.json` (public FP/G ranks) | `c12bf6dfefeb6d8c65621cb9ceb0a126fc2661209e64dc43145c8143991d8b7d` |
+
+**Next session:** use these baselines instead of §26 for product-only work.
+The draft-sync live retest from prior local product work remains pending. This approval covers the
+specified player adjustments only: model refitting, draft-sheet/trigger rebuild,
+league-setting changes, dual freeze and opening-night nightly projections remain
+paused until separately requested. Multi-move streaming still awaits verified
+transaction rules. Preserve existing draft-session state and unrelated local work.

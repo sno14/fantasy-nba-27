@@ -5,6 +5,14 @@ they're completed. High-level "why" decisions live in the design notes below.
 
 ## Goal
 
+**2026-10-17 approved review:** Steven approved 60 firm recommendations and 77
+conditional alternatives from his October 16 review, retaining Wembanyama and
+Amen Thompson. Batch 28 is applied to saved Board B and both delivery surfaces;
+model A, GP and league/availability configuration are unchanged. This scoped
+approval does not resume the paused model fit, draft-sheet rebuild, dual freeze
+or nightly job. Current artifact baselines and verification are in
+[product-experience-plan §31](docs/product-experience-plan.md#31-approved-player-review--2026-10-17).
+
 Predict each NBA player's per-game stat line for the 2026-27 season, then convert those
 stats into fantasy points under a configurable league scoring system.
 
