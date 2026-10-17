@@ -4,6 +4,7 @@ data/processed/
 *.parquet
 *.csv
 !config/*.csv
+!static/data/draft-top-200.csv
 # Manual-data exception (Step 9c): tiny, static, hand-curated — the repo's source of truth.
 !data/manual/*.csv
 
@@ -15,6 +16,8 @@ data/manual/bbm_team_previews/
 config/analyst_proposals.yaml
 config/analyst_overrides.yaml
 config/overrides.yaml
+data/manual/availability_reviews/
+scripts/review_availability_20261017.py
 
 # Secrets (Step 19 / the ESPN draft feed). NOTE: config/ is COMMITTED — never put
 # credentials there. espn_s2 + SWID are live session cookies for a personal ESPN/Disney

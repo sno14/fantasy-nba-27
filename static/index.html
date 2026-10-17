@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#0b1118" />
     <title>Fantasy NBA 2026–27</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🏀%3C/text%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="style.css?v=13" />
+    <link rel="stylesheet" href="style.css?v=15" />
   </head>
   <body>
     <div class="shell">
@@ -72,8 +72,10 @@
               <button id="sort-direction" class="button subtle-action" aria-label="Change sort direction">Ascending ↑</button>
               <button id="reset-filters" class="link-button">Reset filters</button>
             </div>
-            <p class="board-explainer">Rank and tiers reflect projected FP/G when playing. Risk ranges describe season totals. Tap a Radar signal to see its explanation.</p>
+            <p class="board-explainer">Draft # orders Effective FP/G through March 21: unchanged FP/G, reviewed games played, and 35% marginal missed-game cover at up to 24 FP/G. GP means full NBA season. Risk preset shows 25% / 50% cover and playoff appearances. FP/G rank and tiers remain separate; legacy safe ranks, Radar, VOR and simulated ranges predate the GP review.</p>
+            <p><a class="button" href="#board?sort=draft_rank&amp;direction=1&amp;limit=200&amp;preset=draft">Draft value order</a> <a class="button subtle-action" href="data/draft-top-200.csv" download>Download top 200</a></p>
             <p id="status" class="status" role="status"></p>
+            <details id="availability-exceptions" class="status" hidden><summary>Players withheld from draft value order — roster/team flags</summary><p id="availability-exception-names"></p></details>
             <div class="backup-actions"><button id="export-watchlist" class="button subtle-action">Export watchlist</button><button id="import-watchlist" class="button subtle-action">Import watchlist</button><input id="watchlist-file" type="file" accept=".json,application/json" hidden /><span id="backup-status" role="status"></span></div>
           </div>
           <div id="board-table-wrap" class="table-wrap panel">
@@ -102,13 +104,14 @@
           <div class="mock-layout">
             <div class="panel mock-board-panel">
               <div class="mock-search-row">
-                <label class="search-field"><span>⌕</span><input id="mock-search" type="search" placeholder="Search available player…" autocomplete="off" /></label>
+                <label class="search-field"><span>⌕</span><input id="mock-search" aria-label="Search available players" type="search" placeholder="Search available player…" autocomplete="off" /></label>
                 <select id="mock-radar"><option>All</option><option>Targets</option><option>Fades</option><option>Watchlist</option></select>
                 <select id="mock-limit"><option value="30">Top 30 available</option><option value="60" selected>Top 60 available</option><option value="200">Top 200 available</option></select>
               </div>
+              <p id="mock-status" role="status" class="mock-status"></p>
               <div class="table-wrap mock-table-wrap">
                 <table class="board-table mock-table">
-                  <thead><tr><th>Rank</th><th class="player-col">Available player</th><th>Pos</th><th>FP/G</th><th>ADP</th><th>Radar</th><th></th></tr></thead>
+                  <thead><tr><th>Draft #</th><th class="player-col">Available player</th><th>Pos</th><th>FP/G</th><th>Effective FP/G</th><th>ADP</th><th>Legacy Radar</th><th></th></tr></thead>
                   <tbody id="mock-rows"></tbody>
                 </table>
               </div>
@@ -169,9 +172,9 @@
         <section id="view-compare" class="view" hidden><div id="compare-view"></div></section>
         <section id="view-method" class="view" hidden>
           <div class="method-grid">
-            <article class="panel prose"><p class="eyebrow">WHAT THIS IS</p><h2>A public projection companion</h2><p>This site is generated from the current learned-model Board B. It carries the approved analyst layer and simulated season ranges, then works entirely in your browser.</p><p>The displayed rank is ordinal projected FP/G. The internal safe season-value rank is retained as audit metadata and shown in player details, but it does not drive this public board.</p></article>
+            <article class="panel prose"><p class="eyebrow">WHAT THIS IS</p><h2>A public projection companion</h2><p>This site is generated from the current learned-model Board B. It carries the approved analyst layer and simulated season ranges, then works entirely in your browser.</p><p>Draft # orders Effective FP/G through March 21 using reviewed availability and prudent replacement cover. FP/G rank and tiers remain the original scoring-when-playing view. Legacy safe ranks and ranges are retained as pre-review context.</p></article>
             <article class="panel prose"><p class="eyebrow">WHAT STAYS LOCAL</p><h2>Live and private workflows</h2><p>The public Mock Draft is manual and stored only in your browser. Live ESPN polling, in-season roster ownership, waiver and matchup tools, raw caches, private BBM notes, analyst rationales, and proposal editing remain in the local app.</p><p>Those features require a backend or contain review material that should not be embedded in a public static site.</p></article>
-            <article class="panel prose"><p class="eyebrow">FIELDS</p><h2>How to read the board</h2><dl><dt>25–26 FP/G</dt><dd>Last season's actual production under the same scoring settings.</dd><dt>Proj Δ</dt><dd>Projected FP/G minus last season's FP/G.</dd><dt>VOR</dt><dd>Projected FP/G above league replacement.</dd><dt>ADP</dt><dd>Market draft position; availability, not projected value.</dd><dt>Season range</dt><dd>Simulated p10, median, and p90 season totals.</dd><dt>Risk</dt><dd>Relative width of that season-total range; lower is more stable.</dd></dl></article>
+            <article class="panel prose"><p class="eyebrow">FIELDS</p><h2>How to read the board</h2><dl><dt>25–26 FP/G</dt><dd>Last season's actual production under the same scoring settings.</dd><dt>Proj Δ</dt><dd>Projected FP/G minus last season's FP/G.</dd><dt>VOR</dt><dd>Projected FP/G above league replacement.</dd><dt>ADP</dt><dd>Market draft position; availability, not projected value.</dd><dt>Season range</dt><dd>Legacy simulated p10, median, and p90 season totals from before the October 17 GP review; not used in Effective FP/G.</dd><dt>Risk</dt><dd>Relative width of that season-total range; lower is more stable.</dd></dl></article>
           </div>
         </section>
       </main>
@@ -203,6 +206,6 @@
       <label><input type="radio" name="import-mode" value="replace" /> Replace — remove existing targets before importing.</label>
       <div class="target-actions"><button id="cancel-import" class="button subtle-action">Cancel</button><button id="confirm-import" class="button">Confirm import</button></div>
     </div></dialog>
-    <script type="module" src="app.js?v=14"></script>
+    <script type="module" src="app.js?v=15"></script>
   </body>
 </html>

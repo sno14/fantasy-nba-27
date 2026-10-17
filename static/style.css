@@ -204,6 +204,9 @@ tbody tr:hover { background: rgba(116,168,255,.045); }
 .mock-table .player-col small { display: block; margin-top: 2px; color: var(--muted-2); font-size: .59rem; }
 .draft-button { border: 1px solid #35614f; border-radius: 6px; background: var(--accent-soft); color: var(--accent); padding: 5px 8px; cursor: pointer; font-size: .68rem; font-weight: 800; }
 .draft-button:hover { background: rgba(98,214,162,.2); }
+.draft-button { min-height: 40px; }
+.draft-button:disabled { opacity: .4; cursor: default; }
+.mock-status { padding: 0 12px 10px; font-size: .75rem; color: var(--muted-2); }
 .mock-side { display: grid; align-content: start; gap: 12px; }
 .mock-picks-panel { overflow: hidden; }
 .mock-picks-panel header { display: flex; justify-content: space-between; align-items: center; padding: 13px 14px; border-bottom: 1px solid var(--line); }
