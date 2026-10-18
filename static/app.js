@@ -10,6 +10,32 @@ const integer = (value) => fmt(value, 0);
 const signed = (value, digits = 1) => value == null || !Number.isFinite(Number(value)) ? "—" : `${Number(value) > 0 ? "+" : ""}${Number(value).toFixed(digits)}`;
 const esc = (value) => String(value ?? "").replace(/[&<>'"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]);
 
+function upsideBadge(profile) {
+  const label = profile || "Not reviewed";
+  const [tone, description] = ({
+    "Breakout potential": ["good", "A draftable base with a path to greater production. Check price and obstacle."],
+    "Opportunity flyer": ["flyer", "Needs a role or rotation change to pay off; more speculative."],
+    "Recovery bet": ["recovery", "Depends on health or a return to form; not a new-role breakout."],
+    "Established role": ["neutral", "Most of the current opportunity is already priced."],
+  })[label] || ["neutral", "No upside review recorded."];
+  return `<span class="draft-signal signal-${tone}" title="${esc(description)}">${esc(label)}</span>`;
+}
+
+function playoffGames(value) {
+  if (!value) return "—";
+  return `<span class="playoff-signals">${value.split("/").map((part, i) => {
+    const n = Number(part.trim()), valid = part.trim() !== "" && Number.isFinite(n);
+    const tone = valid && n >= 8 ? "good" : valid && n <= 6 ? "low" : "neutral";
+    const description = tone === "good" ? "more games" : tone === "low" ? "fewer games" : "neutral";
+    const title = `Round ${i + 1}: ${part.trim()} scheduled games, ${description}`;
+    return `<span class="playoff-round">${i ? '<span aria-hidden="true" class="playoff-divider">/</span>' : ''}<span class="draft-signal playoff-count signal-${tone}" title="${esc(title)}" aria-label="${esc(title)}">${esc(part.trim())}</span></span>`;
+  }).join("")}</span>`;
+}
+
+function draftSignalLegend() {
+  return `<div class="draft-signal-legend"><span>Playoffs: <span class="draft-signal signal-low">≤6</span> <span class="draft-signal signal-neutral">7</span> <span class="draft-signal signal-good">≥8</span></span><span>Upside: ${["Breakout potential", "Opportunity flyer", "Recovery bet", "Established role"].map(upsideBadge).join(" ")}</span></div>`;
+}
+
 function storageUnavailable() {
   const note = $("#storage-note");
   if (note) note.hidden = false;
@@ -360,8 +386,8 @@ function drawMock() {
     <td class="muted">${esc((row.positions || "—").replaceAll("|", "/"))}</td>
     <td class="fpg tnum">${fmt(row.fpts_pg)}</td>
     <td class="fpg tnum">${fmt(row.effective_fpts_pg)}</td>
-    <td><button class="player-button" data-player="${row.PLAYER_ID}">${esc(row.upside_profile || "Not reviewed")}</button></td>
-    <td class="tnum">${esc(row.playoff_schedule || "—")}</td>
+    <td><button class="player-button" data-player="${row.PLAYER_ID}">${upsideBadge(row.upside_profile)}</button></td>
+    <td class="tnum">${playoffGames(row.playoff_schedule)}</td>
     <td class="tnum">${integer(row.adp)}</td>
     <td>${radarMarkup(row, pickIndex + 1)}</td>
     <td><button class="draft-button" aria-label="Draft ${esc(row.PLAYER_NAME)}" data-draft-player="${row.PLAYER_ID}" ${complete ? "disabled" : ""}>Draft</button></td>
@@ -480,8 +506,8 @@ const BOARD_COLUMNS = [
   { key: "coverage", label: "Effective: 25% / 50% cover", render: row => `${fmt(row.effective_fpts_pg_c25)} / ${fmt(row.effective_fpts_pg_c50)}` },
   { key: "playoffs", label: "Playoff GP: R1 / R2 / final", render: row => `${fmt(row.playoff_gp_1)} / ${fmt(row.playoff_gp_2)} / ${fmt(row.playoff_gp_3)}` },
   { key: "availability", label: "Availability note", render: row => esc(row.availability_flag || (row.availability_reviewed ? "GP reviewed Oct 17" : "Not reviewed")) },
-  { key: "upside", label: "Upside", render: row => `<button class="player-button" data-player="${row.PLAYER_ID}" aria-label="Upside for ${esc(row.PLAYER_NAME)}">${esc(row.upside_profile || "Not reviewed")}</button>` },
-  { key: "playoffSchedule", label: "Playoff games", render: row => `<button class="player-button" data-player="${row.PLAYER_ID}" title="Scheduled games: Feb 1–14 / Feb 15–Mar 7 / Mar 8–21">${esc(row.playoff_schedule || "—")}</button>` },
+  { key: "upside", label: "Upside", render: row => `<button class="player-button" data-player="${row.PLAYER_ID}" aria-label="Upside for ${esc(row.PLAYER_NAME)}">${upsideBadge(row.upside_profile)}</button>` },
+  { key: "playoffSchedule", label: "Playoff games", render: row => `<button class="player-button" data-player="${row.PLAYER_ID}" title="Scheduled games: Feb 1–14 / Feb 15–Mar 7 / Mar 8–21">${playoffGames(row.playoff_schedule)}</button>` },
   { key: "previous", label: "25–26 FP/G", sort: "previous_fpts_pg", render: row => fmt(row.previous_fpts_pg) },
   { key: "change", label: "Proj Δ", sort: "fpts_pg_change", render: row => changeMarkup(row.fpts_pg_change) },
   { key: "vor", label: "VOR", sort: "vor", render: row => fmt(row.vor) },
@@ -596,7 +622,7 @@ function drawBoard() {
   $("#board-cards").innerHTML = rows.map(row => `<article class="player-card panel" data-card="${row.PLAYER_ID}">
     <header><span class="rank">Draft ${integer(row.draft_rank)}</span><div class="card-player">${playerMarkup(row)}<span class="card-position">${esc((row.positions || "Position unavailable").replaceAll("|", "/"))}</span></div><label class="card-compare">${compareMarkup(row)}<span>Compare</span></label></header>
     <div class="card-metrics"><div><small>FP/G</small><strong class="fpg tnum">${fmt(row.fpts_pg)}</strong></div><div><small>Effective FP/G</small><strong class="fpg tnum">${fmt(row.effective_fpts_pg)}</strong></div><div><small>ADP</small><strong class="tnum">${integer(row.adp)}</strong></div></div>
-    <p class="status"><button class="player-button" data-player="${row.PLAYER_ID}">${esc(row.upside_profile || "Not reviewed")}</button> · Playoffs: ${esc(row.playoff_schedule || "—")}</p>
+    <p class="status"><button class="player-button" data-player="${row.PLAYER_ID}">${upsideBadge(row.upside_profile)}</button> · Playoffs: ${playoffGames(row.playoff_schedule)}</p>
     <details${expanded.has(String(row.PLAYER_ID)) ? " open" : ""}><summary>Projection details</summary><dl>${detailColumns.map(column => `<div><dt>${esc(column.label)}</dt><dd>${column.render(row) || "—"}</dd></div>`).join("")}</dl></details>
   </article>`).join("");
   $("#view-board").dataset.layout = state.layout;
@@ -749,7 +775,7 @@ function openPlayer(id, navigate = true) {
     <div class="detail-body">
       <div class="detail-stats"><div class="detail-stat"><small>FP / game</small><strong>${fmt(row.fpts_pg)}</strong></div><div class="detail-stat"><small>2025-26 FP/G</small><strong>${fmt(row.previous_fpts_pg)}</strong></div><div class="detail-stat"><small>Projected change</small><strong>${changeMarkup(row.fpts_pg_change)}</strong></div><div class="detail-stat"><small>VOR</small><strong>${fmt(row.vor)}</strong></div><div class="detail-stat"><small>Projected GP</small><strong>${integer(row.gp)}</strong></div><div class="detail-stat"><small>Projected MPG</small><strong>${fmt(row.mpg)}</strong></div><div class="detail-stat"><small>Age</small><strong>${integer(row.target_age)}</strong></div><div class="detail-stat"><small>ADP</small><strong>${integer(row.adp)}</strong></div><div class="detail-stat"><small>Risk</small><strong>${fmt(row.risk, 2)}</strong></div><div class="detail-stat"><small>Market read</small><strong>${esc(valueText)}</strong></div></div>
       <section class="detail-section"><h3>Projected per-game line</h3><div class="projection-line">${[["PTS",row.pts],["REB",row.reb],["AST",row.ast],["STL",row.stl],["BLK",row.blk],["3PM",row.fg3m],["TOV",row.tov]].map(([label,value]) => `<div><small>${label}</small><strong>${fmt(value)}</strong></div>`).join("")}</div></section>
-      <section class="detail-section" data-upside-detail><h3>${esc(row.upside_profile || "Not reviewed")}</h3><p><strong>Path:</strong> ${esc(row.upside_path || "No reviewed path recorded.")}</p><p><strong>Obstacle:</strong> ${esc(row.upside_obstacle || "—")}</p><p>${esc(row.upside_priced || "")}</p>${row.upside_fpts_pg != null ? `<p><strong>Conditional upside: ${fmt(row.upside_fpts_pg)} FP/G.</strong> ${esc(row.upside_scenario)}</p>` : ""}${row.draft_target_start != null ? `<p><strong>Target picks ${integer(row.draft_target_start)}–${integer(row.draft_target_end)}; earliest ${integer(row.draft_earliest)}.</strong> A price guide, not guaranteed availability.</p>` : ""}<p>${esc(row.draft_approach || "")}</p><p>${esc(row.upside_trigger || "")}</p><p>Judgmental scenarios, not calibrated ceilings. Central projections are unchanged.</p><p><strong>Playoff games:</strong> ${esc(row.playoff_schedule || "—")} · Feb 1–14 / Feb 15–Mar 7 / Mar 8–21.</p><p>Back-to-back second nights: ${esc(row.playoff_b2b || "—")}. Games on days with at most seven NBA games: ${esc(row.playoff_light || "—")}. Your lineup may still be congested.</p></section>
+      <section class="detail-section" data-upside-detail><h3>${upsideBadge(row.upside_profile)}</h3><p><strong>Path:</strong> ${esc(row.upside_path || "No reviewed path recorded.")}</p><p><strong>Obstacle:</strong> ${esc(row.upside_obstacle || "—")}</p><p>${esc(row.upside_priced || "")}</p>${row.upside_fpts_pg != null ? `<p><strong>Conditional upside: ${fmt(row.upside_fpts_pg)} FP/G.</strong> ${esc(row.upside_scenario)}</p>` : ""}${row.draft_target_start != null ? `<p><strong>Target picks ${integer(row.draft_target_start)}–${integer(row.draft_target_end)}; earliest ${integer(row.draft_earliest)}.</strong> A price guide, not guaranteed availability.</p>` : ""}<p>${esc(row.draft_approach || "")}</p><p>${esc(row.upside_trigger || "")}</p><p>Judgmental scenarios, not calibrated ceilings. Central projections are unchanged.</p><p><strong>Playoff games:</strong> ${playoffGames(row.playoff_schedule)} · Feb 1–14 / Feb 15–Mar 7 / Mar 8–21.</p><p>Back-to-back second nights: ${esc(row.playoff_b2b || "—")}. Games on days with at most seven NBA games: ${esc(row.playoff_light || "—")}. Your lineup may still be congested.</p></section>
       <section class="detail-section"><h3>Availability · reviewed October 17</h3><div class="season-band"><div><small>Draft #</small><strong>${integer(row.draft_rank)}</strong></div><div><small>Effective FP/G</small><strong>${fmt(row.effective_fpts_pg)}</strong></div><div><small>GP through March 21</small><strong>${fmt(row.league_gp)}</strong></div></div><p>${esc(row.availability_flag || "Central GP judgment; no additional safe-rank penalty.")}</p><p>At 25% / 50% cover: ${fmt(row.effective_fpts_pg_c25)} / ${fmt(row.effective_fpts_pg_c50)} effective FP/G. Playoff appearances: ${fmt(row.playoff_gp_1)} / ${fmt(row.playoff_gp_2)} / ${fmt(row.playoff_gp_3)}. GP scenarios through March 21: ${fmt(row.league_gp_low)}–${fmt(row.league_gp_high)} (not confidence intervals).</p></section>
       <section class="detail-section"><h3>Legacy simulated season totals · before GP review</h3><div class="season-band"><div><small>Floor · p10</small><strong>${integer(row.fpts_p10)}</strong></div><div><small>Median</small><strong>${integer(row.fpts_median)}</strong></div><div><small>Ceiling · p90</small><strong>${integer(row.fpts_p90)}</strong></div></div></section>
       <section class="detail-section" id="public-minutes"><h3>Minutes scenario</h3><p class="muted">Loading verified minutes data...</p></section>
@@ -1068,6 +1094,8 @@ fetch("data/board.json", { cache: "no-store" })
   .then(response => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
   .then(data => {
     state.meta = data;
+    $("#strategy-colour-key").innerHTML = draftSignalLegend();
+    $("#mock-colour-key").innerHTML = draftSignalLegend();
     $("#strategy-market").textContent = `${data.market_label || "Consensus ADP"}. Click Upside for the path, obstacle and draft price guide. Playoff games are whole matchup totals.`;
     $("#strategy-watchlist").hidden = !data.strategy_watchlist?.length;
     $("#strategy-watchlist-rows").innerHTML = (data.strategy_watchlist || []).map(w => `<p><strong>${esc(w.name)} · ${esc(w.team)} · ${esc(w.positions)} · ESPN ADP ${fmt(w.adp)}</strong></p><p>${esc(w.note)}</p><p>Earliest pick ${integer(w.earliest_pick)}. ${esc(w.trigger)}</p>`).join("");

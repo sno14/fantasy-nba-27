@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,6 +8,7 @@
     <title>Fantasy NBA 2026–27</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🏀%3C/text%3E%3C/svg%3E" />
     <link rel="stylesheet" href="style.css?v=15" />
+    <link rel="stylesheet" href="draft-signals.css?v=1" />
   </head>
   <body>
     <div class="shell">
@@ -76,6 +77,7 @@
             <p><a class="button" href="#board?sort=draft_rank&amp;direction=1&amp;limit=200&amp;preset=draft">Draft value order</a> <a class="button subtle-action" href="data/draft-top-200.csv" download>Download top 200</a></p>
             <p id="status" class="status" role="status"></p>
             <p id="strategy-market" class="status"></p>
+            <div id="strategy-colour-key"></div>
             <details id="strategy-watchlist" class="status" hidden><summary>Extra flyer watchlist · no approved projection</summary><div id="strategy-watchlist-rows"></div></details>
             <details id="availability-exceptions" class="status" hidden><summary>Players withheld from draft value order — roster/team flags</summary><p id="availability-exception-names"></p></details>
             <div class="backup-actions"><button id="export-watchlist" class="button subtle-action">Export watchlist</button><button id="import-watchlist" class="button subtle-action">Import watchlist</button><input id="watchlist-file" type="file" accept=".json,application/json" hidden /><span id="backup-status" role="status"></span></div>
@@ -111,6 +113,7 @@
                 <select id="mock-limit"><option value="30">Top 30 available</option><option value="60" selected>Top 60 available</option><option value="200">Top 200 available</option></select>
               </div>
               <p id="mock-status" role="status" class="mock-status"></p>
+              <div id="mock-colour-key"></div>
               <div class="table-wrap mock-table-wrap">
                 <table class="board-table mock-table">
                   <thead><tr><th>Draft #</th><th class="player-col">Available player</th><th>Pos</th><th>FP/G</th><th>Effective FP/G</th><th>Upside</th><th>Playoff games</th><th>ADP</th><th>Price signal</th><th></th></tr></thead>
@@ -208,6 +211,6 @@
       <label><input type="radio" name="import-mode" value="replace" /> Replace — remove existing targets before importing.</label>
       <div class="target-actions"><button id="cancel-import" class="button subtle-action">Cancel</button><button id="confirm-import" class="button">Confirm import</button></div>
     </div></dialog>
-    <script type="module" src="app.js?v=16"></script>
+    <script type="module" src="app.js?v=17"></script>
   </body>
 </html>

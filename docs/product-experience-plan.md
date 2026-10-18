@@ -1029,3 +1029,31 @@ Model refits, central analyst promotion, draft-sheet/trigger regeneration, dual
 freeze and nightly updates remain held. Live ESPN latency verification and
 unrelated local source changes remain outstanding. Publishing public artifacts
 does not authorize committing those unrelated changes.
+
+
+## 35. Draft colour cues - 2026-10-18
+
+User requested scan-friendly colours for playoff games and upside profiles.
+Both boards, mobile cards, player details and draft rooms now use individual
+round badges: six or fewer games red, seven neutral, eight or more green.
+Breakout potential is green, Opportunity flyer amber, Recovery bet purple and
+Established role neutral. The profile text remains explicit; colours describe
+the type of opportunity, not a calibrated probability or automatic draft order.
+Compact legends and descriptive tooltips accompany the badges. One CSS source
+serves both surfaces, with light/dark colours and forced-colour borders.
+
+- [x] Local production frontend built; static JavaScript syntax checked.
+- [x] Original projections, ADP, strategy, availability and draft state untouched.
+- [x] Shared colour styling and all board/room/detail renderers implemented.
+- [x] Read-only browser checks passed for all 600 top-200 round badges, all four
+  profile colours, desktop/mobile boards and draft rooms, plus light/dark views.
+  Projection and clean draft-session hashes are unchanged.
+
+The real draft session was separately cleaned with explicit user authorization:
+league 1235399356, Team 8, zero picks, 599 available players, Manual source until
+opening the real draft. Prior state was backed up and other sessions preserved.
+The latest mock captured 155 consecutive selections with no unresolved players
+or internal gaps; final selection 156 and live timing were not confirmed.
+
+Private colour/browser evidence: data/processed/draft_colour_review_2026-10-18/.
+No board export, model work or new projection judgment is part of this change.

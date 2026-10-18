@@ -1,0 +1,27 @@
+/* Shared by the static board and the React app; text remains explicit without colour. */
+:root {
+  --signal-good: #166534; --signal-good-bg: #dcfce7;
+  --signal-low: #991b1b; --signal-low-bg: #fee2e2;
+  --signal-flyer: #854d0e; --signal-flyer-bg: #fef3c7;
+  --signal-recovery: #6b21a8; --signal-recovery-bg: #f3e8ff;
+  --signal-neutral: #52525b; --signal-neutral-bg: #f4f4f5;
+}
+:root[data-theme="dark"] {
+  --signal-good: #86efac; --signal-good-bg: #143b2b;
+  --signal-low: #fca5a5; --signal-low-bg: #451f29;
+  --signal-flyer: #fcd34d; --signal-flyer-bg: #42331a;
+  --signal-recovery: #d8b4fe; --signal-recovery-bg: #36234c;
+  --signal-neutral: #cbd5e1; --signal-neutral-bg: #253142;
+}
+.draft-signal { display: inline-flex; align-items: center; justify-content: center; padding: 3px 7px; border-radius: 5px; font-size: 12px; font-weight: 700; line-height: 1.4; white-space: nowrap; text-decoration: none; }
+.signal-good { color: var(--signal-good); background: var(--signal-good-bg); }
+.signal-low { color: var(--signal-low); background: var(--signal-low-bg); }
+.signal-flyer { color: var(--signal-flyer); background: var(--signal-flyer-bg); }
+.signal-recovery { color: var(--signal-recovery); background: var(--signal-recovery-bg); }
+.signal-neutral { color: var(--signal-neutral); background: var(--signal-neutral-bg); font-weight: 500; }
+.playoff-signals, .playoff-round { display: inline-flex; align-items: center; gap: 5px; vertical-align: middle; white-space: nowrap; }
+.playoff-count { min-width: 25px; font-variant-numeric: tabular-nums; }
+.playoff-divider { opacity: .55; font-weight: 400; }
+.draft-signal-legend { display: flex; flex-wrap: wrap; gap: 7px 18px; align-items: center; font-size: 12px; margin: 8px 0; }
+.draft-signal-legend > span { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+@media (forced-colors: active) { .draft-signal { border: 1px solid CanvasText; } }
