@@ -25,3 +25,11 @@
 .draft-signal-legend { display: flex; flex-wrap: wrap; gap: 7px 18px; align-items: center; font-size: 12px; margin: 8px 0; }
 .draft-signal-legend > span { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
 @media (forced-colors: active) { .draft-signal { border: 1px solid CanvasText; } }
+.draft-name { background: transparent; font-weight: 700; }
+.draft-name.signal-neutral { color: inherit; font-weight: 600; }
+.upside-value { gap: 6px; font-variant-numeric: tabular-nums; }
+.upside-value strong { font-size: 14px; }
+.upside-value small { font-size: 10px; font-weight: 500; }
+.upside-unestimated { opacity: .55; }
+.priority-inline { font-size: 10px; font-weight: 700; margin-left: 4px; white-space: nowrap; }
+.draft-focus-note { font-size: 12px; line-height: 1.5; margin: 6px 0; opacity: .85; }

@@ -1057,3 +1057,36 @@ or internal gaps; final selection 156 and live timing were not confirmed.
 
 Private colour/browser evidence: data/processed/draft_colour_review_2026-10-18/.
 No board export, model work or new projection judgment is part of this change.
+
+
+## 36. Fast draft decisions: visible upside and reduced clutter - 2026-10-18
+
+User requested coloured names, the existing numerical upside cases directly on
+the draft board, and less clutter during live picks. Both surfaces now show
+base FP/G, conditional Upside FP/G with its gain over base, Effective FP/G,
+ADP and playoff schedules alongside player/rank/eligibility. Names inherit the
+reviewed profile colours; unresolved availability/roster cases are red. A dash
+explicitly means no numerical upside estimate, not zero upside or a lower ceiling.
+Dyson Daniels displays 36.1 base and 39.6 upside (+3.6); the exact 39.63 remains
+in the tooltip. No new cases, predictions, bonuses or ranks were generated.
+
+The local room removes VOR, risk, floor, GP-to-horizon and Radar columns. The
+public mock removes its market-signal column. Both default boards replace the
+separate GP/profile columns with the numerical upside view. Full research/detail
+views retain historical context. Clicking the upside value opens the existing
+path, obstacle and price guide. ADP remains the market reference; filter labels
+now explain discounts/premiums rather than an unexplained Radar label.
+
+Personal stars remain user-owned. Existing take-by reminders are displayed beside
+the player's star (and show due in the draft room), so removing Radar does not
+hide the user's shortlist instructions. No personal targets were automatically
+added or overwritten. Browser checks use isolated test targets only.
+
+- [x] Production frontend build and static JavaScript syntax passed.
+- [x] Both boards and rooms checked for Dyson's value/gain, coloured names,
+  unestimated Fox, accessible detail clicks, priority reminders and mobile width.
+- [x] All projection, availability, strategy and saved draft-state hashes unchanged.
+
+Private evidence: data/processed/draft_focus_2026-10-18/.
+The real league remains Team 8 with zero picks and Manual source, ready to switch
+to ESPN in the correct draft tonight. This change does not resume model work.

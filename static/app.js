@@ -21,6 +21,28 @@ function upsideBadge(profile) {
   return `<span class="draft-signal signal-${tone}" title="${esc(description)}">${esc(label)}</span>`;
 }
 
+function draftNameClass(row) {
+  const tone = row.availability_reviewed && row.draft_rank == null ? 'low' : ({'Breakout potential':'good','Opportunity flyer':'flyer','Recovery bet':'recovery'})[row.upside_profile] || 'neutral';
+  return `draft-name signal-${tone}`;
+}
+
+function draftNameTitle(row) {
+  return [row.upside_profile || 'Not reviewed', row.upside_path, row.upside_obstacle].filter(Boolean).join(' · ');
+}
+
+function upsideValue(row) {
+  if (row.upside_fpts_pg == null) return '<span class="upside-unestimated" title="No numerical upside case estimated. This does not mean no upside." aria-label="Upside not estimated">—</span>';
+  const gain = row.upside_fpts_pg - row.fpts_pg;
+  const tone = ({'Breakout potential':'good','Opportunity flyer':'flyer','Recovery bet':'recovery'})[row.upside_profile] || 'neutral';
+  return `<span class="draft-signal upside-value signal-${tone}" title="${esc(`Conditional upside ${fmt(row.upside_fpts_pg,2)} FP/G; +${fmt(gain,2)} versus base. ${row.upside_scenario || ''}`)}"><strong>${fmt(row.upside_fpts_pg)}</strong><small>+${fmt(gain)}</small></span>`;
+}
+
+function priorityReminder(row, currentPick = null) {
+  const target = state.targets[String(row.PLAYER_ID)];
+  if (target?.takeBy == null) return '';
+  return `<span class="priority-inline">${currentPick != null && currentPick >= target.takeBy ? 'due' : `by ${integer(target.takeBy)}`}</span>`;
+}
+
 function playoffGames(value) {
   if (!value) return "—";
   return `<span class="playoff-signals">${value.split("/").map((part, i) => {
@@ -382,16 +404,15 @@ function drawMock() {
   $("#mock-status").textContent = complete ? "Draft complete. Undo a pick to make a correction." : `${available.length} matching players. Assign picks to the selected team; these team numbers are mock positions, not your ESPN order.`;
   $("#mock-rows").innerHTML = available.slice(0, state.mock.limit).map(row => `<tr>
     <td class="rank tnum">${integer(row.draft_rank)}</td>
-    <td class="player-col"><button class="player-button" data-player="${row.PLAYER_ID}">${esc(row.PLAYER_NAME)}</button><button class="target-star ${isTarget(row) ? "active" : ""}" data-target-player="${row.PLAYER_ID}" title="${isTarget(row) ? "Edit priority target" : "Add priority target"}">${isTarget(row) ? "★" : "☆"}</button><small>${esc(row.TEAM_ABBREVIATION || "—")}</small></td>
+    <td class="player-col"><button class="player-button ${draftNameClass(row)}" title="${esc(draftNameTitle(row))}" data-player="${row.PLAYER_ID}">${esc(row.PLAYER_NAME)}</button><button class="target-star ${isTarget(row) ? "active" : ""}" data-target-player="${row.PLAYER_ID}" title="${isTarget(row) ? "Edit priority target" : "Add priority target"}">${isTarget(row) ? "★" : "☆"}${priorityReminder(row, pickIndex + 1)}</button><small>${esc(row.TEAM_ABBREVIATION || "—")}</small></td>
     <td class="muted">${esc((row.positions || "—").replaceAll("|", "/"))}</td>
     <td class="fpg tnum">${fmt(row.fpts_pg)}</td>
+    <td class="tnum"><button class="player-button" data-player="${row.PLAYER_ID}" aria-label="Upside for ${esc(row.PLAYER_NAME)}">${upsideValue(row)}</button></td>
     <td class="fpg tnum">${fmt(row.effective_fpts_pg)}</td>
-    <td><button class="player-button" data-player="${row.PLAYER_ID}">${upsideBadge(row.upside_profile)}</button></td>
     <td class="tnum">${playoffGames(row.playoff_schedule)}</td>
     <td class="tnum">${integer(row.adp)}</td>
-    <td>${radarMarkup(row, pickIndex + 1)}</td>
     <td><button class="draft-button" aria-label="Draft ${esc(row.PLAYER_NAME)}" data-draft-player="${row.PLAYER_ID}" ${complete ? "disabled" : ""}>Draft</button></td>
-  </tr>`).join("") || `<tr><td colspan="10" class="muted">No matching available players. Clear search or change the Radar filter.</td></tr>`;
+  </tr>`).join("") || `<tr><td colspan="9" class="muted">No matching available players. Clear search or change the Radar filter.</td></tr>`;
 
   const recent = state.mock.picks.slice(-12).reverse();
   $("#mock-pick-total").textContent = `${pickIndex} picks`;
@@ -484,7 +505,7 @@ function toggleCompare(id) {
 }
 
 function playerMarkup(row) {
-  return `<button class="player-button" data-player="${row.PLAYER_ID}">${esc(row.PLAYER_NAME)}</button><button class="target-star ${isTarget(row) ? "active" : ""}" data-target-player="${row.PLAYER_ID}" aria-label="${isTarget(row) ? "Edit" : "Add"} priority target for ${esc(row.PLAYER_NAME)}" title="${isTarget(row) ? "Edit priority target" : "Add priority target"}">${isTarget(row) ? "★" : "☆"}</button><small class="player-team">${esc(row.TEAM_ABBREVIATION || "—")}</small>`;
+  return `<button class="player-button ${draftNameClass(row)}" title="${esc(draftNameTitle(row))}" data-player="${row.PLAYER_ID}">${esc(row.PLAYER_NAME)}</button><button class="target-star ${isTarget(row) ? "active" : ""}" data-target-player="${row.PLAYER_ID}" aria-label="${isTarget(row) ? "Edit" : "Add"} priority target for ${esc(row.PLAYER_NAME)}" title="${isTarget(row) ? "Edit priority target" : "Add priority target"}">${isTarget(row) ? "★" : "☆"}${priorityReminder(row)}</button><small class="player-team">${esc(row.TEAM_ABBREVIATION || "—")}</small>`;
 }
 
 function compareMarkup(row) {
@@ -500,13 +521,14 @@ const BOARD_COLUMNS = [
   { key: "tier", label: "Tier", sort: "tier", render: row => integer(row.tier) },
   { key: "age", label: "Age", sort: "target_age", render: row => integer(row.target_age) },
   { key: "fpg", label: "FP/G", sort: "fpts_pg", className: "fpg tnum", render: row => fmt(row.fpts_pg) },
+  { key: "upsideValue", label: "Upside FP/G", sort: "upside_fpts_pg", className: "tnum", render: row => `<button class="player-button" data-player="${row.PLAYER_ID}" aria-label="Upside for ${esc(row.PLAYER_NAME)}">${upsideValue(row)}</button>` },
   { key: "effective", label: "Effective FP/G", sort: "effective_fpts_pg", className: "fpg tnum", render: row => fmt(row.effective_fpts_pg) },
   { key: "draftRank", label: "Draft #", sort: "draft_rank", className: "rank tnum", render: row => integer(row.draft_rank) },
   { key: "leagueGp", label: "GP to Mar 21", sort: "league_gp", render: row => fmt(row.league_gp) },
   { key: "coverage", label: "Effective: 25% / 50% cover", render: row => `${fmt(row.effective_fpts_pg_c25)} / ${fmt(row.effective_fpts_pg_c50)}` },
   { key: "playoffs", label: "Playoff GP: R1 / R2 / final", render: row => `${fmt(row.playoff_gp_1)} / ${fmt(row.playoff_gp_2)} / ${fmt(row.playoff_gp_3)}` },
   { key: "availability", label: "Availability note", render: row => esc(row.availability_flag || (row.availability_reviewed ? "GP reviewed Oct 17" : "Not reviewed")) },
-  { key: "upside", label: "Upside", render: row => `<button class="player-button" data-player="${row.PLAYER_ID}" aria-label="Upside for ${esc(row.PLAYER_NAME)}">${upsideBadge(row.upside_profile)}</button>` },
+  { key: "upside", label: "Upside", render: row => `<button class="player-button" data-player="${row.PLAYER_ID}" aria-label="Upside profile for ${esc(row.PLAYER_NAME)}">${upsideBadge(row.upside_profile)}</button>` },
   { key: "playoffSchedule", label: "Playoff games", render: row => `<button class="player-button" data-player="${row.PLAYER_ID}" title="Scheduled games: Feb 1–14 / Feb 15–Mar 7 / Mar 8–21">${playoffGames(row.playoff_schedule)}</button>` },
   { key: "previous", label: "25–26 FP/G", sort: "previous_fpts_pg", render: row => fmt(row.previous_fpts_pg) },
   { key: "change", label: "Proj Δ", sort: "fpts_pg_change", render: row => changeMarkup(row.fpts_pg_change) },
@@ -522,7 +544,7 @@ const BOARD_COLUMNS = [
 ];
 
 const COLUMN_PRESETS = {
-  draft: ["compare", "draftRank", "player", "positions", "fpg", "effective", "gp", "upside", "playoffSchedule", "adp"],
+  draft: ["compare", "draftRank", "player", "positions", "fpg", "upsideValue", "effective", "playoffSchedule", "adp"],
   performance: ["compare", "rank", "player", "positions", "fpg", "effective", "previous", "change", "mpg", "gp"],
   risk: ["compare", "draftRank", "player", "fpg", "effective", "gp", "leagueGp", "coverage", "playoffs", "availability"],
   full: BOARD_COLUMNS.map(column => column.key),
@@ -621,7 +643,7 @@ function drawBoard() {
   const detailColumns = BOARD_COLUMNS.filter(column => !["compare", "rank", "player", "positions", "team", "fpg", "adp", "radar"].includes(column.key));
   $("#board-cards").innerHTML = rows.map(row => `<article class="player-card panel" data-card="${row.PLAYER_ID}">
     <header><span class="rank">Draft ${integer(row.draft_rank)}</span><div class="card-player">${playerMarkup(row)}<span class="card-position">${esc((row.positions || "Position unavailable").replaceAll("|", "/"))}</span></div><label class="card-compare">${compareMarkup(row)}<span>Compare</span></label></header>
-    <div class="card-metrics"><div><small>FP/G</small><strong class="fpg tnum">${fmt(row.fpts_pg)}</strong></div><div><small>Effective FP/G</small><strong class="fpg tnum">${fmt(row.effective_fpts_pg)}</strong></div><div><small>ADP</small><strong class="tnum">${integer(row.adp)}</strong></div></div>
+    <div class="card-metrics"><div><small>FP/G</small><strong class="fpg tnum">${fmt(row.fpts_pg)}</strong></div><div><small>Upside FP/G</small><button class="player-button" data-player="${row.PLAYER_ID}">${upsideValue(row)}</button></div><div><small>Effective FP/G</small><strong class="fpg tnum">${fmt(row.effective_fpts_pg)}</strong></div><div><small>ADP</small><strong class="tnum">${integer(row.adp)}</strong></div></div>
     <p class="status"><button class="player-button" data-player="${row.PLAYER_ID}">${upsideBadge(row.upside_profile)}</button> · Playoffs: ${playoffGames(row.playoff_schedule)}</p>
     <details${expanded.has(String(row.PLAYER_ID)) ? " open" : ""}><summary>Projection details</summary><dl>${detailColumns.map(column => `<div><dt>${esc(column.label)}</dt><dd>${column.render(row) || "—"}</dd></div>`).join("")}</dl></details>
   </article>`).join("");
