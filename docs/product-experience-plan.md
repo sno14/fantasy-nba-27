@@ -993,3 +993,39 @@ specified player adjustments only: model refitting, draft-sheet/trigger rebuild,
 league-setting changes, dual freeze and opening-night nightly projections remain
 paused until separately requested. Multi-move streaming still awaits verified
 transaction rules. Preserve existing draft-session state and unrelated local work.
+
+
+## 34. Draft upside, schedule and fresh ADP - 2026-10-18
+
+User approved the draft-context plan and fresh ADP. All top 200 by availability
+Draft # plus Leonard Miller are screened. Both boards and draft rooms now show
+upside profiles, paths/obstacles, 35 conditional FP/G scenarios, draft price
+ranges and whole playoff matchup schedules. Aday Mara remains an extra watchlist
+entry without an invented projection. ESPN platform ADP matched 574 of 599,
+including every top-200 player; provider observations October 17 UTC, pulled
+October 18 Sydney. Market signals compare ADP with availability Draft #.
+
+- [x] Both desktop/mobile boards, details, filters and draft rooms verified.
+- [x] 60 focused Python tests, production frontend build and all public artifact
+  validators passed. Browser checks preserve existing draft picks.
+- [x] All 599 existing non-market values, including FP/G, GP, Effective FP/G and
+  ranks, unchanged. Saved A/B snapshots and availability artifact byte-identical.
+- [x] Nine private episode fact notes and a no-change/defer ledger recorded.
+  Video coverage is partial indexed excerpts, not a full transcript review.
+- [x] Local app built and served at http://127.0.0.1:8787/; static preview 8788.
+
+[Public release tracker](deployments/2026-10-18-draft-upside.md) records scope,
+validation and limitations. Private report and verification artifacts are in
+`data/processed/upside_review_2026-10-18/`. The public board hash is
+`55145606473578b72a3758d13f5fad69144187fac6742b6124b84d02caef4819`.
+The immutable private review is `data/manual/draft_strategy_reviews/2026-10-18.json`;
+public context is generated, never hand-edited. Future source projection/team/GP
+changes must pass the overlay freshness guards and require a new dated review.
+
+Conditional ceilings and pick limits are judgment, not calibrated probabilities
+or a joint team forecast. Playoff schedule is context, without an additional
+ranking bonus. The transaction refresh succeeded but reaches only October 14.
+Model refits, central analyst promotion, draft-sheet/trigger regeneration, dual
+freeze and nightly updates remain held. Live ESPN latency verification and
+unrelated local source changes remain outstanding. Publishing public artifacts
+does not authorize committing those unrelated changes.

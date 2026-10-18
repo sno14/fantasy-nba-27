@@ -61,7 +61,7 @@
               <label class="search-field"><span aria-hidden="true">⌕</span><input id="search" type="search" aria-label="Search players" placeholder="Search player or position…" autocomplete="off" /></label>
               <label><span>Team</span><select id="team-filter"><option value="All">All teams</option></select></label>
               <label><span>Tier</span><select id="tier-filter"><option value="All">All tiers</option></select></label>
-              <label><span>Radar</span><select id="radar-filter"><option>All</option><option>Targets</option><option>Fades</option><option>Watchlist</option></select></label>
+              <label><span>Radar</span><select id="radar-filter"><option>All</option><option>Targets</option><option>Fades</option><option>Watchlist</option><option>Breakouts</option><option>Flyers</option><option>Recovery</option></select></label>
               <label><span>Show</span><select id="limit"><option value="50">Top 50</option><option value="100" selected>Top 100</option><option value="200">Top 200</option><option value="9999">All players</option></select></label>
               <label class="check-label"><input id="adjusted-only" type="checkbox" /> Analyst adjusted</label>
             </div>
@@ -72,9 +72,11 @@
               <button id="sort-direction" class="button subtle-action" aria-label="Change sort direction">Ascending ↑</button>
               <button id="reset-filters" class="link-button">Reset filters</button>
             </div>
-            <p class="board-explainer">Draft # orders Effective FP/G through March 21: unchanged FP/G, reviewed games played, and 35% marginal missed-game cover at up to 24 FP/G. GP means full NBA season. Risk preset shows 25% / 50% cover and playoff appearances. FP/G rank and tiers remain separate; legacy safe ranks, Radar, VOR and simulated ranges predate the GP review.</p>
+            <p class="board-explainer">Draft # orders Effective FP/G through March 21: unchanged FP/G, reviewed games played, and 35% marginal missed-game cover at up to 24 FP/G. GP means full NBA season. Risk preset shows 25% / 50% cover and playoff appearances. FP/G rank and tiers remain separate; legacy safe ranks, VOR and simulated ranges predate the GP review.</p>
             <p><a class="button" href="#board?sort=draft_rank&amp;direction=1&amp;limit=200&amp;preset=draft">Draft value order</a> <a class="button subtle-action" href="data/draft-top-200.csv" download>Download top 200</a></p>
             <p id="status" class="status" role="status"></p>
+            <p id="strategy-market" class="status"></p>
+            <details id="strategy-watchlist" class="status" hidden><summary>Extra flyer watchlist · no approved projection</summary><div id="strategy-watchlist-rows"></div></details>
             <details id="availability-exceptions" class="status" hidden><summary>Players withheld from draft value order — roster/team flags</summary><p id="availability-exception-names"></p></details>
             <div class="backup-actions"><button id="export-watchlist" class="button subtle-action">Export watchlist</button><button id="import-watchlist" class="button subtle-action">Import watchlist</button><input id="watchlist-file" type="file" accept=".json,application/json" hidden /><span id="backup-status" role="status"></span></div>
           </div>
@@ -105,13 +107,13 @@
             <div class="panel mock-board-panel">
               <div class="mock-search-row">
                 <label class="search-field"><span>⌕</span><input id="mock-search" aria-label="Search available players" type="search" placeholder="Search available player…" autocomplete="off" /></label>
-                <select id="mock-radar"><option>All</option><option>Targets</option><option>Fades</option><option>Watchlist</option></select>
+                <select id="mock-radar"><option>All</option><option>Targets</option><option>Fades</option><option>Watchlist</option><option>Breakouts</option><option>Flyers</option><option>Recovery</option></select>
                 <select id="mock-limit"><option value="30">Top 30 available</option><option value="60" selected>Top 60 available</option><option value="200">Top 200 available</option></select>
               </div>
               <p id="mock-status" role="status" class="mock-status"></p>
               <div class="table-wrap mock-table-wrap">
                 <table class="board-table mock-table">
-                  <thead><tr><th>Draft #</th><th class="player-col">Available player</th><th>Pos</th><th>FP/G</th><th>Effective FP/G</th><th>ADP</th><th>Legacy Radar</th><th></th></tr></thead>
+                  <thead><tr><th>Draft #</th><th class="player-col">Available player</th><th>Pos</th><th>FP/G</th><th>Effective FP/G</th><th>Upside</th><th>Playoff games</th><th>ADP</th><th>Price signal</th><th></th></tr></thead>
                   <tbody id="mock-rows"></tbody>
                 </table>
               </div>
@@ -206,6 +208,6 @@
       <label><input type="radio" name="import-mode" value="replace" /> Replace — remove existing targets before importing.</label>
       <div class="target-actions"><button id="cancel-import" class="button subtle-action">Cancel</button><button id="confirm-import" class="button">Confirm import</button></div>
     </div></dialog>
-    <script type="module" src="app.js?v=15"></script>
+    <script type="module" src="app.js?v=16"></script>
   </body>
 </html>

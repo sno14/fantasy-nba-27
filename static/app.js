@@ -65,6 +65,9 @@ function radarMatches(row, filter) {
   if (filter === "Targets") return String(row.radar_label || "").includes("target");
   if (filter === "Fades") return String(row.radar_label || "").includes("fade");
   if (filter === "Watchlist") return isTarget(row);
+  if (filter === "Breakouts") return row.upside_profile === "Breakout potential";
+  if (filter === "Flyers") return row.upside_profile === "Opportunity flyer";
+  if (filter === "Recovery") return row.upside_profile === "Recovery bet";
   return true;
 }
 
@@ -357,10 +360,12 @@ function drawMock() {
     <td class="muted">${esc((row.positions || "—").replaceAll("|", "/"))}</td>
     <td class="fpg tnum">${fmt(row.fpts_pg)}</td>
     <td class="fpg tnum">${fmt(row.effective_fpts_pg)}</td>
+    <td><button class="player-button" data-player="${row.PLAYER_ID}">${esc(row.upside_profile || "Not reviewed")}</button></td>
+    <td class="tnum">${esc(row.playoff_schedule || "—")}</td>
     <td class="tnum">${integer(row.adp)}</td>
     <td>${radarMarkup(row, pickIndex + 1)}</td>
     <td><button class="draft-button" aria-label="Draft ${esc(row.PLAYER_NAME)}" data-draft-player="${row.PLAYER_ID}" ${complete ? "disabled" : ""}>Draft</button></td>
-  </tr>`).join("") || `<tr><td colspan="8" class="muted">No matching available players. Clear search or change the Radar filter.</td></tr>`;
+  </tr>`).join("") || `<tr><td colspan="10" class="muted">No matching available players. Clear search or change the Radar filter.</td></tr>`;
 
   const recent = state.mock.picks.slice(-12).reverse();
   $("#mock-pick-total").textContent = `${pickIndex} picks`;
@@ -475,6 +480,8 @@ const BOARD_COLUMNS = [
   { key: "coverage", label: "Effective: 25% / 50% cover", render: row => `${fmt(row.effective_fpts_pg_c25)} / ${fmt(row.effective_fpts_pg_c50)}` },
   { key: "playoffs", label: "Playoff GP: R1 / R2 / final", render: row => `${fmt(row.playoff_gp_1)} / ${fmt(row.playoff_gp_2)} / ${fmt(row.playoff_gp_3)}` },
   { key: "availability", label: "Availability note", render: row => esc(row.availability_flag || (row.availability_reviewed ? "GP reviewed Oct 17" : "Not reviewed")) },
+  { key: "upside", label: "Upside", render: row => `<button class="player-button" data-player="${row.PLAYER_ID}" aria-label="Upside for ${esc(row.PLAYER_NAME)}">${esc(row.upside_profile || "Not reviewed")}</button>` },
+  { key: "playoffSchedule", label: "Playoff games", render: row => `<button class="player-button" data-player="${row.PLAYER_ID}" title="Scheduled games: Feb 1–14 / Feb 15–Mar 7 / Mar 8–21">${esc(row.playoff_schedule || "—")}</button>` },
   { key: "previous", label: "25–26 FP/G", sort: "previous_fpts_pg", render: row => fmt(row.previous_fpts_pg) },
   { key: "change", label: "Proj Δ", sort: "fpts_pg_change", render: row => changeMarkup(row.fpts_pg_change) },
   { key: "vor", label: "VOR", sort: "vor", render: row => fmt(row.vor) },
@@ -489,7 +496,7 @@ const BOARD_COLUMNS = [
 ];
 
 const COLUMN_PRESETS = {
-  draft: ["compare", "draftRank", "player", "positions", "fpg", "effective", "gp", "leagueGp", "adp"],
+  draft: ["compare", "draftRank", "player", "positions", "fpg", "effective", "gp", "upside", "playoffSchedule", "adp"],
   performance: ["compare", "rank", "player", "positions", "fpg", "effective", "previous", "change", "mpg", "gp"],
   risk: ["compare", "draftRank", "player", "fpg", "effective", "gp", "leagueGp", "coverage", "playoffs", "availability"],
   full: BOARD_COLUMNS.map(column => column.key),
@@ -505,7 +512,7 @@ function loadBoardPreferences() {
   }
   if (Object.hasOwn(COLUMN_PRESETS, saved.preset)) state.preset = saved.preset;
   if (["auto", "table", "cards"].includes(saved.layout)) state.layout = saved.layout;
-  if (["All", "Targets", "Fades", "Watchlist"].includes(saved.radar)) state.radar = saved.radar;
+  if (["All", "Targets", "Fades", "Watchlist", "Breakouts", "Flyers", "Recovery"].includes(saved.radar)) state.radar = saved.radar;
   if ([50, 100, 200, 9999].includes(saved.limit)) state.limit = saved.limit;
   if (typeof saved.adjustedOnly === "boolean") state.adjustedOnly = saved.adjustedOnly;
   if (typeof saved.sort === "string" && BOARD_COLUMNS.some(column => column.sort === saved.sort)) state.sort = saved.sort;
@@ -589,6 +596,7 @@ function drawBoard() {
   $("#board-cards").innerHTML = rows.map(row => `<article class="player-card panel" data-card="${row.PLAYER_ID}">
     <header><span class="rank">Draft ${integer(row.draft_rank)}</span><div class="card-player">${playerMarkup(row)}<span class="card-position">${esc((row.positions || "Position unavailable").replaceAll("|", "/"))}</span></div><label class="card-compare">${compareMarkup(row)}<span>Compare</span></label></header>
     <div class="card-metrics"><div><small>FP/G</small><strong class="fpg tnum">${fmt(row.fpts_pg)}</strong></div><div><small>Effective FP/G</small><strong class="fpg tnum">${fmt(row.effective_fpts_pg)}</strong></div><div><small>ADP</small><strong class="tnum">${integer(row.adp)}</strong></div></div>
+    <p class="status"><button class="player-button" data-player="${row.PLAYER_ID}">${esc(row.upside_profile || "Not reviewed")}</button> · Playoffs: ${esc(row.playoff_schedule || "—")}</p>
     <details${expanded.has(String(row.PLAYER_ID)) ? " open" : ""}><summary>Projection details</summary><dl>${detailColumns.map(column => `<div><dt>${esc(column.label)}</dt><dd>${column.render(row) || "—"}</dd></div>`).join("")}</dl></details>
   </article>`).join("");
   $("#view-board").dataset.layout = state.layout;
@@ -735,12 +743,13 @@ function openPlayer(id, navigate = true) {
     if (!$("#player-dialog").open) $("#player-dialog").showModal();
     return;
   }
-  const valueGap = row.adp == null ? null : row.adp - row.rank;
+  const valueGap = row.adp == null || row.draft_rank == null ? null : row.adp - row.draft_rank;
   const valueText = valueGap == null ? "No ADP available" : valueGap >= 12 ? `Market discount: ${integer(valueGap)} picks` : valueGap <= -12 ? `Market is ${integer(-valueGap)} picks higher` : "Close to market price";
   $("#player-detail").innerHTML = `<header class="player-hero"><p class="eyebrow">${esc(row.TEAM_ABBREVIATION || "FREE AGENT")} · TIER ${row.tier ?? "—"}</p><h2>${esc(row.PLAYER_NAME)}</h2><p>FP/G rank #${row.rank} · safe source rank #${row.source_rank ?? "—"} · model source rank #${row.model_source_rank ?? "—"}</p></header>
     <div class="detail-body">
       <div class="detail-stats"><div class="detail-stat"><small>FP / game</small><strong>${fmt(row.fpts_pg)}</strong></div><div class="detail-stat"><small>2025-26 FP/G</small><strong>${fmt(row.previous_fpts_pg)}</strong></div><div class="detail-stat"><small>Projected change</small><strong>${changeMarkup(row.fpts_pg_change)}</strong></div><div class="detail-stat"><small>VOR</small><strong>${fmt(row.vor)}</strong></div><div class="detail-stat"><small>Projected GP</small><strong>${integer(row.gp)}</strong></div><div class="detail-stat"><small>Projected MPG</small><strong>${fmt(row.mpg)}</strong></div><div class="detail-stat"><small>Age</small><strong>${integer(row.target_age)}</strong></div><div class="detail-stat"><small>ADP</small><strong>${integer(row.adp)}</strong></div><div class="detail-stat"><small>Risk</small><strong>${fmt(row.risk, 2)}</strong></div><div class="detail-stat"><small>Market read</small><strong>${esc(valueText)}</strong></div></div>
       <section class="detail-section"><h3>Projected per-game line</h3><div class="projection-line">${[["PTS",row.pts],["REB",row.reb],["AST",row.ast],["STL",row.stl],["BLK",row.blk],["3PM",row.fg3m],["TOV",row.tov]].map(([label,value]) => `<div><small>${label}</small><strong>${fmt(value)}</strong></div>`).join("")}</div></section>
+      <section class="detail-section" data-upside-detail><h3>${esc(row.upside_profile || "Not reviewed")}</h3><p><strong>Path:</strong> ${esc(row.upside_path || "No reviewed path recorded.")}</p><p><strong>Obstacle:</strong> ${esc(row.upside_obstacle || "—")}</p><p>${esc(row.upside_priced || "")}</p>${row.upside_fpts_pg != null ? `<p><strong>Conditional upside: ${fmt(row.upside_fpts_pg)} FP/G.</strong> ${esc(row.upside_scenario)}</p>` : ""}${row.draft_target_start != null ? `<p><strong>Target picks ${integer(row.draft_target_start)}–${integer(row.draft_target_end)}; earliest ${integer(row.draft_earliest)}.</strong> A price guide, not guaranteed availability.</p>` : ""}<p>${esc(row.draft_approach || "")}</p><p>${esc(row.upside_trigger || "")}</p><p>Judgmental scenarios, not calibrated ceilings. Central projections are unchanged.</p><p><strong>Playoff games:</strong> ${esc(row.playoff_schedule || "—")} · Feb 1–14 / Feb 15–Mar 7 / Mar 8–21.</p><p>Back-to-back second nights: ${esc(row.playoff_b2b || "—")}. Games on days with at most seven NBA games: ${esc(row.playoff_light || "—")}. Your lineup may still be congested.</p></section>
       <section class="detail-section"><h3>Availability · reviewed October 17</h3><div class="season-band"><div><small>Draft #</small><strong>${integer(row.draft_rank)}</strong></div><div><small>Effective FP/G</small><strong>${fmt(row.effective_fpts_pg)}</strong></div><div><small>GP through March 21</small><strong>${fmt(row.league_gp)}</strong></div></div><p>${esc(row.availability_flag || "Central GP judgment; no additional safe-rank penalty.")}</p><p>At 25% / 50% cover: ${fmt(row.effective_fpts_pg_c25)} / ${fmt(row.effective_fpts_pg_c50)} effective FP/G. Playoff appearances: ${fmt(row.playoff_gp_1)} / ${fmt(row.playoff_gp_2)} / ${fmt(row.playoff_gp_3)}. GP scenarios through March 21: ${fmt(row.league_gp_low)}–${fmt(row.league_gp_high)} (not confidence intervals).</p></section>
       <section class="detail-section"><h3>Legacy simulated season totals · before GP review</h3><div class="season-band"><div><small>Floor · p10</small><strong>${integer(row.fpts_p10)}</strong></div><div><small>Median</small><strong>${integer(row.fpts_median)}</strong></div><div><small>Ceiling · p90</small><strong>${integer(row.fpts_p90)}</strong></div></div></section>
       <section class="detail-section" id="public-minutes"><h3>Minutes scenario</h3><p class="muted">Loading verified minutes data...</p></section>
@@ -816,7 +825,7 @@ function applyRoute(force = false) {
     let valid = raw.length <= 500;
     if (key === "preset") valid &&= Object.hasOwn(COLUMN_PRESETS, raw);
     if (key === "layout") valid &&= ["auto", "table", "cards"].includes(raw);
-    if (key === "radar") valid &&= ["All", "Targets", "Fades", "Watchlist"].includes(raw);
+    if (key === "radar") valid &&= ["All", "Targets", "Fades", "Watchlist", "Breakouts", "Flyers", "Recovery"].includes(raw);
     if (key === "limit") { value = Number(raw); valid &&= [50, 100, 200, 9999].includes(value); }
     if (key === "direction") { value = Number(raw); valid &&= [1, -1].includes(value); }
     if (key === "adjustedOnly") { value = raw === "true"; valid &&= ["true", "false"].includes(raw); }
@@ -1059,6 +1068,9 @@ fetch("data/board.json", { cache: "no-store" })
   .then(response => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
   .then(data => {
     state.meta = data;
+    $("#strategy-market").textContent = `${data.market_label || "Consensus ADP"}. Click Upside for the path, obstacle and draft price guide. Playoff games are whole matchup totals.`;
+    $("#strategy-watchlist").hidden = !data.strategy_watchlist?.length;
+    $("#strategy-watchlist-rows").innerHTML = (data.strategy_watchlist || []).map(w => `<p><strong>${esc(w.name)} · ${esc(w.team)} · ${esc(w.positions)} · ESPN ADP ${fmt(w.adp)}</strong></p><p>${esc(w.note)}</p><p>Earliest pick ${integer(w.earliest_pick)}. ${esc(w.trigger)}</p>`).join("");
     state.season = data.season || data.title?.match(/\b\d{4}-\d{2}\b/)?.[0] || "";
     applyingRoute = true;
     state.rows = [...data.rows].sort((a, b) => a.rank - b.rank);

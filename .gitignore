@@ -18,6 +18,7 @@ config/analyst_overrides.yaml
 config/overrides.yaml
 data/manual/availability_reviews/
 scripts/review_availability_20261017.py
+data/manual/draft_strategy_reviews/
 
 # Secrets (Step 19 / the ESPN draft feed). NOTE: config/ is COMMITTED — never put
 # credentials there. espn_s2 + SWID are live session cookies for a personal ESPN/Disney
